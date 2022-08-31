@@ -5,14 +5,11 @@
 *.txt~
 *.vtk
 *.pdf
-
+*.vtu
 *~
 
 CMakeCache.txt
 
-poisson_eq
-domain_dof
-domain
 
 CMakeFiles/
 doc/
