@@ -130,7 +130,7 @@ namespace ScalarGL
   RealValuedScalarGLSolver<dim>::RealValuedScalarGLSolver()
     : dof_handler(triangulation)
     , fe(2)
-    , t(0.99)
+    , t(0.0)
   {}
 
 
@@ -493,9 +493,16 @@ namespace ScalarGL
   template <int dim>
   void RealValuedScalarGLSolver<dim>::run()
   {
-    const Point<2> center(0, 0);
-    const double radius = 100;
-    GridGenerator::hyper_ball(triangulation, center, radius);
+    const Point<2> inner_center(0.5, 0.0);
+    const Point<2> outer_center(0.0, 0.0);
+    const double inner_radius = 4.0;
+    const double outer_radius = 5.0;
+    GridGenerator::eccentric_hyper_shell(triangulation,
+					 inner_center,
+					 outer_center,
+					 inner_radius,
+					 outer_radius,
+					 0);
 
     // const std::vector< unsigned int > sizes ={1, 1, 0, 1, 0, 0};
     
