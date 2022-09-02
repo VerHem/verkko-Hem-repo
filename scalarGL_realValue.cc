@@ -1,20 +1,15 @@
-/* ---------------------------------------------------------------------
+/* ------------------------------------------------------------------------------------------
+ * 
+ * This is source code of solver of real valued scalar GL equation.
+ * It is developed on the top of deal.II 9.3.3 finite element C++ library. 
+ * 
+ * License of this code is GNU Lesser General Public License, which been 
+ * published by Free Software Fundation, either version 2.1 and later version.
+ * You are free to use, modify and redistribute this program.
  *
- * Copyright (C) 2012 - 2021 by the deal.II authors
+ * ------------------------------------------------------------------------------------------
  *
- * This file is part of the deal.II library.
- *
- * The deal.II library is free software; you can use it, redistribute
- * it, and/or modify it under the terms of the GNU Lesser General
- * Public License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
- * The full text of the license can be found in the file LICENSE.md at
- * the top level directory of deal.II.
- *
- * ---------------------------------------------------------------------
-
- *
- * Author: Sven Wetterauer, University of Heidelberg, 2012
+ * author: Quang. Zhang (timohyva@github), Helsinki Institute of Physics, Syyskuu. 2022
  */
 
 #include <deal.II/base/quadrature_lib.h>
@@ -44,29 +39,27 @@
 #include <deal.II/numerics/data_out.h>
 #include <deal.II/numerics/error_estimator.h>
 
-
 #include <fstream>
 #include <iostream>
 
-
-
 #include <deal.II/numerics/solution_transfer.h>
 
-namespace Step15
+// split global scope into ScalarGL and main() block scope
+namespace ScalarGL
 {
   using namespace dealii;
 
-
-
-
   template <int dim>
-  class MinimalSurfaceProblem
+  class RealValuedScalarGLSolver
   {
   public:
-    MinimalSurfaceProblem();
+    // calss template constructor:
+    RealValuedScalarGLSolver();
     void run();
 
   private:
+
+    // member functons of Solver class template:
     void   setup_system(const bool initial_step);
     void   assemble_system();
     void   solve();
@@ -76,24 +69,37 @@ namespace Step15
     double determine_step_length() const;
     void   output_results(const unsigned int &refinement_cycle) const;
 
-    Triangulation<dim> triangulation;
 
+    // data members of solver class template.
+    // those variables are necessary parts for adaptive meshed FEM and newton iteration.
+    Triangulation<dim> triangulation;
     DoFHandler<dim> dof_handler;
     FE_Q<dim>       fe;
 
+    // hanging nodes constriants object:
     AffineConstraints<double> hanging_node_constraints;
 
     SparsityPattern      sparsity_pattern;
     SparseMatrix<double> system_matrix;
 
     Vector<double> newton_update;
-    
     Vector<double> current_solution;
     Vector<double> system_rhs;
+
+    // physical coefficients of real valued scalar GL equation:
+    const double alpha_0 = 2.0;
+    const double beta = 0.5;
+    double t; // scaled temperature
   };
 
- 
-
+  
+  /* ------------------------------------------------------------------------------------------
+   *
+   * class template BoundaryValues inhereted from Function<dim>, in which member function value
+   * is overrided as homogenous Dilicheret boundary value.
+   *
+   * ------------------------------------------------------------------------------------------
+   */
   template <int dim>
   class BoundaryValues : public Function<dim>
   {
@@ -107,27 +113,40 @@ namespace Step15
   double BoundaryValues<dim>::value(const Point<dim> &p,
                                     const unsigned int /*component*/) const
   {
-    return std::cos(2.0 * numbers::PI * (p[0] + p[1]));
+    return 0.0 * p[0];
+    // return std::sin(6.0 * (p[0]+p[1]));
   }
 
 
+  /* ------------------------------------------------------------------------------------------
+   *
+   * The following functions are members of RealValuedScalarGLSolver till the end of ScalarGL
+   * namespace.
+   * ------------------------------------------------------------------------------------------
+   */
 
+  // construnctor and initilizaton list
   template <int dim>
-  MinimalSurfaceProblem<dim>::MinimalSurfaceProblem()
+  RealValuedScalarGLSolver<dim>::RealValuedScalarGLSolver()
     : dof_handler(triangulation)
     , fe(2)
+    , t(0.0)
   {}
 
 
 
 
   template <int dim>
-  void MinimalSurfaceProblem<dim>::setup_system(const bool initial_step)
+  void RealValuedScalarGLSolver<dim>::setup_system(const bool initial_step)
   {
     if (initial_step)
       {
         dof_handler.distribute_dofs(fe);
-        current_solution.reinit(dof_handler.n_dofs());
+        current_solution.reinit(dof_handler.n_dofs(), /*omit_zeroing_entries*/true);
+	//current_solution.print();
+
+	for (auto it = current_solution.begin(); it != current_solution.end(); ++it)
+	  *it = 2.0;
 
         hanging_node_constraints.clear();
         DoFTools::make_hanging_node_constraints(dof_handler,
@@ -152,7 +171,7 @@ namespace Step15
 
   
   template <int dim>
-  void MinimalSurfaceProblem<dim>::assemble_system()
+  void RealValuedScalarGLSolver<dim>::assemble_system()
   {
     const QGauss<dim> quadrature_formula(fe.degree + 1);
 
@@ -161,8 +180,8 @@ namespace Step15
 
     FEValues<dim> fe_values(fe,
                             quadrature_formula,
-                            update_gradients | update_quadrature_points |
-                              update_JxW_values);
+                            update_gradients | update_values |
+			      update_quadrature_points | update_JxW_values);
 
     const unsigned int dofs_per_cell = fe.n_dofs_per_cell();
     const unsigned int n_q_points    = quadrature_formula.size();
@@ -172,6 +191,7 @@ namespace Step15
 
     // vector to holding u^n on cell:
     std::vector<Tensor<1, dim>> old_solution_gradients(n_q_points);
+    std::vector<double> old_solution(n_q_points);
 
     std::vector<types::global_dof_index> local_dof_indices(dofs_per_cell);
 
@@ -182,35 +202,60 @@ namespace Step15
 
         fe_values.reinit(cell);
 
-        fe_values.get_function_gradients(current_solution,
-                                         old_solution_gradients);
-
+	fe_values.get_function_gradients(current_solution, old_solution_gradients);
+        fe_values.get_function_values(current_solution, old_solution);
     
         for (unsigned int q = 0; q < n_q_points; ++q)
           {
-            const double coeff =
-              1.0 / std::sqrt(1 + old_solution_gradients[q] *
-                                    old_solution_gradients[q]);
+	    // alpha + 3 bete \psi^(n)^2, system_matrix
+            const double bulk_term_coeff_systemMatrix =
+	      ((alpha_0 * (t-1.0))
+	       + (3.0 * beta * old_solution[q] * old_solution[q]));
 
+	    // alpha + bete \psi^(n)^2, rhs
+	    const double bulk_term_coeff_rhs =
+	      ((alpha_0 * (t-1.0))
+	       + (beta * old_solution[q] * old_solution[q]));
+ 
             for (unsigned int i = 0; i < dofs_per_cell; ++i)
               {
                 for (unsigned int j = 0; j < dofs_per_cell; ++j)
                   cell_matrix(i, j) +=
-                    (((fe_values.shape_grad(i, q)      // ((\nabla \phi_i
-                       * coeff                         //   * a_n
-                       * fe_values.shape_grad(j, q))   //   * \nabla \phi_j)
-                      -                                //  -
-                      (fe_values.shape_grad(i, q)      //  (\nabla \phi_i
-                       * coeff * coeff * coeff         //   * a_n^3
-                       * (fe_values.shape_grad(j, q)   //   * (\nabla \phi_j
-                          * old_solution_gradients[q]) //      * \nabla u_n)
-                       * old_solution_gradients[q]))   //   * \nabla u_n)))
-                     * fe_values.JxW(q));              // * dx
+		  (((fe_values.shape_grad(i, q)       // ((\partial_m \phi_i
+		     * fe_values.shape_grad(j, q)     //   \partial_m \phi_j
+		     * 0.5)                           //   * 1/2)
+		    +                                 //  +
+		    (bulk_term_coeff_systemMatrix     //  ((\alpha + 3 \beta \phi^(n)2)
+		     * fe_values.shape_value(i, q)    //    * \phi_i
+		     * fe_values.shape_value(j, q)))  //    * \phi_j))
+		   * fe_values.JxW(q));               // * dx
 
-                cell_rhs(i) -= (fe_values.shape_grad(i, q)  // \nabla \phi_i
-                                * coeff                     // * a_n
-                                * old_solution_gradients[q] // * u_n
-                                * fe_values.JxW(q));        // * dx
+		    
+                    // (((fe_values.shape_grad(i, q)      // ((\nabla \phi_i
+                    //    * coeff                         //   * a_n
+                    //    * fe_values.shape_grad(j, q))   //   * \nabla \phi_j)
+                    //   -                                //  -
+                    //   (fe_values.shape_grad(i, q)      //  (\nabla \phi_i
+                    //    * coeff * coeff * coeff         //   * a_n^3
+                    //    * (fe_values.shape_grad(j, q)   //   * (\nabla \phi_j
+                    //       * old_solution_gradients[q]) //      * \nabla u_n)
+                    //    * old_solution_gradients[q]))   //   * \nabla u_n)))
+                    //  * fe_values.JxW(q));              // * dx
+
+                cell_rhs(i) -=
+		 (((fe_values.shape_grad(i, q)   // ((\partial_m \phi_i
+		    * old_solution_gradients[q]  //   * \partial_m \psi^(n)
+		    * 0.5)                       //   * 1/2)
+		   +                             //  +
+		   (bulk_term_coeff_rhs          //  ((\alpha + \beta \psi^(n)2)
+		    * fe_values.shape_value(i, q)      //   * \phi_i
+		    * old_solution[q]))          //   * \psi^(n)))
+		  * fe_values.JxW(q));           // * dx 
+		
+		// cell_rhs(i) -= (fe_values.shape_grad(i, q)  // \nabla \phi_i
+                //                 * coeff                     // * a_n
+                //                 * old_solution_gradients[q] // * u_n
+                //                 * fe_values.JxW(q));        // * dx
               }
           }
 
@@ -226,10 +271,11 @@ namespace Step15
           }
       }
 
-  
+    // condense Vector and SparseMatrix with hanging node constriants:
     hanging_node_constraints.condense(system_matrix);
     hanging_node_constraints.condense(system_rhs);
 
+    // the newton iteration has zero value boundary condtion
     std::map<types::global_dof_index, double> boundary_values;
     VectorTools::interpolate_boundary_values(dof_handler,
                                              0,
@@ -243,7 +289,7 @@ namespace Step15
 
 
   template <int dim>
-  void MinimalSurfaceProblem<dim>::solve()
+  void RealValuedScalarGLSolver<dim>::solve()
   {
     SolverControl            solver_control(system_rhs.size(),
                                  system_rhs.l2_norm() * 1e-6);
@@ -263,7 +309,7 @@ namespace Step15
 
 
   template <int dim>
-  void MinimalSurfaceProblem<dim>::refine_mesh()
+  void RealValuedScalarGLSolver<dim>::refine_mesh()
   {
     Vector<float> estimated_error_per_cell(triangulation.n_active_cells());
 
@@ -277,7 +323,7 @@ namespace Step15
 
     GridRefinement::refine_and_coarsen_fixed_number(triangulation,
                                                     estimated_error_per_cell,
-                                                    0.3,
+                                                    0.35,
                                                     0.03);
 
     // preparing for SolutionTransfer class:
@@ -315,7 +361,7 @@ namespace Step15
 
 
   template <int dim>
-  void MinimalSurfaceProblem<dim>::set_boundary_values()
+  void RealValuedScalarGLSolver<dim>::set_boundary_values()
   {
     // associtive contaioner for hold the BV of current_solution:
     std::map<types::global_dof_index, double> boundary_values;
@@ -335,7 +381,7 @@ namespace Step15
 
 
   template <int dim>
-  double MinimalSurfaceProblem<dim>::compute_residual(const double alpha) const
+  double RealValuedScalarGLSolver<dim>::compute_residual(const double alpha) const
   {
     Vector<double> residual(dof_handler.n_dofs());
 
@@ -346,14 +392,17 @@ namespace Step15
     const QGauss<dim> quadrature_formula(fe.degree + 1);
     FEValues<dim>     fe_values(fe,
                             quadrature_formula,
-                            update_gradients | update_quadrature_points |
-                              update_JxW_values);
+                            update_gradients | update_values |
+			      update_quadrature_points | update_JxW_values);
 
     const unsigned int dofs_per_cell = fe.n_dofs_per_cell();
     const unsigned int n_q_points    = quadrature_formula.size();
 
     Vector<double>              cell_residual(dofs_per_cell);
+
+    // two std::vector for holding on-cell gradients and value of FE-feild i.e., \psi
     std::vector<Tensor<1, dim>> gradients(n_q_points);
+    std::vector<double> solution(n_q_points);
 
     std::vector<types::global_dof_index> local_dof_indices(dofs_per_cell);
 
@@ -362,20 +411,30 @@ namespace Step15
         cell_residual = 0;
         fe_values.reinit(cell);
 
-
+        // fill on-cell gradients:
         fe_values.get_function_gradients(evaluation_point, gradients);
+
+	// fill on-cell solution value:
+        fe_values.get_function_values(evaluation_point, solution);
 
 
         for (unsigned int q = 0; q < n_q_points; ++q)
           {
-            const double coeff =
-              1. / std::sqrt(1 + gradients[q] * gradients[q]);
+            // alpha + bete \psi^(n)^2, rhs
+	    const double bulk_term_coeff_rhs =
+	     ((alpha_0 * (t-1.0))
+	      + (beta * solution[q] * solution[q]));
 
             for (unsigned int i = 0; i < dofs_per_cell; ++i)
-              cell_residual(i) -= (fe_values.shape_grad(i, q) // \nabla \phi_i
-                                   * coeff                    // * a_n
-                                   * gradients[q]             // * u_n
-                                   * fe_values.JxW(q));       // * dx
+              cell_residual(i) -=
+		(((fe_values.shape_grad(i, q)    // ((\partial_m \phi_i
+		    * gradients[q]               //   * \partial_m \psi^(n)
+		    * 0.5)                       //   * 1/2)
+		   +                             //  +
+		   (bulk_term_coeff_rhs          //  ((\alpha + \beta \psi^(n)2)
+		    * fe_values.shape_value(i, q)      //   * \phi_i
+		    * solution[q]))              //   * \psi^(n)))
+		 * fe_values.JxW(q));            // * dx 
           }
 
         cell->get_dof_indices(local_dof_indices);
@@ -383,9 +442,12 @@ namespace Step15
           residual(local_dof_indices[i]) += cell_residual(i);
       }
 
-
+    // condense redisual with hanging node constriants:
     hanging_node_constraints.condense(residual);
 
+    // setting the residuals on the boundary, which have gotten right value and no residual,
+    // to be zero. This operation makes residuals has more zeros than system_rhs, thus the former
+    // has smaller l2 norm.
     for (types::global_dof_index i :
          DoFTools::extract_boundary_dofs(dof_handler))
       residual(i) = 0;
@@ -394,16 +456,20 @@ namespace Step15
     return residual.l2_norm();
   }
 
-
+  // This member function returns iterative step length a^k.
+  // The best way to do this is implement a line-search for the optimatical value of a^k,
+  // but here we simply return 0.1, which is not the opttical value and garantee convergency.
   template <int dim>
-  double MinimalSurfaceProblem<dim>::determine_step_length() const
+  double RealValuedScalarGLSolver<dim>::determine_step_length() const
   {
     return 0.1;
   }
 
-
+  // memeber function output_results() output the reaults of solution and newton update for
+  // every new refined mesh. The better fromat of output file should be .hdf5. It will be implemented
+  // very soon.
   template <int dim>
-  void MinimalSurfaceProblem<dim>::output_results(
+  void RealValuedScalarGLSolver<dim>::output_results(
     const unsigned int &refinement_cycle) const
   {
     DataOut<dim> data_out;
@@ -416,21 +482,25 @@ namespace Step15
     data_out.build_patches(); 
 
     const std::string filename =
-      "solution-" + Utilities::int_to_string(refinement_cycle, 2) + ".vtu";
+      "iterative_solution-" + Utilities::int_to_string(refinement_cycle, 2) + "_time_mesh_refined.vtk";
     
     std::ofstream output(filename);
-    data_out.write_vtu(output);
+    data_out.write_vtk(output);
   }
 
 
 
   template <int dim>
-  void MinimalSurfaceProblem<dim>::run()
+  void RealValuedScalarGLSolver<dim>::run()
   {
-    // GridGenerator::hyper_ball(triangulation);
+    const Point<2> center(0, 0);
+    const double radius = 100;
+    GridGenerator::hyper_ball(triangulation, center, radius);
 
-    const std::vector< unsigned int > sizes ={1, 1, 0, 1, 0, 0};
-    GridGenerator::hyper_cross(triangulation, sizes);
+    // const std::vector< unsigned int > sizes ={1, 1, 0, 1, 0, 0};
+    
+    // const std::vector< unsigned int > sizes ={2, 2, 1, 1};
+    // GridGenerator::hyper_cross(triangulation, sizes);
     triangulation.refine_global(2);
 
     setup_system(/*first time=*/ true);
@@ -453,7 +523,7 @@ namespace Step15
 
         std::cout << "  Initial residual: " << compute_residual(0) << std::endl;
 
-        for (unsigned int inner_iteration = 0; inner_iteration < 7;
+        for (unsigned int inner_iteration = 0; inner_iteration < 41;
              ++inner_iteration)
           {
             assemble_system();
@@ -467,7 +537,7 @@ namespace Step15
 		      << std::endl;
 
 	    last_residual_norm = system_rhs.l2_norm();
-	    if (last_residual_norm < 5e-2)
+	    if ((refinement_cycle !=0) && (last_residual_norm < 1e-2))
 	      break;
           }
 
@@ -476,31 +546,36 @@ namespace Step15
         ++refinement_cycle;
         std::cout << std::endl;
       }
-    while (last_residual_norm > 5e-2);
+    while (last_residual_norm > 1e-2);
   }
-} // namespace Step15
+} // namespace ScalarGL
 
+
+/* ------------------------------------------------------------------------------------------
+ *         Block scope of main() starts from here.
+ * ------------------------------------------------------------------------------------------
+ */
 
 int main()
 {
   try
     {
-      using namespace Step15;
+      using namespace ScalarGL;
 
-      // MinimalSurfaceProblem<2> laplace_problem_2d;
-      // laplace_problem_2d.run();
+      RealValuedScalarGLSolver<2> GL_2d;
+      GL_2d.run();
 
-      MinimalSurfaceProblem<3> laplace_problem_3d;
-      laplace_problem_3d.run();
+      // RealValuedScalarGLSolver<3> GL_3d;
+      // GL_3d.run();
     }
-  catch (std::exception &exc)
+  catch (std::exception &exception)
     {
       std::cerr << std::endl
                 << std::endl
                 << "----------------------------------------------------"
                 << std::endl;
       std::cerr << "Exception on processing: " << std::endl
-                << exc.what() << std::endl
+                << exception.what() << std::endl
                 << "Aborting!" << std::endl
                 << "----------------------------------------------------"
                 << std::endl;

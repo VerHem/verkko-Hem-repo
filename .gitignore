@@ -9,7 +9,9 @@
 *~
 
 CMakeCache.txt
+*.cmake
 
+scalarGL_realValue
 
 CMakeFiles/
 doc/
