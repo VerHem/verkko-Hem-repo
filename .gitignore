@@ -11,7 +11,9 @@
 CMakeCache.txt
 *.cmake
 
+# ignore execuatbe binary
 scalarGL_realValue
 
 CMakeFiles/
 doc/
+poissonEq_hdf5OutPut/
