@@ -41,6 +41,7 @@
 
 #include <fstream>
 #include <iostream>
+#include <deal.II/base/hdf5.h>
 
 #include <deal.II/numerics/solution_transfer.h>
 
@@ -130,7 +131,7 @@ namespace ScalarGL
   RealValuedScalarGLSolver<dim>::RealValuedScalarGLSolver()
     : dof_handler(triangulation)
     , fe(2)
-    , t(0.0)
+    , t(0.9)
   {}
 
 
@@ -230,18 +231,6 @@ namespace ScalarGL
 		     * fe_values.shape_value(j, q)))  //    * \phi_j))
 		   * fe_values.JxW(q));               // * dx
 
-		    
-                    // (((fe_values.shape_grad(i, q)      // ((\nabla \phi_i
-                    //    * coeff                         //   * a_n
-                    //    * fe_values.shape_grad(j, q))   //   * \nabla \phi_j)
-                    //   -                                //  -
-                    //   (fe_values.shape_grad(i, q)      //  (\nabla \phi_i
-                    //    * coeff * coeff * coeff         //   * a_n^3
-                    //    * (fe_values.shape_grad(j, q)   //   * (\nabla \phi_j
-                    //       * old_solution_gradients[q]) //      * \nabla u_n)
-                    //    * old_solution_gradients[q]))   //   * \nabla u_n)))
-                    //  * fe_values.JxW(q));              // * dx
-
                 cell_rhs(i) -=
 		 (((fe_values.shape_grad(i, q)   // ((\partial_m \phi_i
 		    * old_solution_gradients[q]  //   * \partial_m \psi^(n)
@@ -252,10 +241,6 @@ namespace ScalarGL
 		    * old_solution[q]))          //   * \psi^(n)))
 		  * fe_values.JxW(q));           // * dx 
 		
-		// cell_rhs(i) -= (fe_values.shape_grad(i, q)  // \nabla \phi_i
-                //                 * coeff                     // * a_n
-                //                 * old_solution_gradients[q] // * u_n
-                //                 * fe_values.JxW(q));        // * dx
               }
           }
 
@@ -398,7 +383,7 @@ namespace ScalarGL
     const unsigned int dofs_per_cell = fe.n_dofs_per_cell();
     const unsigned int n_q_points    = quadrature_formula.size();
 
-    Vector<double>              cell_residual(dofs_per_cell);
+    Vector<double> cell_residual(dofs_per_cell);
 
     // two std::vector for holding on-cell gradients and value of FE-feild i.e., \psi
     std::vector<Tensor<1, dim>> gradients(n_q_points);
@@ -486,6 +471,24 @@ namespace ScalarGL
     
     std::ofstream output(filename);
     data_out.write_vtk(output);
+
+    // hdf5 output
+    std::vector<Point<dim>> vertices_vector = triangulation.get_vertices();    
+    FullMatrix<double> nodes(vertices_vector.size(),2);
+    for (unsigned int n = 0; n<vertices_vector.size(); ++n)
+      {
+	nodes(n, 0) = vertices_vector[n](0);
+	nodes(n, 1) = vertices_vector[n](1);
+      }
+    
+    const std::string filename_h5 =
+      "iterative_solution-" + Utilities::int_to_string(refinement_cycle, 2) + "_time_mesh_refined.h5";
+    HDF5::File iterative_solution_data(filename_h5, HDF5::File::FileAccessMode::create);
+    iterative_solution_data.write_dataset("current_solution", current_solution);
+    iterative_solution_data.write_dataset("newton_update", newton_update);
+    iterative_solution_data.write_dataset("nodes", nodes);
+    
+    
   }
 
 
@@ -493,9 +496,9 @@ namespace ScalarGL
   template <int dim>
   void RealValuedScalarGLSolver<dim>::run()
   {
-    const Point<2> inner_center(0.5, 0.0);
+    const Point<2> inner_center(1.5, 0.0);
     const Point<2> outer_center(0.0, 0.0);
-    const double inner_radius = 4.0;
+    const double inner_radius = 2.0;
     const double outer_radius = 5.0;
     GridGenerator::eccentric_hyper_shell(triangulation,
 					 inner_center,
