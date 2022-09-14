@@ -496,10 +496,10 @@ namespace ScalarGL
   template <int dim>
   void RealValuedScalarGLSolver<dim>::run()
   {
-    const Point<2> inner_center(1.5, 0.0);
+    const Point<2> inner_center(5., 0.0);
     const Point<2> outer_center(0.0, 0.0);
-    const double inner_radius = 2.0;
-    const double outer_radius = 5.0;
+    const double inner_radius = 10.0;
+    const double outer_radius = 25.0;
     GridGenerator::eccentric_hyper_shell(triangulation,
 					 inner_center,
 					 outer_center,
@@ -507,10 +507,7 @@ namespace ScalarGL
 					 outer_radius,
 					 0);
 
-    // const std::vector< unsigned int > sizes ={1, 1, 0, 1, 0, 0};
-    
-    // const std::vector< unsigned int > sizes ={2, 2, 1, 1};
-    // GridGenerator::hyper_cross(triangulation, sizes);
+   
     triangulation.refine_global(2);
 
     setup_system(/*first time=*/ true);
