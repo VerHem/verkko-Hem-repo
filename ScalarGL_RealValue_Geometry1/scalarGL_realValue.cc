@@ -131,7 +131,7 @@ namespace ScalarGL
   RealValuedScalarGLSolver<dim>::RealValuedScalarGLSolver()
     : dof_handler(triangulation)
     , fe(2)
-    , t(0.9)
+    , t(0.0)
   {}
 
 
@@ -499,7 +499,7 @@ namespace ScalarGL
     const Point<2> inner_center(5., 0.0);
     const Point<2> outer_center(0.0, 0.0);
     const double inner_radius = 10.0;
-    const double outer_radius = 25.0;
+    const double outer_radius = 17.0;
     GridGenerator::eccentric_hyper_shell(triangulation,
 					 inner_center,
 					 outer_center,

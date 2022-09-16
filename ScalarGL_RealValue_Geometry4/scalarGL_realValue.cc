@@ -131,7 +131,7 @@ namespace ScalarGL
   RealValuedScalarGLSolver<dim>::RealValuedScalarGLSolver()
     : dof_handler(triangulation)
     , fe(2)
-    , t(0.5)
+    , t(0.9)
   {}
 
 
