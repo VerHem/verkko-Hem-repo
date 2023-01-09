@@ -8,6 +8,7 @@
 *.vtu
 *.h5
 *~
+*.csv
 
 CMakeCache.txt
 *.cmake

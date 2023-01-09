@@ -516,7 +516,7 @@ namespace ScalarGL
     set_boundary_values();
 
 
-    double       last_residual_norm = std::numeric_limits<double>::max();
+    double       last_residual_norm = std::numeric_limits<double>::max(); // set it as large as possible
     unsigned int refinement_cycle   = 0;
     do
       {
