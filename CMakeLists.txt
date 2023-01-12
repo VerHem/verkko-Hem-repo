@@ -1,32 +1,22 @@
 ##
-#  CMake script for the real valued scalar GL equation:
+#  CMake script for the complex valued scalar GL equation;
 #  author: Quang. Zhang (timohyva@github)
 #  ----------------------------------------------------
-#  Helsinki Institute of Physics, 01. Syyskuu. 2022
+#  QUEST-DMC project, University of Sussex;
+#  Helsinki Institute of Physics;
+#  11. Tammikuu. 2023
 ##
 
-# Set the name of the project and target:
-SET(TARGET "scalarGL_realValue")
-
-# Declare all source files the target consists of. Here, this is only
-# the one *.cc file, but as you expand your project you may wish
-# to add other source files as well. If your project becomes much larger,
-# you may want to either replace the following statement by something like
-#  FILE(GLOB_RECURSE TARGET_SRC  "source/*.cc")
-#  FILE(GLOB_RECURSE TARGET_INC  "include/*.h")
-#  SET(TARGET_SRC ${TARGET_SRC}  ${TARGET_INC})
-# or switch altogether to the large project CMakeLists.txt file, see details
-# in documentation page, "CMake in usr projects."
+# name of the project and target:
+SET(TARGET "complexGL")
 
 SET(TARGET_SRC
   ${TARGET}.cc
   )
 
-# Usually, you will not need to modify anything beyond this point.
-
 CMAKE_MINIMUM_REQUIRED(VERSION 3.1.0)
 
-FIND_PACKAGE(deal.II 9.3.0
+FIND_PACKAGE(deal.II 9.3.3
   HINTS ${deal.II_DIR} ${DEAL_II_DIR} ../ ../../ $ENV{DEAL_II_DIR}
   )
 IF(NOT ${deal.II_FOUND})

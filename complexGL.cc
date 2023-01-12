@@ -1,6 +1,7 @@
 /* ------------------------------------------------------------------------------------------
  * 
- * This is source code of solver of real valued scalar GL equation.
+ * This is source code of finite element solver of complex valued scalar GL equation 
+ * i.e., s-wave SC/SF GL equation.
  * It is developed on the top of deal.II 9.3.3 finite element C++ library. 
  * 
  * License of this code is GNU Lesser General Public License, which been 
@@ -9,7 +10,11 @@
  *
  * ------------------------------------------------------------------------------------------
  *
- * author: Quang. Zhang (timohyva@github), Helsinki Institute of Physics, Syyskuu. 2022
+ * author: Quang. Zhang (timohyva@github), 
+ * QUEST-DMC project, University of Sussex;
+ * Helsinki Institute of Physics, University of Helsinki;
+ * 11. Tammikuu. 2023.
+ *
  */
 
 #include <deal.II/base/quadrature_lib.h>
@@ -20,8 +25,9 @@
 #include <deal.II/lac/full_matrix.h>
 #include <deal.II/lac/sparse_matrix.h>
 #include <deal.II/lac/dynamic_sparsity_pattern.h>
-#include <deal.II/lac/solver_cg.h>
-#include <deal.II/lac/precondition.h>
+//#include <deal.II/lac/solver_cg.h>
+//#include <deal.II/lac/precondition.h>
+#include <deal.II/lac/sparse_direct.h>
 #include <deal.II/lac/affine_constraints.h>
 
 #include <deal.II/grid/tria.h>
@@ -33,6 +39,7 @@
 
 #include <deal.II/fe/fe_values.h>
 #include <deal.II/fe/fe_q.h>
+#include <deal.II/fe/fe_system.h>
 
 #include <deal.II/numerics/vector_tools.h>
 #include <deal.II/numerics/matrix_tools.h>
@@ -45,27 +52,27 @@
 #include <deal.II/numerics/solution_transfer.h>
 
 // split global scope into ScalarGL and main() block scope
-namespace ScalarGL
+namespace complexGL
 {
   using namespace dealii;
 
   template <int dim>
-  class RealValuedScalarGLSolver
+  class ComplexValuedScalarGLSolver
   {
   public:
     // calss template constructor:
-    RealValuedScalarGLSolver();
+    ComplexValuedScalarGLSolver();
     void run();
 
   private:
 
     // member functons of Solver class template:
-    void   setup_system(const bool initial_step);
+    void   setup_dof_initilize_system(const bool initial_step);
     void   assemble_system();
     void   solve();
     void   refine_mesh();
     void   set_boundary_values();
-    double compute_residual(const double alpha) const;
+    // double compute_residual(const double alpha) const;
     double determine_step_length() const;
     void   output_results(const unsigned int &refinement_cycle) const;
 
@@ -73,8 +80,8 @@ namespace ScalarGL
     // data members of solver class template.
     // those variables are necessary parts for adaptive meshed FEM and newton iteration.
     Triangulation<dim> triangulation;
-    DoFHandler<dim> dof_handler;
-    FE_Q<dim>       fe;
+    DoFHandler<dim>    dof_handler;
+    FESystem<dim>      fe;
 
     // hanging nodes constriants object:
     AffineConstraints<double> hanging_node_constraints;
@@ -86,10 +93,12 @@ namespace ScalarGL
     Vector<double> current_solution;
     Vector<double> system_rhs;
 
-    // physical coefficients of real valued scalar GL equation:
+    // physical coefficients of scalar GL equation:
     const double alpha_0 = 2.0;
     const double beta = 0.5;
-    double t; // scaled temperature
+
+    // dimensinless temperature
+    double t; 
   };
 
   
@@ -100,6 +109,7 @@ namespace ScalarGL
    *
    * ------------------------------------------------------------------------------------------
    */
+  
   template <int dim>
   class BoundaryValues : public Function<dim>
   {
@@ -122,22 +132,22 @@ namespace ScalarGL
    *
    * The following functions are members of RealValuedScalarGLSolver till the end of ScalarGL
    * namespace.
+   *
    * ------------------------------------------------------------------------------------------
    */
 
   // construnctor and initilizaton list
   template <int dim>
-  RealValuedScalarGLSolver<dim>::RealValuedScalarGLSolver()
+  ComplexValuedScalarGLSolver<dim>::ComplexValuedScalarGLSolver()
     : dof_handler(triangulation)
-    , fe(2)
-    , t(0.99)
+    , triangulation(Triangulation<dim>::maximum_smoothing)
+    , fe(FE_Q<dim>(2), dim)
+    , t(0.0)
   {}
 
 
-
-
   template <int dim>
-  void RealValuedScalarGLSolver<dim>::setup_system(const bool initial_step)
+  void ComplexValuedScalarGLSolver<dim>::setup_dof_initilize_system(const bool initial_step)
   {
     if (initial_step)
       {
@@ -148,10 +158,17 @@ namespace ScalarGL
 	for (auto it = current_solution.begin(); it != current_solution.end(); ++it)
 	  *it = 4.0;
 
+	// clear-fill-close AffineConstriants with hanging-node-constriant for new refined
         hanging_node_constraints.clear();
         DoFTools::make_hanging_node_constraints(dof_handler,
                                                 hanging_node_constraints);
         hanging_node_constraints.close();
+
+	// print dof and cells info
+	std::cout << "Number of active cells in this mesh is " << triangulation.n_active_cells()
+	          << std::endl
+	          << "Number of DoF in this mesh is " << dof_handler.n_dof() << "\n"
+	          << std::endl;
       }
    
 
@@ -159,19 +176,20 @@ namespace ScalarGL
     system_rhs.reinit(dof_handler.n_dofs());
 
     DynamicSparsityPattern dsp(dof_handler.n_dofs());
-    DoFTools::make_sparsity_pattern(dof_handler, dsp);
+    DoFTools::make_sparsity_pattern(dof_handler, dsp, hanging_node_constraints);
+    sparsity_pattern.copy_from(dsp);
+
+    system_matrix.reinit(sparsity_pattern);
 
     // condense dsp with constriants object, that adds these positions
     // into sparse pattern, which are required for eliminaton of constraints:
-    hanging_node_constraints.condense(dsp);
-
-    sparsity_pattern.copy_from(dsp);
-    system_matrix.reinit(sparsity_pattern);
+    // hanging_node_constraints.condense(dsp);
+    
   }
 
   
   template <int dim>
-  void RealValuedScalarGLSolver<dim>::assemble_system()
+  void ComplexValuedScalarGLSolver<dim>::assemble_system()
   {
     const QGauss<dim> quadrature_formula(fe.degree + 1);
 
@@ -289,7 +307,7 @@ namespace ScalarGL
 
 
   template <int dim>
-  void RealValuedScalarGLSolver<dim>::solve()
+  void ComplexValuedScalarGLSolver<dim>::solve()
   {
     SolverControl            solver_control(system_rhs.size(),
                                  system_rhs.l2_norm() * 1e-6);
@@ -309,7 +327,7 @@ namespace ScalarGL
 
 
   template <int dim>
-  void RealValuedScalarGLSolver<dim>::refine_mesh()
+  void ComplexValuedScalarGLSolver<dim>::refine_mesh()
   {
     Vector<float> estimated_error_per_cell(triangulation.n_active_cells());
 
@@ -380,87 +398,87 @@ namespace ScalarGL
 
 
 
-  template <int dim>
-  double RealValuedScalarGLSolver<dim>::compute_residual(const double alpha) const
-  {
-    Vector<double> residual(dof_handler.n_dofs());
+  // template <int dim>
+  // double RealValuedScalarGLSolver<dim>::compute_residual(const double alpha) const
+  // {
+  //   Vector<double> residual(dof_handler.n_dofs());
 
-    Vector<double> evaluation_point(dof_handler.n_dofs());
-    evaluation_point = current_solution;
-    evaluation_point.add(alpha, newton_update);
+  //   Vector<double> evaluation_point(dof_handler.n_dofs());
+  //   evaluation_point = current_solution;
+  //   evaluation_point.add(alpha, newton_update);
 
-    const QGauss<dim> quadrature_formula(fe.degree + 1);
-    FEValues<dim>     fe_values(fe,
-                            quadrature_formula,
-                            update_gradients | update_values |
-			      update_quadrature_points | update_JxW_values);
+  //   const QGauss<dim> quadrature_formula(fe.degree + 1);
+  //   FEValues<dim>     fe_values(fe,
+  //                           quadrature_formula,
+  //                           update_gradients | update_values |
+  // 			      update_quadrature_points | update_JxW_values);
 
-    const unsigned int dofs_per_cell = fe.n_dofs_per_cell();
-    const unsigned int n_q_points    = quadrature_formula.size();
+  //   const unsigned int dofs_per_cell = fe.n_dofs_per_cell();
+  //   const unsigned int n_q_points    = quadrature_formula.size();
 
-    Vector<double>              cell_residual(dofs_per_cell);
+  //   Vector<double>              cell_residual(dofs_per_cell);
 
-    // two std::vector for holding on-cell gradients and value of FE-feild i.e., \psi
-    std::vector<Tensor<1, dim>> gradients(n_q_points);
-    std::vector<double> solution(n_q_points);
+  //   // two std::vector for holding on-cell gradients and value of FE-feild i.e., \psi
+  //   std::vector<Tensor<1, dim>> gradients(n_q_points);
+  //   std::vector<double> solution(n_q_points);
 
-    std::vector<types::global_dof_index> local_dof_indices(dofs_per_cell);
+  //   std::vector<types::global_dof_index> local_dof_indices(dofs_per_cell);
 
-    for (const auto &cell : dof_handler.active_cell_iterators())
-      {
-        cell_residual = 0;
-        fe_values.reinit(cell);
+  //   for (const auto &cell : dof_handler.active_cell_iterators())
+  //     {
+  //       cell_residual = 0;
+  //       fe_values.reinit(cell);
 
-        // fill on-cell gradients:
-        fe_values.get_function_gradients(evaluation_point, gradients);
+  //       // fill on-cell gradients:
+  //       fe_values.get_function_gradients(evaluation_point, gradients);
 
-	// fill on-cell solution value:
-        fe_values.get_function_values(evaluation_point, solution);
+  // 	// fill on-cell solution value:
+  //       fe_values.get_function_values(evaluation_point, solution);
 
 
-        for (unsigned int q = 0; q < n_q_points; ++q)
-          {
-            // alpha + bete \psi^(n)^2, rhs
-	    const double bulk_term_coeff_rhs =
-	     ((alpha_0 * (t-1.0))
-	      + (beta * solution[q] * solution[q]));
+  //       for (unsigned int q = 0; q < n_q_points; ++q)
+  //         {
+  //           // alpha + bete \psi^(n)^2, rhs
+  // 	    const double bulk_term_coeff_rhs =
+  // 	     ((alpha_0 * (t-1.0))
+  // 	      + (beta * solution[q] * solution[q]));
 
-            for (unsigned int i = 0; i < dofs_per_cell; ++i)
-              cell_residual(i) -=
-		(((fe_values.shape_grad(i, q)    // ((\partial_m \phi_i
-		    * gradients[q]               //   * \partial_m \psi^(n)
-		    * 0.5)                       //   * 1/2)
-		   +                             //  +
-		   (bulk_term_coeff_rhs          //  ((\alpha + \beta \psi^(n)2)
-		    * fe_values.shape_value(i, q)      //   * \phi_i
-		    * solution[q]))              //   * \psi^(n)))
-		 * fe_values.JxW(q));            // * dx 
-          }
+  //           for (unsigned int i = 0; i < dofs_per_cell; ++i)
+  //             cell_residual(i) -=
+  // 		(((fe_values.shape_grad(i, q)    // ((\partial_m \phi_i
+  // 		    * gradients[q]               //   * \partial_m \psi^(n)
+  // 		    * 0.5)                       //   * 1/2)
+  // 		   +                             //  +
+  // 		   (bulk_term_coeff_rhs          //  ((\alpha + \beta \psi^(n)2)
+  // 		    * fe_values.shape_value(i, q)      //   * \phi_i
+  // 		    * solution[q]))              //   * \psi^(n)))
+  // 		 * fe_values.JxW(q));            // * dx 
+  //         }
 
-        cell->get_dof_indices(local_dof_indices);
-        for (unsigned int i = 0; i < dofs_per_cell; ++i)
-          residual(local_dof_indices[i]) += cell_residual(i);
-      }
+  //       cell->get_dof_indices(local_dof_indices);
+  //       for (unsigned int i = 0; i < dofs_per_cell; ++i)
+  //         residual(local_dof_indices[i]) += cell_residual(i);
+  //     }
 
-    // condense redisual with hanging node constriants:
-    hanging_node_constraints.condense(residual);
+  //   // condense redisual with hanging node constriants:
+  //   hanging_node_constraints.condense(residual);
 
-    // setting the residuals on the boundary, which have gotten right value and no residual,
-    // to be zero. This operation makes residuals has more zeros than system_rhs, thus the former
-    // has smaller l2 norm.
-    for (types::global_dof_index i :
-         DoFTools::extract_boundary_dofs(dof_handler))
-      residual(i) = 0;
+  //   // setting the residuals on the boundary, which have gotten right value and no residual,
+  //   // to be zero. This operation makes residuals has more zeros than system_rhs, thus the former
+  //   // has smaller l2 norm.
+  //   for (types::global_dof_index i :
+  //        DoFTools::extract_boundary_dofs(dof_handler))
+  //     residual(i) = 0;
 
-    // At the end of the function, we return the norm of the residual:
-    return residual.l2_norm();
-  }
+  //   // At the end of the function, we return the norm of the residual:
+  //   return residual.l2_norm();
+  // }
 
   // This member function returns iterative step length a^k.
   // The best way to do this is implement a line-search for the optimatical value of a^k,
   // but here we simply return 0.1, which is not the opttical value and garantee convergency.
   template <int dim>
-  double RealValuedScalarGLSolver<dim>::determine_step_length() const
+  double ComplexValuedScalarGLSolver<dim>::determine_step_length() const
   {
     return 0.1;
   }
@@ -469,7 +487,7 @@ namespace ScalarGL
   // every new refined mesh. The better fromat of output file should be .hdf5. It will be implemented
   // very soon.
   template <int dim>
-  void RealValuedScalarGLSolver<dim>::output_results(
+  void ComplexValuedScalarGLSolver<dim>::output_results(
     const unsigned int &refinement_cycle) const
   {
     DataOut<dim> data_out;
@@ -491,7 +509,7 @@ namespace ScalarGL
 
 
   template <int dim>
-  void RealValuedScalarGLSolver<dim>::run()
+  void ComplexValuedScalarGLSolver<dim>::run()
   {
     const Point<2> center(0, 0);
     const double radius = 100;
@@ -548,7 +566,7 @@ namespace ScalarGL
       }
     while (last_residual_norm > 1e-3);
   }
-} // namespace ScalarGL
+} // namespace complexGL
 
 
 /* ------------------------------------------------------------------------------------------
@@ -560,9 +578,9 @@ int main()
 {
   try
     {
-      using namespace ScalarGL;
+      using namespace complexGL;
 
-      RealValuedScalarGLSolver<2> GL_2d;
+      ComplexValuedScalarGLSolver<2> GL_2d;
       GL_2d.run();
 
       // RealValuedScalarGLSolver<3> GL_3d;
