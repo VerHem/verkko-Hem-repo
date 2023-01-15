@@ -70,6 +70,7 @@ namespace complexGL
     void   setup_dof_initilize_system(const bool initial_step);
     void   assemble_system();
     void   solve();
+    void   newton_iteration();
     void   refine_mesh();
     void   set_boundary_values();
     // double compute_residual(const double alpha) const;
@@ -141,7 +142,7 @@ namespace complexGL
   ComplexValuedScalarGLSolver<dim>::ComplexValuedScalarGLSolver()
     : dof_handler(triangulation)
     , triangulation(Triangulation<dim>::maximum_smoothing)
-    , fe(FE_Q<dim>(2), dim)
+    , fe(FE_Q<dim>(2), 2)
     , t(0.0)
   {}
 
@@ -171,7 +172,6 @@ namespace complexGL
 	          << std::endl;
       }
    
-
     newton_update.reinit(dof_handler.n_dofs());
     system_rhs.reinit(dof_handler.n_dofs());
 
@@ -309,22 +309,31 @@ namespace complexGL
   template <int dim>
   void ComplexValuedScalarGLSolver<dim>::solve()
   {
-    SolverControl            solver_control(system_rhs.size(),
-                                 system_rhs.l2_norm() * 1e-6);
-    SolverCG<Vector<double>> solver(solver_control);
+    SparseDirectUMFPACK inverse_system_matrix;
+    inverse_system_matrix.initialize(system_matrix);
 
-    PreconditionSSOR<SparseMatrix<double>> preconditioner;
-    preconditioner.initialize(system_matrix, 1.2);
+    inverse_system_matrix.vmult(newton_update,system_rhs);
+    // SolverControl            solver_control(system_rhs.size(),
+    //                              system_rhs.l2_norm() * 1e-6);
+    // SolverCG<Vector<double>> solver(solver_control);
 
-    solver.solve(system_matrix, newton_update, system_rhs, preconditioner);
+    // PreconditionSSOR<SparseMatrix<double>> preconditioner;
+    // preconditioner.initialize(system_matrix, 1.2);
 
-    hanging_node_constraints.distribute(newton_update);
+    // solver.solve(system_matrix, newton_update, system_rhs, preconditioner);
 
-    const double alpha = determine_step_length();
-    current_solution.add(alpha, newton_update);
+    // hanging_node_constraints.distribute(newton_update);
+
+    // const double alpha = determine_step_length();
+    // current_solution.add(alpha, newton_update);
   }
 
 
+  templaate <int dim>
+  void ComplexValuedScalarGLSolver<dim>::newton_iteration()
+  {
+    // waiting for implementing of assemble_system() & newton_iteration()
+  }
 
   template <int dim>
   void ComplexValuedScalarGLSolver<dim>::refine_mesh()
