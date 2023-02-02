@@ -73,8 +73,11 @@ namespace complexGL
     void   newton_iteration();
     void   refine_mesh();
     void   set_boundary_values();
+
+
     // double compute_residual(const double alpha) const;
-    double determine_step_length() const;
+    // double determine_step_length() const;
+    std::pair<double, double> line_search_residual_and_gradient(double init_stepLength) const
     double compute_residual() const;
     void   output_results(const unsigned int &refinement_cycle) const;
 
@@ -434,7 +437,29 @@ namespace complexGL
   template <int dim>
   double ComplexValuedScalarGLSolver<dim>::determine_step_length() const
   {
-    return 0.82;
+    //   return 0.82;
+
+
+
+
+    
+  // The values for eta, mu are chosen such that more strict convergence
+  // conditions are enforced.
+  // They should be adjusted according to the problem requirements.
+  const double a1        = 1.0;
+  const double eta       = 0.5;
+  const double mu        = 0.49;
+  const double a_max     = 1.25;
+  const double max_evals = 20;
+  const auto   res = LineMinimization::line_search<double>(
+    ls_minimization_function,
+    res_0.first, res_0.second,
+    LineMinimization::poly_fit<double>,
+    a1, eta, mu, a_max, max_evals));
+ 
+  return res.first; // Final stepsize
+
+  
   }
 
   template <int dim>
@@ -445,6 +470,8 @@ namespace complexGL
   }
 
  /*
+  * ------------------------------------------------------------------------------------------
+  * refine-mesh 
   * ------------------------------------------------------------------------------------------ 
   */
 
@@ -524,6 +551,82 @@ namespace complexGL
   }
 
 
+  template <int dim>
+  std::pair<double, double> ComplexValuedScalarGLSolver<dim>::line_search_residual_and_gradient(double init_stepLength) const
+  {
+
+        Vector<double> evaluation_point(dof_handler.n_dofs());
+    evaluation_point = current_solution;
+    evaluation_point.add(alpha, newton_update);
+
+    const QGauss<dim> quadrature_formula(fe.degree + 1);
+    FEValues<dim>     fe_values(fe,
+                            quadrature_formula,
+                            update_gradients | update_values |
+  			      update_quadrature_points | update_JxW_values);
+
+    const unsigned int dofs_per_cell = fe.n_dofs_per_cell();
+    const unsigned int n_q_points    = quadrature_formula.size();
+
+    Vector<double>              cell_residual(dofs_per_cell);
+
+    // two std::vector for holding on-cell gradients and value of FE-feild i.e., \psi
+    std::vector<Tensor<1, dim>> gradients(n_q_points);
+    std::vector<double> solution(n_q_points);
+
+    std::vector<types::global_dof_index> local_dof_indices(dofs_per_cell);
+
+    for (const auto &cell : dof_handler.active_cell_iterators())
+      {
+        cell_residual = 0;
+        fe_values.reinit(cell);
+
+        // fill on-cell gradients:
+        fe_values.get_function_gradients(evaluation_point, gradients);
+
+  	// fill on-cell solution value:
+        fe_values.get_function_values(evaluation_point, solution);
+
+
+        for (unsigned int q = 0; q < n_q_points; ++q)
+          {
+            // alpha + bete \psi^(n)^2, rhs
+  	    const double bulk_term_coeff_rhs =
+  	     ((alpha_0 * (t-1.0))
+  	      + (beta * solution[q] * solution[q]));
+
+            for (unsigned int i = 0; i < dofs_per_cell; ++i)
+              cell_residual(i) -=
+  		(((fe_values.shape_grad(i, q)    // ((\partial_m \phi_i
+  		    * gradients[q]               //   * \partial_m \psi^(n)
+  		    * 0.5)                       //   * 1/2)
+  		   +                             //  +
+  		   (bulk_term_coeff_rhs          //  ((\alpha + \beta \psi^(n)2)
+  		    * fe_values.shape_value(i, q)      //   * \phi_i
+  		    * solution[q]))              //   * \psi^(n)))
+  		 * fe_values.JxW(q));            // * dx 
+          }
+
+        cell->get_dof_indices(local_dof_indices);
+        for (unsigned int i = 0; i < dofs_per_cell; ++i)
+          residual(local_dof_indices[i]) += cell_residual(i);
+	
+
+    for (types::global_dof_index i :
+         DoFTools::extract_boundary_dofs(dof_handler))
+      residual(i) = 0;
+
+
+    /*
+     * derivative of alpha
+     */
+
+
+
+    return std::make_pair(residual, derivative)
+
+  }
+  
 
   template <int dim>
   double ComplexValuedScalarGLSolver<dim>::compute_residual() const
