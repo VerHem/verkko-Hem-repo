@@ -17,6 +17,8 @@
  *
  */
 
+#include <random>  // c++ std radom bumber library, for gaussian random initiation
+
 #include <deal.II/base/quadrature_lib.h>
 #include <deal.II/base/function.h>
 #include <deal.II/base/utilities.h>
@@ -46,6 +48,9 @@
 #include <deal.II/numerics/data_out.h>
 #include <deal.II/numerics/error_estimator.h>
 
+// LineMinimization namespace headfile
+#include <deal.II/optimization/line_minimization.h>
+
 #include <fstream>
 #include <iostream>
 
@@ -70,16 +75,24 @@ namespace complexGL
     void   setup_dof_initilize_system(const bool initial_step);
     void   assemble_system();
     void   solve();
-    void   newton_iteration();
+    void   newton_iteration(const unsigned int refinement_cyc,
+			    const unsigned int inner_iter);
     void   refine_mesh();
     void   set_boundary_values();
-
+    std::pair<double, unsigned int> determine_step_length(const unsigned int &refinement_cyc,
+							  const unsigned int &inner_iter) const;              
+    void   output_results(const unsigned int &refinement_cycle,
+			  const unsigned int &inner_iteration) const;
 
     // double compute_residual(const double alpha) const;
     // double determine_step_length() const;
-    std::pair<double, double> line_search_residual_and_gradient(double init_stepLength) const
+    
+    // std::pair<double, double> line_search_residual_and_gradient(double init_stepLength) const
     double compute_residual() const;
-    void   output_results(const unsigned int &refinement_cycle) const;
+
+    // auto determine_step_length() const;
+
+
 
 
     // data members of solver class template.
@@ -207,8 +220,15 @@ namespace complexGL
         current_solution.reinit(dof_handler.n_dofs(), /*omit_zeroing_entries*/true);
 	//current_solution.print();
 
+	/* --------------------------------------------------------------------------------
+	 * using gaussian random double to initiate current_solution
+         * -------------------------------------------------------------------------------- 
+         */
+        std::random_device               rd{};         // rd will be used to obtain a seed for the random number engine
+        std::mt19937                     gen{rd()};  // Standard mersenne_twister_engine seeded with rd()
+	std::normal_distribution<double> gaussian_distr{3.0, 1.0}; // gaussian distribution with mean 10. STD 6.0
 	for (auto it = current_solution.begin(); it != current_solution.end(); ++it)
-	  *it = 4.0;
+	  *it = gaussian_distr(gen);
 
 	// clear-fill-close AffineConstriants with hanging-node-constriant for new refined
         hanging_node_constraints.clear();
@@ -354,7 +374,7 @@ namespace complexGL
 		 (((fe_values[u_component].gradient(i, q)   // ((\partial_m \phi_i
 		    * old_solution_gradients_u[q]           //   * \partial_m \psi^(n)
 		    * 0.5)                                  //   * 1/2)
-		   +                             //  +
+		   +                                        //  +
 		   (bulkTerm_coeff_rhs                      //  ((\alpha + \beta \psi^(n)2)
 		    * fe_values[u_component].value(i, q)      //   * \phi_i
 		    * old_solution_u[q])                   //   * \psi^(n)))
@@ -428,44 +448,17 @@ namespace complexGL
     // current_solution.add(alpha, newton_update);
   }
 
-  /* ------------------------------------------------------------------------------------------
-   * This member function returns iterative step length a^k.
-   * The best way to do this is implement a line-search for the optimatical value of a^k,
-   * but here we simply return 0.1, which is not the opttical value and garantee convergency.
-   * ------------------------------------------------------------------------------------------
-   */
+
   template <int dim>
-  double ComplexValuedScalarGLSolver<dim>::determine_step_length() const
+  void ComplexValuedScalarGLSolver<dim>::newton_iteration(const unsigned int refinement_cyc,
+							  const unsigned int inner_iter)
   {
-    //   return 0.82;
-
-
-
-
+    const std::pair<double, unsigned int> step_length_func_evaluation_times = determine_step_length(refinement_cyc,inner_iter);
+    std::cout << " step length now is " << step_length_func_evaluation_times.first
+              << ", evaluation times is " << step_length_func_evaluation_times.second
+              << std::endl;
     
-  // The values for eta, mu are chosen such that more strict convergence
-  // conditions are enforced.
-  // They should be adjusted according to the problem requirements.
-  const double a1        = 1.0;
-  const double eta       = 0.5;
-  const double mu        = 0.49;
-  const double a_max     = 1.25;
-  const double max_evals = 20;
-  const auto   res = LineMinimization::line_search<double>(
-    ls_minimization_function,
-    res_0.first, res_0.second,
-    LineMinimization::poly_fit<double>,
-    a1, eta, mu, a_max, max_evals));
- 
-  return res.first; // Final stepsize
-
-  
-  }
-
-  template <int dim>
-  void ComplexValuedScalarGLSolver<dim>::newton_iteration()
-  {
-    const double alpha = determine_step_length();
+    const double alpha = step_length_func_evaluation_times.first;
     current_solution.add(alpha, newton_update);
   }
 
@@ -490,8 +483,8 @@ namespace complexGL
 
     GridRefinement::refine_and_coarsen_fixed_number(triangulation,
                                                     estimated_error_per_cell,
-                                                    0.3,   // refine 40%  
-                                                    0.03); // de-fine/coarsen 3% 
+                                                    0.30,   // refine 30% 40%  
+                                                    0.01); // de-fine/coarsen 3% 
 
     // preparing for SolutionTransfer class:
     triangulation.prepare_coarsening_and_refinement();
@@ -551,80 +544,249 @@ namespace complexGL
   }
 
 
+  /* ------------------------------------------------------------------------------------------
+   * This member function returns iterative step length a^k.
+   * The best way to do this is implement a line-search for the optimatical value of a^k,
+   * but here we simply return 0.1, which is not the opttical value and garantee convergency.
+   * ------------------------------------------------------------------------------------------
+   */
   template <int dim>
-  std::pair<double, double> ComplexValuedScalarGLSolver<dim>::line_search_residual_and_gradient(double init_stepLength) const
+  std::pair<double, unsigned int> ComplexValuedScalarGLSolver<dim>::determine_step_length(const unsigned int &refinement_cyc,
+											  const unsigned int &inner_iter) const
   {
+    //   return 0.82;
+    auto residual_and_gradient_func
+      = [&](const double epsilon)
+	{
+	  /*
+	   * construct residual-vector & evaluation_point (i.e., u-epsilon, v-epsilon)
+           */
+	  Vector<double> residual_Vector(dof_handler.n_dofs());
+	  Vector<double> derivative_residual(dof_handler.n_dofs());
+          Vector<double> evaluation_point(dof_handler.n_dofs());
+	  Vector<double> newton_update_evaluation_point(dof_handler.n_dofs());
 
-        Vector<double> evaluation_point(dof_handler.n_dofs());
-    evaluation_point = current_solution;
-    evaluation_point.add(alpha, newton_update);
+	  newton_update_evaluation_point = newton_update;
+          evaluation_point = current_solution;
+          evaluation_point.add(epsilon, newton_update);
 
-    const QGauss<dim> quadrature_formula(fe.degree + 1);
-    FEValues<dim>     fe_values(fe,
-                            quadrature_formula,
-                            update_gradients | update_values |
-  			      update_quadrature_points | update_JxW_values);
+          const QGauss<dim> quadrature_formula(fe.degree + 1);
+          FEValues<dim>     fe_values(fe,
+                                      quadrature_formula,
+                                      update_gradients | update_values |
+  			              update_quadrature_points | update_JxW_values);
 
-    const unsigned int dofs_per_cell = fe.n_dofs_per_cell();
-    const unsigned int n_q_points    = quadrature_formula.size();
+          const unsigned int dofs_per_cell = fe.n_dofs_per_cell();
+          const unsigned int n_q_points    = quadrature_formula.size();
 
-    Vector<double>              cell_residual(dofs_per_cell);
+          Vector<double>     cell_residual(dofs_per_cell);
+	  Vector<double>     cell_derivative_residual(dofs_per_cell);
 
-    // two std::vector for holding on-cell gradients and value of FE-feild i.e., \psi
-    std::vector<Tensor<1, dim>> gradients(n_q_points);
-    std::vector<double> solution(n_q_points);
+          // two std::vector for holding on-cell gradients and value of FE-feild i.e., \psi
+          // std::vector<Tensor<1, dim>> gradients(n_q_points);
+          // std::vector<double> solution(n_q_points);
 
-    std::vector<types::global_dof_index> local_dof_indices(dofs_per_cell);
+	  // vector to holding u^n, grad u^n, delta_u on cell:
+          std::vector<Tensor<1, dim>> gradients_u_epsilon(n_q_points);
+          std::vector<double>         u_epsilon(n_q_points);
+	  std::vector<Tensor<1, dim>> gradients_delta_u(n_q_points);
+	  std::vector<double>         delta_u(n_q_points);
 
-    for (const auto &cell : dof_handler.active_cell_iterators())
-      {
-        cell_residual = 0;
-        fe_values.reinit(cell);
+          // vector to holding v^n, grad v^n on cell:
+          std::vector<Tensor<1, dim>> gradients_v_epsilon(n_q_points);
+          std::vector<double>         v_epsilon(n_q_points);
+          std::vector<Tensor<1, dim>> gradients_delta_v(n_q_points);
+	  std::vector<double>         delta_v(n_q_points);
 
-        // fill on-cell gradients:
-        fe_values.get_function_gradients(evaluation_point, gradients);
+         const FEValuesExtractors::Scalar u_component(0);
+         const FEValuesExtractors::Scalar v_component(1);
 
-  	// fill on-cell solution value:
-        fe_values.get_function_values(evaluation_point, solution);
+         // local DoF indices vector for types::global_dof_index
+         std::vector<types::global_dof_index> local_dof_indices(dofs_per_cell);
+	  
+
+          for (const auto &cell : dof_handler.active_cell_iterators())
+            {
+              cell_residual            = 0;
+	      cell_derivative_residual = 0;
+              fe_values.reinit(cell);
+
+	     /*
+              * FeValuesViews[Extractor] returns on-cell values, 
+              * gradients of unkown functions corresponding to
+              * given indexed component through Extractor.
+              */
+	      fe_values[u_component].get_function_gradients(evaluation_point
+							    , gradients_u_epsilon);
+              fe_values[u_component].get_function_values(evaluation_point
+							 , u_epsilon);
+	      fe_values[v_component].get_function_gradients(evaluation_point
+							    , gradients_v_epsilon);
+              fe_values[v_component].get_function_values(evaluation_point
+							 , v_epsilon);
+
+	     /*
+              * FeValuesViews[Extractor] returns on-cell values, 
+              * gradients of newton-update (i.e., delta_u, delta_v) corresponding to
+              * given indexed component through Extractor.
+              */
+	      fe_values[u_component].get_function_gradients(newton_update_evaluation_point
+							    , gradients_delta_u);
+              fe_values[u_component].get_function_values(newton_update_evaluation_point
+							 , delta_u);
+	      fe_values[v_component].get_function_gradients(newton_update_evaluation_point
+							    , gradients_delta_v);
+              fe_values[v_component].get_function_values(newton_update_evaluation_point
+							 , delta_v);
+	      
+
+              for (unsigned int q = 0; q < n_q_points; ++q)
+                {
+
+         	  // alpha + bete (u^(n)^2 + v^(n)^2), u/v-coef, rhs
+	          const double bulkTerm_coeff_rhs =
+	           alpha_0 * (t-1.0)
+       	            + beta * (u_epsilon[q] * u_epsilon[q] + v_epsilon[q] * v_epsilon[q]);
+
+		  // alpha + beta (u_epsi^2 + v_epsi^2 + 2 u_epsi^2)
+  	          const double bulkTerm_coeff_delta_u =
+	           alpha_0 * (t-1.0)
+       	            + beta * (u_epsilon[q] * u_epsilon[q] + v_epsilon[q] * v_epsilon[q]
+			      + 2.0 * u_epsilon[q] * u_epsilon[q]);
+		  
+                  // alpha + beta (u_epsi^2 + v_espi^2 + 2 v_epsi^2)
+  	          const double bulkTerm_coeff_delta_v =
+	           alpha_0 * (t-1.0)
+       	            + beta * (u_epsilon[q] * u_epsilon[q] + v_epsilon[q] * v_epsilon[q]
+			      + 2.0 * v_epsilon[q] * v_epsilon[q]);
 
 
-        for (unsigned int q = 0; q < n_q_points; ++q)
-          {
-            // alpha + bete \psi^(n)^2, rhs
-  	    const double bulk_term_coeff_rhs =
-  	     ((alpha_0 * (t-1.0))
-  	      + (beta * solution[q] * solution[q]));
+		  
+                  for (unsigned int i = 0; i < dofs_per_cell; ++i)
+		    {
+                      
+		      cell_residual(i) -=
+		       (((fe_values[u_component].gradient(i, q)   // ((\partial_m \phi_i
+		          * gradients_u_epsilon[q]           //   * \partial_m \psi^(n)
+		          * 0.5)                                  //   * 1/2)
+		         +                             //  +
+		         (bulkTerm_coeff_rhs                      //  ((\alpha + \beta \psi^(n)2)
+		          * fe_values[u_component].value(i, q)      //   * \phi_i
+		          * u_epsilon[q])                   //   * \psi^(n)))
+		         +
+		         (fe_values[v_component].gradient(i, q)   // ((\partial_m \phi_i
+		          * gradients_v_epsilon[q]           //   * \partial_m \psi^(n)
+		          * 0.5)                                  //   * 1/2)
+		         +
+		         (bulkTerm_coeff_rhs                      //  ((\alpha + \beta \psi^(n)2)
+		          * fe_values[v_component].value(i, q)      //   * \phi_i
+		          * v_epsilon[q]))                   //   * \psi^(n)))		  
+		        * fe_values.JxW(q));                      // * dx 
 
-            for (unsigned int i = 0; i < dofs_per_cell; ++i)
-              cell_residual(i) -=
-  		(((fe_values.shape_grad(i, q)    // ((\partial_m \phi_i
-  		    * gradients[q]               //   * \partial_m \psi^(n)
-  		    * 0.5)                       //   * 1/2)
-  		   +                             //  +
-  		   (bulk_term_coeff_rhs          //  ((\alpha + \beta \psi^(n)2)
-  		    * fe_values.shape_value(i, q)      //   * \phi_i
-  		    * solution[q]))              //   * \psi^(n)))
-  		 * fe_values.JxW(q));            // * dx 
-          }
+		      cell_derivative_residual(i) -=
+		       (((fe_values[u_component].gradient(i, q)   // ((\partial_m \phi_i
+		          * gradients_delta_u[q]           //   * \partial_m \psi^(n)
+		          * 0.5)                                  //   * 1/2)
+		         +                             //  +
+		         (bulkTerm_coeff_delta_u                      //  ((\alpha + \beta \psi^(n)2)
+		           * fe_values[u_component].value(i, q)      //   * \phi_i
+		           * delta_u[q]
+			  +
+			  2.0 * fe_values[u_component].value(i, q)
+			      * beta
+			      * v_epsilon[q] * u_epsilon[q]
+			      * delta_v[q])                   //   * \psi^(n)))
+		         +
+		         (fe_values[v_component].gradient(i, q)   // ((\partial_m \phi_i
+		          * gradients_delta_v[q]           //   * \partial_m \psi^(n)
+		          * 0.5)                                  //   * 1/2)
+		         +
+		         (bulkTerm_coeff_delta_v                      //  ((\alpha + \beta \psi^(n)2)
+		           * fe_values[v_component].value(i, q)      //   * \phi_i
+		           * delta_v[q]
+			  +
+			  2.0 * fe_values[v_component].value(i, q)
+			      * beta
+			      * u_epsilon[q] * v_epsilon[q]
+			      * delta_u[q]))                   //   * \psi^(n)))		  
+		        * fe_values.JxW(q));                      // * dx 
+			
+		    }
 
-        cell->get_dof_indices(local_dof_indices);
-        for (unsigned int i = 0; i < dofs_per_cell; ++i)
-          residual(local_dof_indices[i]) += cell_residual(i);
-	
+                }
 
-    for (types::global_dof_index i :
-         DoFTools::extract_boundary_dofs(dof_handler))
-      residual(i) = 0;
+              cell->get_dof_indices(local_dof_indices);
+              for (unsigned int i = 0; i < dofs_per_cell; ++i)
+		{
+                  residual_Vector(local_dof_indices[i])     += cell_residual(i);
+		  derivative_residual(local_dof_indices[i]) += cell_derivative_residual(i);
+		}
+	      
+	    }// end of cell loop
 
+	    // make sure DoF with Direchilet BC no contribute to residual 
+            for (types::global_dof_index i :DoFTools::extract_boundary_dofs(dof_handler))
+              {
+                  residual_Vector(i)     = 0;
+		  derivative_residual(i) = 0;
+	      }
+	    
+	    const double residual_l2_norm   = residual_Vector.l2_norm();
+	    const double derivative_epsilon_of_residual = ((1.0/residual_l2_norm)       // 1/residual_l2_norm
+                                                           *                            // *
+					        	   (residual_Vector             // residual 
+						            * derivative_residual));    // \dot derivative_residual
 
-    /*
-     * derivative of alpha
-     */
+	    return std::make_pair(residual_l2_norm, derivative_epsilon_of_residual);
 
+	};
 
+  const auto res_grad_0 = residual_and_gradient_func(0.0);
+  std::cout << "--------------------*"
+            << "\n res_grad_0.first is " << res_grad_0.first
+            << ", res_grad_0.second is " << res_grad_0.second
+            << std::endl;
+  Assert(res_grad_0.second < 0.0,
+         ExcMessage("Gradient should be negative. Current value: " +
+                     std::to_string(res_grad_0.second)));
+  
+  const auto res_grad_1 = residual_and_gradient_func(1.0);
+ 
+  // Check to see if the minimum lies in the interval [0,1] through the
+  // values of the gradients at the limit points.
+  // If it does not, then the full step is accepted. This is discussed by
+  // Wriggers in the paragraph after equ. 5.14.
+  
+  // if (res_grad_0.second * res_grad_1.second > 0.0)
+  //   return std::make_pair(1.0, 0);    
 
-    return std::make_pair(residual, derivative)
+  /* make a gental step length for the
+   * first few newton interations.
+   */
+  
+  if ((refinement_cyc != 0u) && (inner_iter <= 7u))
+    {
+     return std::make_pair(0.1, 0);    
+    }
+  
+  // The values for eta, mu are chosen such that more strict convergence
+  // conditions are enforced.
+  // They should be adjusted according to the problem requirements.
+  const double a1        = 0.1;
+  const double eta       = 0.5;
+  const double mu        = 0.49;
+  const double a_max     = 1.25;
+  const double max_evals = 50;
+  const auto   res_grad_epsilon = LineMinimization::line_search<double>(
+    residual_and_gradient_func,
+    res_grad_0.first, res_grad_0.second,
+    LineMinimization::poly_fit<double>,
+    a1, eta, mu, a_max, max_evals);
+ 
+  // return res_grad_epsilon.first; // Final stepsize
+  return res_grad_epsilon; // Final stepsize
 
+  
   }
   
 
@@ -633,70 +795,10 @@ namespace complexGL
   {
     Vector<double> residual(dof_handler.n_dofs());
     residual = system_rhs;
-
-  //   Vector<double> evaluation_point(dof_handler.n_dofs());
-  //   evaluation_point = current_solution;
-  //   evaluation_point.add(alpha, newton_update);
-
-  //   const QGauss<dim> quadrature_formula(fe.degree + 1);
-  //   FEValues<dim>     fe_values(fe,
-  //                           quadrature_formula,
-  //                           update_gradients | update_values |
-  // 			      update_quadrature_points | update_JxW_values);
-
-  //   const unsigned int dofs_per_cell = fe.n_dofs_per_cell();
-  //   const unsigned int n_q_points    = quadrature_formula.size();
-
-  //   Vector<double>              cell_residual(dofs_per_cell);
-
-  //   // two std::vector for holding on-cell gradients and value of FE-feild i.e., \psi
-  //   std::vector<Tensor<1, dim>> gradients(n_q_points);
-  //   std::vector<double> solution(n_q_points);
-
-  //   std::vector<types::global_dof_index> local_dof_indices(dofs_per_cell);
-
-  //   for (const auto &cell : dof_handler.active_cell_iterators())
-  //     {
-  //       cell_residual = 0;
-  //       fe_values.reinit(cell);
-
-  //       // fill on-cell gradients:
-  //       fe_values.get_function_gradients(evaluation_point, gradients);
-
-  // 	// fill on-cell solution value:
-  //       fe_values.get_function_values(evaluation_point, solution);
-
-
-  //       for (unsigned int q = 0; q < n_q_points; ++q)
-  //         {
-  //           // alpha + bete \psi^(n)^2, rhs
-  // 	    const double bulk_term_coeff_rhs =
-  // 	     ((alpha_0 * (t-1.0))
-  // 	      + (beta * solution[q] * solution[q]));
-
-  //           for (unsigned int i = 0; i < dofs_per_cell; ++i)
-  //             cell_residual(i) -=
-  // 		(((fe_values.shape_grad(i, q)    // ((\partial_m \phi_i
-  // 		    * gradients[q]               //   * \partial_m \psi^(n)
-  // 		    * 0.5)                       //   * 1/2)
-  // 		   +                             //  +
-  // 		   (bulk_term_coeff_rhs          //  ((\alpha + \beta \psi^(n)2)
-  // 		    * fe_values.shape_value(i, q)      //   * \phi_i
-  // 		    * solution[q]))              //   * \psi^(n)))
-  // 		 * fe_values.JxW(q));            // * dx 
-  //         }
-
-  //       cell->get_dof_indices(local_dof_indices);
-  //       for (unsigned int i = 0; i < dofs_per_cell; ++i)
-  //         residual(local_dof_indices[i]) += cell_residual(i);
-  //     }
-
-  //   // condense redisual with hanging node constriants:
-  // hanging_node_constraints.condense(residual);
-
-  //   // setting the residuals on the boundary, which have gotten right value and no residual,
-  //   // to be zero. This operation makes residuals has more zeros than system_rhs, thus the former
-  //   // has smaller l2 norm.
+    
+    // setting the residuals on the boundary, which have gotten right value and no residual,
+    // to be zero. This operation makes residuals has more zeros than system_rhs, thus the former
+    // has smaller l2 norm.
     for (types::global_dof_index i :
          DoFTools::extract_boundary_dofs(dof_handler))
       residual(i) = 0;
@@ -710,8 +812,8 @@ namespace complexGL
   // every new refined mesh. The better fromat of output file should be .hdf5. It will be implemented
   // very soon.
   template <int dim>
-  void ComplexValuedScalarGLSolver<dim>::output_results(
-    const unsigned int &refinement_cycle) const
+  void ComplexValuedScalarGLSolver<dim>::output_results(const unsigned int &refinement_cycle,
+                                                        const unsigned int &inner_iteration) const
   {
     DataOut<dim> data_out;
     data_out.attach_dof_handler(dof_handler);
@@ -730,7 +832,10 @@ namespace complexGL
     data_out.build_patches(); 
 
     const std::string filename =
-      "iterative_solution-" + Utilities::int_to_string(refinement_cycle, 2) + "_time_mesh_refined.vtk";
+      "iterative_solution-" + Utilities::int_to_string(refinement_cycle, 2)
+                            + "_time_mesh_refined_"
+                            + Utilities::int_to_string(inner_iteration, 2)
+                            + "_time_inner_iterated.vtk";
     
     std::ofstream output(filename);
     data_out.write_vtk(output);
@@ -768,14 +873,19 @@ namespace complexGL
     setup_dof_initilize_system(/*initial step*/ true);
     set_boundary_values();
 
-
+    const double tol                = 1.0e-9;
+    unsigned int iteration_times    = 8;
     double       last_residual_norm = std::numeric_limits<double>::max();
     unsigned int refinement_cycle   = 0;
     do
       {
         
         if (refinement_cycle != 0)
-          refine_mesh();
+	  {
+	   iteration_times = 20;
+           refine_mesh();	    
+	  }
+
 
 	std::cout << "Mesh refinement step " << refinement_cycle
 		  << ", n_dofs is:" << dof_handler.n_dofs()
@@ -783,33 +893,43 @@ namespace complexGL
 		  << std::endl;
 
 
-        std::cout << "  Initial residual: " << compute_residual() << std::endl;
+        // std::cout << "  Initial residual: " << compute_residual() << std::endl;
+	  
 
-        for (unsigned int inner_iteration = 0; inner_iteration < 30;
+        for (unsigned int inner_iteration = 0; inner_iteration < iteration_times; //30
              ++inner_iteration)
           {
             assemble_system();
             // last_residual_norm = system_rhs.l2_norm();
 
             solve();
-	    newton_iteration();
+	    newton_iteration(refinement_cycle,inner_iteration);
 
-            std::cout << "  Residual: " << compute_residual()
+            std::cout << "Residual: " << compute_residual()
 	              << ", "
 	              << " system_rhs.l2_norm(): " << system_rhs.l2_norm()
-		      << std::endl;
+	              << "\n inner_iteraton is " << inner_iteration << ".";
+
 
 	    last_residual_norm = system_rhs.l2_norm();
-	    if ((refinement_cycle !=0) && (last_residual_norm < 1e-6))
-	      break;
+	    if ((last_residual_norm < tol))
+	      {
+	        output_results(refinement_cycle, inner_iteration);
+		std::cout << " *.vtk has saved !\n"
+		          << std::endl;
+	        break;
+	      }
+            output_results(refinement_cycle, inner_iteration);
+	    std::cout << " *.vtk has saved !\n" << std::endl;
           }
 
-        output_results(refinement_cycle);
+        // output_results(refinement_cycle);
 
         ++refinement_cycle;
         std::cout << std::endl;
       }
-    while ((refinement_cycle !=0) && (last_residual_norm > 1e-6));
+    // while ((refinement_cycle !=0) && (last_residual_norm > 1e-6));
+    while (last_residual_norm > tol);    
   }
 } // namespace complexGL
 
