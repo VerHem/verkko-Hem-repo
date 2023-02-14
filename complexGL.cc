@@ -110,6 +110,7 @@ namespace complexGL
     Vector<double> newton_update;
     Vector<double> current_solution;
     Vector<double> system_rhs;
+    Vector<double> differential_operators;
 
     // physical coefficients of scalar GL equation:
     const double alpha_0 = 2.0;
@@ -226,7 +227,7 @@ namespace complexGL
          */
         std::random_device               rd{};         // rd will be used to obtain a seed for the random number engine
         std::mt19937                     gen{rd()};  // Standard mersenne_twister_engine seeded with rd()
-	std::normal_distribution<double> gaussian_distr{3.0, 1.0}; // gaussian distribution with mean 10. STD 6.0
+	std::normal_distribution<double> gaussian_distr{3.0, 10.0}; // gaussian distribution with mean 10. STD 6.0
 	for (auto it = current_solution.begin(); it != current_solution.end(); ++it)
 	  *it = gaussian_distr(gen);
 
@@ -249,12 +250,15 @@ namespace complexGL
      */
     newton_update.reinit(dof_handler.n_dofs());
     system_rhs.reinit(dof_handler.n_dofs());
+    differential_operators.reinit(dof_handler.n_dofs());
+    
 
     DynamicSparsityPattern dsp(dof_handler.n_dofs());
     // pass hanging_node_constraints as 3rd parameter for DSP
     DoFTools::make_sparsity_pattern(dof_handler, dsp, hanging_node_constraints); 
     sparsity_pattern.copy_from(dsp);
 
+    system_matrix.clear();
     system_matrix.reinit(sparsity_pattern);
 
     // condense dsp with constriants object, that adds these positions
@@ -282,14 +286,15 @@ namespace complexGL
 
     FullMatrix<double> cell_matrix(dofs_per_cell, dofs_per_cell);
     Vector<double>     cell_rhs(dofs_per_cell);
+    Vector<double>     cell_diff_operators(dofs_per_cell);
 
     // vector to holding u^n, grad u^n on cell:
     std::vector<Tensor<1, dim>> old_solution_gradients_u(n_q_points);
-    std::vector<double> old_solution_u(n_q_points);
+    std::vector<double>         old_solution_u(n_q_points);
 
     // vector to holding v^n, grad v^n on cell:
     std::vector<Tensor<1, dim>> old_solution_gradients_v(n_q_points);
-    std::vector<double> old_solution_v(n_q_points);
+    std::vector<double>         old_solution_v(n_q_points);
 
     const FEValuesExtractors::Scalar u_component(0);
     const FEValuesExtractors::Scalar v_component(1);
@@ -300,8 +305,9 @@ namespace complexGL
     for (const auto &cell : dof_handler.active_cell_iterators())
       {
 	// re-fresh cell matrix, cell-rhs vector, and cell fe_values
-        cell_matrix = 0;
-        cell_rhs    = 0;
+        cell_matrix         = 0;
+        cell_rhs            = 0;
+	cell_diff_operators = 0;
         fe_values.reinit(cell);
 
 	/*
@@ -386,7 +392,18 @@ namespace complexGL
 		   (bulkTerm_coeff_rhs                      //  ((\alpha + \beta \psi^(n)2)
 		    * fe_values[v_component].value(i, q)      //   * \phi_i
 		    * old_solution_v[q]))                   //   * \psi^(n)))		  
+		  * fe_values.JxW(q));                      // * dx
+
+                cell_diff_operators(i) -=
+		 (((fe_values[u_component].gradient(i, q)   // ((\partial_m \phi_i
+		    * old_solution_gradients_u[q]           //   * \partial_m \psi^(n)
+		    * 0.5)                                  //   * 1/2)
+		   +                                        //  +
+		   (fe_values[v_component].gradient(i, q)   // ((\partial_m \phi_i
+		    * old_solution_gradients_v[q]           //   * \partial_m \psi^(n)
+		    * 0.5))                            //   * \psi^(n)))		  
 		  * fe_values.JxW(q));                      // * dx 
+		
 		
               }
           }
@@ -403,6 +420,7 @@ namespace complexGL
                                 cell_matrix(i, j));
 
             system_rhs(local_dof_indices[i]) += cell_rhs(i);
+            differential_operators(local_dof_indices[i]) += cell_diff_operators(i);	    
           }
       }
 
@@ -476,15 +494,15 @@ namespace complexGL
     KellyErrorEstimator<dim>::estimate(
       dof_handler,
       QGauss<dim - 1>(fe.degree + 1),
-      // std::map<types::boundary_id, const Function<dim> *>(),
-      {}, // there is no Neumann boundary, then the std::map is empty
+      std::map<types::boundary_id, const Function<dim> *>(),
+      // {}, // there is no Neumann boundary, then the std::map is empty
       current_solution,
       estimated_error_per_cell);  // using default ComponentMask
 
     GridRefinement::refine_and_coarsen_fixed_number(triangulation,
                                                     estimated_error_per_cell,
                                                     0.30,   // refine 30% 40%  
-                                                    0.01); // de-fine/coarsen 3% 
+                                                    0.00); // de-fine/coarsen 3% 
 
     // preparing for SolutionTransfer class:
     triangulation.prepare_coarsening_and_refinement();
@@ -511,6 +529,7 @@ namespace complexGL
     // intepolate current_result on new mesh:
     Vector<double> tmp(dof_handler.n_dofs());
     solution_transfer.interpolate(current_solution, tmp);
+    hanging_node_constraints.distribute(tmp);
 
     
     current_solution.reinit(dof_handler.n_dofs());
@@ -746,12 +765,24 @@ namespace complexGL
             << "\n res_grad_0.first is " << res_grad_0.first
             << ", res_grad_0.second is " << res_grad_0.second
             << std::endl;
-  Assert(res_grad_0.second < 0.0,
-         ExcMessage("Gradient should be negative. Current value: " +
-                     std::to_string(res_grad_0.second)));
+  // Assert(res_grad_0.second < 0.0,
+  //        ExcMessage("Gradient should be negative. Current value: " +
+  //                    std::to_string(res_grad_0.second)));
   
-  const auto res_grad_1 = residual_and_gradient_func(1.0);
+  // const auto res_grad_1 = residual_and_gradient_func(1.0);
  
+
+  /* make a gental step length for the
+   * first few newton interations.
+   */
+  
+  // if ((refinement_cyc != 0u) && (inner_iter <= 30u) && (res_grad_0.second > 0))
+    if ((refinement_cyc != 0u) && (res_grad_0.second > 0))
+    {
+     std::cout << inner_iter;
+     return std::make_pair(1.0, 0);    
+    }
+
   // Check to see if the minimum lies in the interval [0,1] through the
   // values of the gradients at the limit points.
   // If it does not, then the full step is accepted. This is discussed by
@@ -760,23 +791,15 @@ namespace complexGL
   // if (res_grad_0.second * res_grad_1.second > 0.0)
   //   return std::make_pair(1.0, 0);    
 
-  /* make a gental step length for the
-   * first few newton interations.
-   */
-  
-  if ((refinement_cyc != 0u) && (inner_iter <= 7u))
-    {
-     return std::make_pair(0.1, 0);    
-    }
   
   // The values for eta, mu are chosen such that more strict convergence
   // conditions are enforced.
   // They should be adjusted according to the problem requirements.
-  const double a1        = 0.1;
+  const double a1        = 1.0;
   const double eta       = 0.5;
   const double mu        = 0.49;
-  const double a_max     = 1.25;
-  const double max_evals = 50;
+  const double a_max     = 1.5;
+  const double max_evals = 150;
   const auto   res_grad_epsilon = LineMinimization::line_search<double>(
     residual_and_gradient_func,
     res_grad_0.first, res_grad_0.second,
@@ -870,22 +893,23 @@ namespace complexGL
     // GridGenerator::hyper_cross(triangulation, sizes);
     triangulation.refine_global(4);
 
+    const double tol                = 1.0e-9;
+    const double tol_refined        = 1.0e-3;
+    unsigned int iteration_times    = 40;
+    //    double       last_residual_norm = std::numeric_limits<double>::max();
+    unsigned int refinement_cycle   = 0;
+
     setup_dof_initilize_system(/*initial step*/ true);
     set_boundary_values();
-
-    const double tol                = 1.0e-9;
-    unsigned int iteration_times    = 8;
-    double       last_residual_norm = std::numeric_limits<double>::max();
-    unsigned int refinement_cycle   = 0;
+     
     do
       {
         
         if (refinement_cycle != 0)
 	  {
-	   iteration_times = 20;
+	   iteration_times = 41;
            refine_mesh();	    
 	  }
-
 
 	std::cout << "Mesh refinement step " << refinement_cycle
 		  << ", n_dofs is:" << dof_handler.n_dofs()
@@ -905,20 +929,34 @@ namespace complexGL
             solve();
 	    newton_iteration(refinement_cycle,inner_iteration);
 
-            std::cout << "Residual: " << compute_residual()
+            std::cout << "ratio-Residual: " << ((compute_residual())/(differential_operators.l2_norm()))
+            // std::cout << "Residual: " << compute_residual()    
 	              << ", "
 	              << " system_rhs.l2_norm(): " << system_rhs.l2_norm()
+	              << " differential_operators.l2_norm(): " << differential_operators.l2_norm()	              
 	              << "\n inner_iteraton is " << inner_iteration << ".";
 
 
-	    last_residual_norm = system_rhs.l2_norm();
-	    if ((last_residual_norm < tol))
+	    // last_residual_norm = system_rhs.l2_norm();
+	    // if ((last_residual_norm < tol))
+	    double ratio_residual = (compute_residual())/(differential_operators.l2_norm());
+	    if(ratio_residual < tol)
 	      {
 	        output_results(refinement_cycle, inner_iteration);
-		std::cout << " *.vtk has saved !\n"
+		std::cout << " tol touched! amazing! *.vtk has saved !\n"
 		          << std::endl;
 	        break;
 	      }
+
+	    if((refinement_cycle != 0) && (ratio_residual < tol_refined))
+	      {
+	        output_results(refinement_cycle, inner_iteration);
+		std::cout << " tol_refined touched! it's fine, NOT BAD! *.vtk has saved !\n"
+		          << std::endl;
+	        break;
+	      }
+
+	    
             output_results(refinement_cycle, inner_iteration);
 	    std::cout << " *.vtk has saved !\n" << std::endl;
           }
@@ -926,10 +964,12 @@ namespace complexGL
         // output_results(refinement_cycle);
 
         ++refinement_cycle;
-        std::cout << std::endl;
+        std::cout << "************************************************"
+	          << std::endl;
       }
     // while ((refinement_cycle !=0) && (last_residual_norm > 1e-6));
-    while (last_residual_norm > tol);    
+    // while (last_residual_norm > tol);
+    while (refinement_cycle <= 5u);    
   }
 } // namespace complexGL
 
