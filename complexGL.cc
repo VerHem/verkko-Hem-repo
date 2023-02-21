@@ -75,12 +75,10 @@ namespace complexGL
     void   setup_dof_initilize_system(const bool initial_step);
     void   assemble_system();
     void   solve();
-    void   newton_iteration(const unsigned int refinement_cyc,
-			    const unsigned int inner_iter);
+    void   newton_iteration(const unsigned int refinement_cyc);
     void   refine_mesh();
     void   set_boundary_values();
-    std::pair<double, unsigned int> determine_step_length(const unsigned int &refinement_cyc,
-							  const unsigned int &inner_iter) const;              
+    std::pair<double, unsigned int> determine_step_length() const;              
     void   output_results(const unsigned int &refinement_cycle,
 			  const unsigned int &inner_iteration) const;
 
@@ -226,8 +224,8 @@ namespace complexGL
          * -------------------------------------------------------------------------------- 
          */
         std::random_device               rd{};         // rd will be used to obtain a seed for the random number engine
-        std::mt19937                     gen{rd()};  // Standard mersenne_twister_engine seeded with rd()
-	std::normal_distribution<double> gaussian_distr{3.0, 10.0}; // gaussian distribution with mean 10. STD 6.0
+        std::mt19937                     gen{rd()};    // Standard mersenne_twister_engine seeded with rd()
+	std::normal_distribution<double> gaussian_distr{3.0, 6.0}; // gaussian distribution with mean 10. STD 6.0
 	for (auto it = current_solution.begin(); it != current_solution.end(); ++it)
 	  *it = gaussian_distr(gen);
 
@@ -255,7 +253,20 @@ namespace complexGL
 
     DynamicSparsityPattern dsp(dof_handler.n_dofs());
     // pass hanging_node_constraints as 3rd parameter for DSP
-    DoFTools::make_sparsity_pattern(dof_handler, dsp, hanging_node_constraints); 
+    DoFTools::make_sparsity_pattern(dof_handler,
+				    dsp,
+				    hanging_node_constraints,
+				    /*keep_constrained_dofs =*/ false); /* keep_constrianed_dofs = false 
+                                                                         * to make sure never write into 
+                                                                         * entries of matrix that corrspond
+                                                                         * to contrianted DoFs. This must combine
+                                                                         * with AffineConstriants::distribute_local_to_global()
+                                                                         * when assembly linear system. 
+                                                                         * If this parameter is TRUE (default), 
+                                                                         * then AffineConstriants::condense() 
+                                                                         * must be called after every time operation 
+                                                                         * of global linear objects.
+                                                                         */
     sparsity_pattern.copy_from(dsp);
 
     system_matrix.clear();
@@ -412,16 +423,31 @@ namespace complexGL
          * distribute cell contributions back to system-matrix
          */
         cell->get_dof_indices(local_dof_indices);
-        for (unsigned int i = 0; i < dofs_per_cell; ++i)
-          {
-            for (unsigned int j = 0; j < dofs_per_cell; ++j)
-              system_matrix.add(local_dof_indices[i],
-                                local_dof_indices[j],
-                                cell_matrix(i, j));
+        // for (unsigned int i = 0; i < dofs_per_cell; ++i)
+        //   {
+        //     for (unsigned int j = 0; j < dofs_per_cell; ++j)
+        //       system_matrix.add(local_dof_indices[i],
+        //                         local_dof_indices[j],
+        //                         cell_matrix(i, j));
 
-            system_rhs(local_dof_indices[i]) += cell_rhs(i);
-            differential_operators(local_dof_indices[i]) += cell_diff_operators(i);	    
-          }
+        //     system_rhs(local_dof_indices[i]) += cell_rhs(i);
+        //     differential_operators(local_dof_indices[i]) += cell_diff_operators(i);
+
+	// following step-6, using AffineConstriants::distribute_local_to_global()
+	hanging_node_constraints.distribute_local_to_global(cell_matrix,
+							    cell_rhs,
+							    local_dof_indices,
+							    system_matrix,
+							    system_rhs);
+
+	// using AffineConstriants::distribute_local_to_global() put local to global
+        hanging_node_constraints.distribute_local_to_global(cell_diff_operators,
+							    local_dof_indices,
+							    differential_operators);
+
+
+	
+        
       }
 
     // condense Vector and SparseMatrix with hanging node constriants:
@@ -468,16 +494,19 @@ namespace complexGL
 
 
   template <int dim>
-  void ComplexValuedScalarGLSolver<dim>::newton_iteration(const unsigned int refinement_cyc,
-							  const unsigned int inner_iter)
+  void ComplexValuedScalarGLSolver<dim>::newton_iteration(const unsigned int refinement_cyc)
   {
-    const std::pair<double, unsigned int> step_length_func_evaluation_times = determine_step_length(refinement_cyc,inner_iter);
-    std::cout << " step length now is " << step_length_func_evaluation_times.first
+    const std::pair<double, unsigned int> step_length_func_evaluation_times = determine_step_length();
+    std::cout << " refinement_cyc is " << refinement_cyc
+              << ", step length now is " << step_length_func_evaluation_times.first
               << ", evaluation times is " << step_length_func_evaluation_times.second
               << std::endl;
     
     const double alpha = step_length_func_evaluation_times.first;
     current_solution.add(alpha, newton_update);
+
+    hanging_node_constraints.distribute(current_solution);  // distribute the constriants
+    
   }
 
  /*
@@ -502,7 +531,7 @@ namespace complexGL
     GridRefinement::refine_and_coarsen_fixed_number(triangulation,
                                                     estimated_error_per_cell,
                                                     0.30,   // refine 30% 40%  
-                                                    0.00); // de-fine/coarsen 3% 
+                                                    0.00);  // de-fine/coarsen 3% 
 
     // preparing for SolutionTransfer class:
     triangulation.prepare_coarsening_and_refinement();
@@ -570,8 +599,7 @@ namespace complexGL
    * ------------------------------------------------------------------------------------------
    */
   template <int dim>
-  std::pair<double, unsigned int> ComplexValuedScalarGLSolver<dim>::determine_step_length(const unsigned int &refinement_cyc,
-											  const unsigned int &inner_iter) const
+  std::pair<double, unsigned int> ComplexValuedScalarGLSolver<dim>::determine_step_length() const
   {
     //   return 0.82;
     auto residual_and_gradient_func
@@ -635,28 +663,28 @@ namespace complexGL
               * gradients of unkown functions corresponding to
               * given indexed component through Extractor.
               */
-	      fe_values[u_component].get_function_gradients(evaluation_point
-							    , gradients_u_epsilon);
-              fe_values[u_component].get_function_values(evaluation_point
-							 , u_epsilon);
-	      fe_values[v_component].get_function_gradients(evaluation_point
-							    , gradients_v_epsilon);
-              fe_values[v_component].get_function_values(evaluation_point
-							 , v_epsilon);
+	      fe_values[u_component].get_function_gradients(evaluation_point,
+							    gradients_u_epsilon);
+              fe_values[u_component].get_function_values(evaluation_point,
+							 u_epsilon);
+	      fe_values[v_component].get_function_gradients(evaluation_point,
+							    gradients_v_epsilon);
+              fe_values[v_component].get_function_values(evaluation_point,
+							 v_epsilon);
 
 	     /*
               * FeValuesViews[Extractor] returns on-cell values, 
               * gradients of newton-update (i.e., delta_u, delta_v) corresponding to
               * given indexed component through Extractor.
               */
-	      fe_values[u_component].get_function_gradients(newton_update_evaluation_point
-							    , gradients_delta_u);
-              fe_values[u_component].get_function_values(newton_update_evaluation_point
-							 , delta_u);
-	      fe_values[v_component].get_function_gradients(newton_update_evaluation_point
-							    , gradients_delta_v);
-              fe_values[v_component].get_function_values(newton_update_evaluation_point
-							 , delta_v);
+	      fe_values[u_component].get_function_gradients(newton_update_evaluation_point,
+							    gradients_delta_u);
+              fe_values[u_component].get_function_values(newton_update_evaluation_point,
+							 delta_u);
+	      fe_values[v_component].get_function_gradients(newton_update_evaluation_point,
+							    gradients_delta_v);
+              fe_values[v_component].get_function_values(newton_update_evaluation_point,
+							 delta_v);
 	      
 
               for (unsigned int q = 0; q < n_q_points; ++q)
@@ -735,11 +763,20 @@ namespace complexGL
                 }
 
               cell->get_dof_indices(local_dof_indices);
-              for (unsigned int i = 0; i < dofs_per_cell; ++i)
-		{
-                  residual_Vector(local_dof_indices[i])     += cell_residual(i);
-		  derivative_residual(local_dof_indices[i]) += cell_derivative_residual(i);
-		}
+
+              // following step-6, using AffineConstriants::distribute_local_to_global()
+              hanging_node_constraints.distribute_local_to_global(cell_residual,
+								  local_dof_indices,
+								  residual_Vector);
+              hanging_node_constraints.distribute_local_to_global(cell_derivative_residual,
+								  local_dof_indices,
+								  derivative_residual);	      
+	      
+              // for (unsigned int i = 0; i < dofs_per_cell; ++i)
+	      // 	{
+              //     residual_Vector(local_dof_indices[i])     += cell_residual(i);
+	      // 	  derivative_residual(local_dof_indices[i]) += cell_derivative_residual(i);
+	      // 	}
 	      
 	    }// end of cell loop
 
@@ -765,11 +802,11 @@ namespace complexGL
             << "\n res_grad_0.first is " << res_grad_0.first
             << ", res_grad_0.second is " << res_grad_0.second
             << std::endl;
-  // Assert(res_grad_0.second < 0.0,
-  //        ExcMessage("Gradient should be negative. Current value: " +
-  //                    std::to_string(res_grad_0.second)));
+  Assert(res_grad_0.second < 0.0,
+         ExcMessage("Gradient should be negative. Current value: " +
+                     std::to_string(res_grad_0.second)));
   
-  // const auto res_grad_1 = residual_and_gradient_func(1.0);
+  const auto res_grad_1 = residual_and_gradient_func(1.0);
  
 
   /* make a gental step length for the
@@ -777,20 +814,19 @@ namespace complexGL
    */
   
   // if ((refinement_cyc != 0u) && (inner_iter <= 30u) && (res_grad_0.second > 0))
-    if ((refinement_cyc != 0u) && (res_grad_0.second > 0))
-    {
-     std::cout << inner_iter;
-     return std::make_pair(1.0, 0);    
-    }
+    // if ((refinement_cyc != 0u) && (res_grad_0.second > 0))
+    // {
+    //  std::cout << inner_iter;
+    //  return std::make_pair(1.0, 0);    
+    // }
 
   // Check to see if the minimum lies in the interval [0,1] through the
   // values of the gradients at the limit points.
   // If it does not, then the full step is accepted. This is discussed by
   // Wriggers in the paragraph after equ. 5.14.
   
-  // if (res_grad_0.second * res_grad_1.second > 0.0)
-  //   return std::make_pair(1.0, 0);    
-
+  if (res_grad_0.second * res_grad_1.second > 0.0)
+    return std::make_pair(1.0, 0);    
   
   // The values for eta, mu are chosen such that more strict convergence
   // conditions are enforced.
@@ -798,7 +834,7 @@ namespace complexGL
   const double a1        = 1.0;
   const double eta       = 0.5;
   const double mu        = 0.49;
-  const double a_max     = 1.5;
+  const double a_max     = 1.25;
   const double max_evals = 150;
   const auto   res_grad_epsilon = LineMinimization::line_search<double>(
     residual_and_gradient_func,
@@ -807,7 +843,7 @@ namespace complexGL
     a1, eta, mu, a_max, max_evals);
  
   // return res_grad_epsilon.first; // Final stepsize
-  return res_grad_epsilon; // Final stepsize
+  return res_grad_epsilon;          // Final stepsize
 
   
   }
@@ -862,6 +898,21 @@ namespace complexGL
     
     std::ofstream output(filename);
     data_out.write_vtk(output);
+
+    /*
+     * output rhs.l2_norm() for ploting
+     */
+    std::ofstream     residual_output;
+    const std::string residual_file_output_name="residual_l2_norm-n_dofs.csv";
+
+    residual_output.open(residual_file_output_name,
+			 std::ofstream::app);
+    residual_output << system_rhs.l2_norm()
+                    << "   "
+                    << dof_handler.n_dofs()
+                    << std::endl;
+    residual_output.close();
+    
   }
 
 
@@ -893,9 +944,29 @@ namespace complexGL
     // GridGenerator::hyper_cross(triangulation, sizes);
     triangulation.refine_global(4);
 
-    const double tol                = 1.0e-9;
-    const double tol_refined        = 1.0e-3;
-    unsigned int iteration_times    = 40;
+    /* -------------------------------------------------
+     * re-mark boundary-id for Robin, Nuemann boundary
+     * -------------------------------------------------
+     */
+    for (const auto &cell : triangulation.cell_iterators())
+       for (const auto &face : cell->face_iterators())
+         {
+           const auto center = face->center();
+           if (
+	       ((std::fabs(center(0) - (-25.0)) < 1e-12)
+                 && ((center(1) - (10.0)) > 0.0))
+	       ||
+	       (((center(0) - (-17.0)) < 0.0)
+                 && (std::fabs(center(1) - (15.0)) < 1e-12))
+	       
+	       )
+              face->set_boundary_id(1);
+         }
+    
+
+    const double tol                = 1.0e-10;
+    const double tol_refined        = 1.0e-9;
+    unsigned int iteration_times    = 30;
     //    double       last_residual_norm = std::numeric_limits<double>::max();
     unsigned int refinement_cycle   = 0;
 
@@ -907,7 +978,7 @@ namespace complexGL
         
         if (refinement_cycle != 0)
 	  {
-	   iteration_times = 41;
+	   iteration_times = 50;
            refine_mesh();	    
 	  }
 
@@ -927,7 +998,7 @@ namespace complexGL
             // last_residual_norm = system_rhs.l2_norm();
 
             solve();
-	    newton_iteration(refinement_cycle,inner_iteration);
+	    newton_iteration(refinement_cycle);
 
             std::cout << "ratio-Residual: " << ((compute_residual())/(differential_operators.l2_norm()))
             // std::cout << "Residual: " << compute_residual()    
