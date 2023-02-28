@@ -5,10 +5,11 @@
 *.txt~
 *.vtk
 *.pdf
-*.vtu
+*.vtu*
 *.h5
 *~
 *.csv
+*.out
 
 CMakeCache.txt
 *.cmake
