@@ -117,8 +117,8 @@ namespace complexGL
     const double beta    = 0.5;
 
     // coefficients of Robian BCs
-    const double b1      = 4.9;
-    const double b2      = 4.9;
+    const double b1    =1e10;  //= 10004.9;
+    const double b2    =1e10;  //= 10004.9;
 
     // dimensinless temperature
     double t; 
@@ -1121,7 +1121,7 @@ namespace complexGL
 
     const double tol                = 1.0e-10;
     const double tol_refined        = 1.0e-9;
-    unsigned int iteration_times    = 5;
+    unsigned int iteration_times    = 10;
     //    double       last_residual_norm = std::numeric_limits<double>::max();
     unsigned int refinement_cycle   = 0;
 
@@ -1131,14 +1131,14 @@ namespace complexGL
     do
       {
         
-        if ((refinement_cycle <= 3)
+        if ((refinement_cycle <= 2)
 	    && (refinement_cycle != 0))
 	  {
-	   iteration_times = 6;
+	   iteration_times = 20;
            refine_mesh();	    
 	  }
         else
-	  if (refinement_cycle > 3)
+	  if (refinement_cycle > 2)
 	  { 
 	   iteration_times = 50;
            refine_mesh();	    
