@@ -27,6 +27,7 @@
 #include <deal.II/grid/tria.h>
 #include <deal.II/grid/grid_generator.h>
 #include <deal.II/grid/grid_refinement.h>
+#include <deal.II/grid/grid_out.h>
 
 #include <deal.II/dofs/dof_handler.h>
 #include <deal.II/dofs/dof_tools.h>
@@ -481,12 +482,12 @@ namespace ScalarGL
 	nodes(n, 1) = vertices_vector[n](1);
       }
     
-    const std::string filename_h5 =
-      "iterative_solution-" + Utilities::int_to_string(refinement_cycle, 2) + "_time_mesh_refined.h5";
-    HDF5::File iterative_solution_data(filename_h5, HDF5::File::FileAccessMode::create);
-    iterative_solution_data.write_dataset("current_solution", current_solution);
-    iterative_solution_data.write_dataset("newton_update", newton_update);
-    iterative_solution_data.write_dataset("nodes", nodes);
+    // const std::string filename_h5 =
+    //   "iterative_solution-" + Utilities::int_to_string(refinement_cycle, 2) + "_time_mesh_refined.h5";
+    // HDF5::File iterative_solution_data(filename_h5, HDF5::File::FileAccessMode::create);
+    // iterative_solution_data.write_dataset("current_solution", current_solution);
+    // iterative_solution_data.write_dataset("newton_update", newton_update);
+    // iterative_solution_data.write_dataset("nodes", nodes);
     
     
   }
@@ -498,11 +499,21 @@ namespace ScalarGL
   {
 
     Triangulation<dim> prototype;
-    GridGenerator::hyper_cube_with_cylindrical_hole(prototype);
-    GridGenerator::replicate_triangulation(prototype, {4, 1}, triangulation);
+    GridGenerator::hyper_cube_with_cylindrical_hole(prototype,
+						    2.0,
+						    8.0);
+						    
+    GridGenerator::replicate_triangulation(prototype, {6, 2}, triangulation);
     
     triangulation.refine_global(3);
 
+    std::ofstream out("grid-primary.vtu");
+    GridOut       grid_out;
+    grid_out.write_vtu(triangulation, out);
+    std::cout << "Grid written to grid-primary.vtu"
+	      << std::endl;
+
+    
     setup_system(/*first time=*/ true);
     set_boundary_values();
 
