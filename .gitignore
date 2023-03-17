@@ -16,6 +16,7 @@ CMakeCache.txt
 
 # ignore execuatbe binary
 scalarGL_realValue
+complexGL
 
 CMakeFiles/
 doc/
