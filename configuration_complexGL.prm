@@ -1,0 +1,11 @@
+subsection physical parameters
+  # reduced temperature
+    set t_reduced        = 0.95
+
+  # diffuse parameter
+    set b_diffuse        = 1.0
+
+
+  # Number of global mesh refinement steps applied to initial coarse grid
+  #  set Number of refinements = 5
+  end

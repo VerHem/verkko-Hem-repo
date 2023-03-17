@@ -35,6 +35,7 @@
 #include <deal.II/grid/tria.h>
 #include <deal.II/grid/grid_generator.h>
 #include <deal.II/grid/grid_refinement.h>
+#include <deal.II/grid/grid_out.h>
 
 #include <deal.II/dofs/dof_handler.h>
 #include <deal.II/dofs/dof_tools.h>
@@ -53,6 +54,9 @@
 // LineMinimization namespace headfile
 #include <deal.II/optimization/line_minimization.h>
 
+// parameter_handler for configuration file
+#include <deal.II/base/parameter_handler.h>
+
 #include <fstream>
 #include <iostream>
 
@@ -63,12 +67,65 @@ namespace complexGL
 {
   using namespace dealii;
 
+  /* ------------------------------------------------
+   * configuration file reader for reading parameters 
+   * from configuration file
+   * ------------------------------------------------
+   */
+  class ConfigurationReader : public Subscriptor
+  {
+  public:
+    ConfigurationReader(ParameterHandler &);
+    void read_parameters(const std::string &);
+
+  private:
+    void             declare_parameters();
+    ParameterHandler &prm;
+  };
+
+  // ParameterReader constructor
+  ConfigurationReader::ConfigurationReader(ParameterHandler &configuration)
+    : prm(configuration)
+  {}
+
+  // phrase declarations
+  void ConfigurationReader::declare_parameters()
+  {
+    prm.enter_subsection("physical parameters");
+    {
+      prm.declare_entry("t_reduced", "0.0", Patterns::Double(0), "reduced temperature");
+
+      prm.declare_entry("b_diffuse", "1.0e10", Patterns::Double(0), "diffuse parameter");
+    }
+    prm.leave_subsection();
+  }
+
+  // read_parameters function
+  void ConfigurationReader::read_parameters(const std::string &configuration_file)
+  {
+    declare_parameters();
+
+    prm.parse_input(configuration_file);
+  }
+  /* ----------------------------------------------
+   * ConfigurationReader defination ends at here
+   * ----------------------------------------------
+   */
+
+  /*--------------------------------------------------------------------*/
+
+  /* ----------------------------------------------
+   * ComplexValuedScalarGLSolver
+   *
+   * ----------------------------------------------
+   */
+
   template <int dim>
   class ComplexValuedScalarGLSolver
   {
   public:
     // calss template constructor:
-    ComplexValuedScalarGLSolver();
+    ComplexValuedScalarGLSolver(ParameterHandler &);
     void run();
 
   private:
@@ -92,8 +149,8 @@ namespace complexGL
 
     // auto determine_step_length() const;
 
-
-
+    // ParameterHandler object
+    ParameterHandler &conf;
 
     // data members of solver class template.
     // those variables are necessary parts for adaptive meshed FEM and newton iteration.
@@ -117,8 +174,8 @@ namespace complexGL
     const double beta    = 0.5;
 
     // coefficients of Robian BCs
-    const double b1    =1e10;  //= 10004.9;
-    const double b2    =1e10;  //= 10004.9;
+    /*const*/ double b1;    //=1e10;  //= 10004.9;
+    /*const*/ double b2;    //=1e10;  //= 10004.9;
 
     // dimensinless temperature
     double t; 
@@ -208,12 +265,23 @@ namespace complexGL
 
   // construnctor and initilizaton list
   template <int dim>
-  ComplexValuedScalarGLSolver<dim>::ComplexValuedScalarGLSolver()
-    : triangulation(Triangulation<dim>::maximum_smoothing)
+  ComplexValuedScalarGLSolver<dim>::ComplexValuedScalarGLSolver(ParameterHandler &configuration)
+    :conf(configuration)        
+    ,triangulation(Triangulation<dim>::maximum_smoothing)
     , dof_handler(triangulation)
     , fe(FE_Q<dim>(2), 2)
-    , t(0.0)
-  {}
+      // , t(0.98)			
+  {
+    conf.enter_subsection("physical parameters");
+
+    t = conf.get_double("t_reduced");
+    //const unsigned int n_refinements = prm.get_integer("Number of refinements");
+    b1 = conf.get_double("b_diffuse");
+    b2 = conf.get_double("b_diffuse");    
+
+    conf.leave_subsection();
+    
+  }
 
 
   template <int dim>
@@ -314,7 +382,7 @@ namespace complexGL
   void ComplexValuedScalarGLSolver<dim>::assemble_system()
   {
     // Robin BC variable, b_u and b_v
-    double b_u = b1, b_v = b2;
+    const double b_u = b1, b_v = b2;
     
     const QGauss<dim> quadrature_formula(fe.degree + 1);
     const QGauss<dim - 1> face_quadrature_formula(fe.degree + 1);
@@ -1060,62 +1128,111 @@ namespace complexGL
   void ComplexValuedScalarGLSolver<dim>::run()
   {
 
-    // these two Point<> seet up the geometric size:
-    const Point<dim> bottom_left(-60., -55.);
-    const Point<dim> top_right(60., 55);
+    Triangulation<dim> prototype;
+    GridGenerator::hyper_cube_with_cylindrical_hole(prototype,
+						    2.0,
+						    8.0);
 
-    const std::vector<unsigned int> repititions = {6, 5};
-    const std::vector<int> n_cells_to_remove    = {-4, -4};
-  
-    GridGenerator::subdivided_hyper_L(triangulation,
-				    repititions,
-				    bottom_left,
-				    top_right,
-				    n_cells_to_remove);    
+    GridGenerator::replicate_triangulation(prototype, {6, 2}, triangulation);
     
-    // const Point<2> center(0, 0);
-    // const double radius = 100;
-    // GridGenerator::hyper_ball(triangulation, center, radius);
+    triangulation.refine_global(3);
 
-    // const std::vector< unsigned int > sizes ={1, 1, 0, 1, 0, 0};
+    std::ofstream out("grid-primary.vtu");
+    GridOut       grid_out;
+    grid_out.write_vtu(triangulation, out);
+    std::cout << "Grid written to grid-primary.vtu"
+	      << std::endl;
     
-    // const std::vector< unsigned int > sizes ={2, 2, 1, 1};
-    // GridGenerator::hyper_cross(triangulation, sizes);
-    triangulation.refine_global(4);
 
     /* -------------------------------------------------
      * re-mark boundary-id for Robin, Nuemann boundary
      * -------------------------------------------------
      */
+
+    // Dirichlet pillars centers
+    const Point<dim> p1(0., 0.),
+                     p2(16., 16.),
+                     p3(32., 0.),
+                     p4(48., 16.),
+                     p5(64., 0.),
+                     p6(80., 16.);
+
+    // diffuse pillars centers
+    const Point<dim> p7(0., 16.),
+                     p8(16., 0.),
+                     p9(32., 16.),
+                     p10(48., 0.),
+                     p11(64., 16.),
+                     p12(80., 0.);
+
+    
     for (const auto &cell : triangulation.cell_iterators())
        for (const auto &face : cell->face_iterators())
          {
-           const auto center = face->center();
+           const auto center = face->center(); // face->center() return Point<dim> 
 
            /*
             * first if statement is for zero Nuemann BC, id = 1
             */
 	   if (
-	       ((std::fabs(center(0) - (-60.0)) < 1e-12)
-                 && ((center(1) - (40.0)) > 0.0))
+	       ((std::fabs(center(0) - (-8.0)) < 1e-12)
+                 && ((center(1) - (8.0)) <= 0.0))
 	       ||
-	       (((center(0) - (-40.0)) < 0.0)
-                 && (std::fabs(center(1) - (55.0)) < 1e-12))	       
+	       (((center(0) - (8.0)) < 0.0)
+                 && (std::fabs(center(1) - (-8.0)) < 1e-12))
+	       ||
+	       ((std::fabs(center(0) - (88.0)) < 1e-12)
+                 && ((center(1) - (8.0)) >= 0.0))
+	       ||
+       	       (((center(0) - (72.0)) >= 0.0)
+                 && (std::fabs(center(1) - (24.0)) < 1e-12))	       
+
 	       )
               face->set_boundary_id(1);
 
            /*
             * second if statement is for Robin BC, id = 2
             */
-	   if (
-	       ((std::fabs(center(0) - (-60.0)) < 1e-12)
-                 && ((center(1) - (-40.0)) < 0.0))
+	   // if (
+	   //     ((std::fabs(center(0) - (-60.0)) < 1e-12)
+           //       && ((center(1) - (-40.0)) < 0.0))
+	   //     ||
+	   //     (((center(0) - (-30.0)) < 0.0)
+           //       && (std::fabs(center(1) - (-55.0)) < 1e-12))	       
+	   //     )
+           if (
+               (std::fabs(center.distance(p7) - 2.0) <=0.15)
 	       ||
-	       (((center(0) - (-30.0)) < 0.0)
-                 && (std::fabs(center(1) - (-55.0)) < 1e-12))	       
-	       )
+               (std::fabs(center.distance(p8) - 2.0) <=0.15)
+	       ||
+               (std::fabs(center.distance(p9) - 2.0) <=0.15)
+	       ||
+	       (std::fabs(center.distance(p10) - 2.0) <=0.15)
+	       ||
+               (std::fabs(center.distance(p11) - 2.0) <=0.15)
+	       ||
+               (std::fabs(center.distance(p12) - 2.0) <=0.15)
+               )	   	   
               face->set_boundary_id(2);
-	   
+
+	   /*
+            * setting parts of pillars as Direchlet pillar
+            *
+            */
+           if (
+               (std::fabs(center.distance(p1) - 2.0) <=0.15)
+	       ||
+               (std::fabs(center.distance(p2) - 2.0) <=0.15)
+	       ||
+               (std::fabs(center.distance(p3) - 2.0) <=0.15)
+	       ||
+	       (std::fabs(center.distance(p4) - 2.0) <=0.15)
+	       ||
+               (std::fabs(center.distance(p5) - 2.0) <=0.15)
+	       ||
+               (std::fabs(center.distance(p6) - 2.0) <=0.15)
+               )	   
+              face->set_boundary_id(0);
          }
     
 
@@ -1219,8 +1336,13 @@ int main()
   try
     {
       using namespace complexGL;
+      using namespace dealii;
 
-      ComplexValuedScalarGLSolver<2> GL_2d;
+      ParameterHandler conf;
+      ConfigurationReader  confread(conf);
+      confread.read_parameters("configuration_complexGL.prm");
+      
+      ComplexValuedScalarGLSolver<2> GL_2d(conf);
       GL_2d.run();
 
       // RealValuedScalarGLSolver<3> GL_3d;
