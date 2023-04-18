@@ -57,10 +57,10 @@ RM = /appl/spack/v017/install-tree/gcc-8.5.0/cmake-3.21.4-elesn4/bin/cmake -E rm
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /projappl/project_2006155/fem_he3/complexGL-rhul2d
+CMAKE_SOURCE_DIR = /projappl/project_2006155/fem_he3
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /projappl/project_2006155/fem_he3/complexGL-rhul2d
+CMAKE_BINARY_DIR = /projappl/project_2006155/fem_he3
 
 #=============================================================================
 # Targets provided globally by CMake.
@@ -87,9 +87,9 @@ edit_cache/fast: edit_cache
 
 # The main all target
 all: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /projappl/project_2006155/fem_he3/complexGL-rhul2d/CMakeFiles /projappl/project_2006155/fem_he3/complexGL-rhul2d//CMakeFiles/progress.marks
+	$(CMAKE_COMMAND) -E cmake_progress_start /projappl/project_2006155/fem_he3/CMakeFiles /projappl/project_2006155/fem_he3//CMakeFiles/progress.marks
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 all
-	$(CMAKE_COMMAND) -E cmake_progress_start /projappl/project_2006155/fem_he3/complexGL-rhul2d/CMakeFiles 0
+	$(CMAKE_COMMAND) -E cmake_progress_start /projappl/project_2006155/fem_he3/CMakeFiles 0
 .PHONY : all
 
 # The main clean target

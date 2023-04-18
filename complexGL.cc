@@ -95,7 +95,16 @@ namespace complexGL
     {
       prm.declare_entry("t_reduced", "0.0", Patterns::Double(0), "reduced temperature");
 
-      prm.declare_entry("b_diffuse", "1.0e10", Patterns::Double(0), "diffuse parameter");
+      prm.declare_entry("b1_diffuse", "1.0e10", Patterns::Double(0), "u component diffuse parameter");
+
+      prm.declare_entry("b2_diffuse", "1.0e10", Patterns::Double(0), "v component diffuse parameter");      
+    }
+    prm.leave_subsection();
+
+    prm.enter_subsection("switches");
+    {
+      prm.declare_entry("flip_normal", "false", Patterns::Bool(), "flipping Robin face normal to inforward");
+
     }
     prm.leave_subsection();
   }
@@ -178,7 +187,16 @@ namespace complexGL
     /*const*/ double b2;    //=1e10;  //= 10004.9;
 
     // dimensinless temperature
-    double t; 
+    double t;
+
+    /*
+     * switches for different features
+     */
+    bool normal_sign; /* this varible is used for flipping the normal vector from
+                       * its deflault direction, which is outward pointing on cell face.
+                       * This is matter on Robin boundary (id=2).
+                       */
+    
   };
 
   
@@ -272,14 +290,23 @@ namespace complexGL
     , fe(FE_Q<dim>(2), 2)
       // , t(0.98)			
   {
+    /*--------------------------------------------------*/
     conf.enter_subsection("physical parameters");
 
     t = conf.get_double("t_reduced");
     //const unsigned int n_refinements = prm.get_integer("Number of refinements");
-    b1 = conf.get_double("b_diffuse");
-    b2 = conf.get_double("b_diffuse");    
+    b1 = conf.get_double("b1_diffuse");
+    b2 = conf.get_double("b2_diffuse");    
 
     conf.leave_subsection();
+    /*--------------------------------------------------*/
+    conf.enter_subsection("switches");
+
+    normal_sign = conf.get_bool("flip_normal");
+
+    conf.leave_subsection();
+    /*--------------------------------------------------*/
+    
     
   }
 
@@ -308,7 +335,7 @@ namespace complexGL
         std::random_device               rd{};         // rd will be used to obtain a seed for the random number engine
         std::mt19937                     gen{rd()};    // Standard mersenne_twister_engine seeded with rd()
 	std::normal_distribution<double> gaussian_distr_1{3.0, 2.0}; // gaussian distribution with mean 10. STD 6.0
-	std::normal_distribution<double> gaussian_distr_2{0.0, 0.5}; // gaussian distribution with mean 10. STD 6.0	
+	std::normal_distribution<double> gaussian_distr_2{2.5, 1.5}; // gaussian distribution with mean 10. STD 6.0	
 	
 
 	for (auto it = current_solution.begin(); it != current_solution.end(); ++it)
@@ -416,6 +443,10 @@ namespace complexGL
     std::vector<Tensor<1, dim>> old_solution_gradients_v(n_q_points);
     std::vector<double>         old_solution_v(n_q_points);
 
+    // containers to hold old u, v on Robin boundary
+    std::vector<double> old_solution_face_u(n_face_q_points);
+    std::vector<double> old_solution_face_v(n_face_q_points);    
+  
     // FEValuesExtractors, works for FEValues, FEFaceValues, FESubFaceValues
     const FEValuesExtractors::Scalar u_component(0);
     const FEValuesExtractors::Scalar v_component(1);
@@ -441,7 +472,6 @@ namespace complexGL
         fe_values[u_component].get_function_values(current_solution, old_solution_u);
 	fe_values[v_component].get_function_gradients(current_solution, old_solution_gradients_v);
         fe_values[v_component].get_function_values(current_solution, old_solution_v);
-
 	
         for (unsigned int q = 0; q < n_q_points; ++q)
           {
@@ -532,26 +562,28 @@ namespace complexGL
           }
 
 
-         // Robin BC contribution on cell
+         // Robin BC contribution on cell, LHS-system_matrix
          for (const auto &face : cell->face_iterators())
-	    {
+	   {
 	      if ((face->at_boundary())
 		  && ((face->boundary_id()) == 2))
-	       {
-                 // auto center = face->center();
-		 // std::cout << ", face->boundary_id() is "
-		 //           << face->boundary_id()
-		 //           << ", center(0) is " << center(0)
-		 //           << ", center(1) is " << center(1)
-		 //           << " ;\n";
-		 
+	       {		 
 		 fe_face_values.reinit(cell, face);
-                 // fe_face_values.reinit(cell, face_no);		 
+                 // fe_face_values.reinit(cell, face_no);
+
+		 /*--------------------------------------------------
+                  * get old solution of u v on Robin boundary
+                  *--------------------------------------------------
+                  */
+		 fe_face_values[u_component].get_function_values(current_solution, old_solution_face_u);
+		 fe_face_values[v_component].get_function_values(current_solution, old_solution_face_v);
+
+		 /*--------------------------------------------------*/
 
                  for (unsigned int i = 0; i < dofs_per_cell; ++i)
 		   {
                     for (unsigned int j = 0; j < dofs_per_cell; ++j)
-
+		      {
                       if (fe.system_to_component_index(i).first
 			   == fe.system_to_component_index(j).first)
 			  // && fe.has_support_on_face(i, face_no)
@@ -566,12 +598,14 @@ namespace complexGL
 			    {
         		      for (unsigned int q_point = 0; q_point < n_face_q_points;
                                    ++q_point)
+				//                                cell_matrix(i, j) -=
                                 cell_matrix(i, j) -=
-                                   (0.5
+				  (((normal_sign == false) ? 1.0 : -1.0)
+                                   * (0.5
 			             * (1.0/b_u)
 			             * fe_face_values[u_component].value(i, q_point) 
                                      * fe_face_values[u_component].value(j, q_point) 
-				     * fe_face_values.JxW(q_point));
+				     * fe_face_values.JxW(q_point)));
 			    }
 
                           if ((fe.system_to_component_index(i).first == 1)
@@ -579,22 +613,42 @@ namespace complexGL
 			    {
         		      for (unsigned int q_point = 0; q_point < n_face_q_points;
                                    ++q_point)
+				//                                cell_matrix(i, j) -=
                                 cell_matrix(i, j) -=
-                                   (0.5
+				  (((normal_sign == false) ? 1.0 : -1.0)
+                                   * (0.5
 			             * (1.0/b_v)
 			             * fe_face_values[v_component].value(i, q_point) 
                                      * fe_face_values[v_component].value(j, q_point) 
-				     * fe_face_values.JxW(q_point));
+				     * fe_face_values.JxW(q_point)));
 
 			    }
 		          
 			}
 
-			
-		   }
+		      } // cell->face j-loop ends here
+		    
+        	    for (unsigned int q_point = 0; q_point < n_face_q_points; ++q_point)
+		      //		       cell_rhs(i) +=
+		       cell_rhs(i) +=
+			 (((normal_sign == false) ? 1.0 : -1.0)
+		          * (0.5
+		             * ((1.0/b_u)
+			         * old_solution_face_u[q_point]
+				 * fe_face_values[u_component].value(i, q_point)
+				 * fe_face_values.JxW(q_point))
+			    +
+			    0.5
+		             * ((1.0/b_v)
+			         * old_solution_face_v[q_point]
+				 * fe_face_values[v_component].value(i, q_point)
+				* fe_face_values.JxW(q_point))));
+		    
+		   } // cell->face i-loop ends here
 			 
-	       }
-	    }
+	       } // Robin boundary if block
+	    
+	    } // cell->face loop ends here
 	
         /*
          * distribute cell contributions back to system-matrix
@@ -785,6 +839,9 @@ namespace complexGL
     auto residual_and_gradient_func
       = [&](const double epsilon)
 	{
+          // Robin BC variable, b_u and b_v
+          const double b_u = b1, b_v = b2;
+	  
 	  /*
 	   * construct residual-vector & evaluation_point (i.e., u-epsilon, v-epsilon)
            */
@@ -798,13 +855,20 @@ namespace complexGL
           evaluation_point.add(epsilon, newton_update);
 
           const QGauss<dim> quadrature_formula(fe.degree + 1);
+          const QGauss<dim - 1> face_quadrature_formula(fe.degree + 1);
+	  
           FEValues<dim>     fe_values(fe,
                                       quadrature_formula,
                                       update_gradients | update_values |
   			              update_quadrature_points | update_JxW_values);
+          // FEFaceValues<dim> for Robin BC, boundary_in = 2
+          FEFaceValues<dim> fe_face_values(fe,
+                                           face_quadrature_formula,
+                                           update_values | update_JxW_values);    	  
 
-          const unsigned int dofs_per_cell = fe.n_dofs_per_cell();
-          const unsigned int n_q_points    = quadrature_formula.size();
+          const unsigned int dofs_per_cell   = fe.n_dofs_per_cell();
+          const unsigned int n_q_points      = quadrature_formula.size(),
+	                     n_face_q_points = face_quadrature_formula.size();
 
           Vector<double>     cell_residual(dofs_per_cell);
 	  Vector<double>     cell_derivative_residual(dofs_per_cell);
@@ -819,11 +883,17 @@ namespace complexGL
 	  std::vector<Tensor<1, dim>> gradients_delta_u(n_q_points);
 	  std::vector<double>         delta_u(n_q_points);
 
-          // vector to holding v^n, grad v^n on cell:
+          // vector to holding v^n, grad v^n, delta_u on cell:
           std::vector<Tensor<1, dim>> gradients_v_epsilon(n_q_points);
           std::vector<double>         v_epsilon(n_q_points);
           std::vector<Tensor<1, dim>> gradients_delta_v(n_q_points);
 	  std::vector<double>         delta_v(n_q_points);
+
+	  // containers to hold u, v, delta_u, delta_v on Robin boundary
+	  std::vector<double> u_epsilon_face(n_face_q_points),
+                              v_epsilon_face(n_face_q_points);
+	  std::vector<double> delta_u_face(n_face_q_points),
+                              delta_v_face(n_face_q_points);
 
          const FEValuesExtractors::Scalar u_component(0);
          const FEValuesExtractors::Scalar v_component(1);
@@ -940,27 +1010,80 @@ namespace complexGL
 			
 		    }
 
-                }
+                } // bulk dofs loops end at here
 
-              cell->get_dof_indices(local_dof_indices);
+         // Robin BC contribution on cell
+         for (const auto &face : cell->face_iterators())
+	   {
+	      if ((face->at_boundary())
+		  && ((face->boundary_id()) == 2))
+	       {		 
+		 fe_face_values.reinit(cell, face);
+                 // fe_face_values.reinit(cell, face_no);
 
-              // following step-6, using AffineConstriants::distribute_local_to_global()
-              hanging_node_constraints.distribute_local_to_global(cell_residual,
+		 /*--------------------------------------------------
+                  * get old solution of u v on Robin boundary
+                  *--------------------------------------------------
+                  */
+		 fe_face_values[u_component].get_function_values(evaluation_point, u_epsilon_face);
+		 fe_face_values[v_component].get_function_values(evaluation_point, v_epsilon_face);
+		 fe_face_values[u_component].get_function_values(newton_update_evaluation_point, delta_u_face);
+		 fe_face_values[v_component].get_function_values(newton_update_evaluation_point, delta_v_face);		 	 
+		 /*--------------------------------------------------*/
+                 for (unsigned int i = 0; i < dofs_per_cell; ++i)
+		   {
+        	    for (unsigned int q_point = 0; q_point < n_face_q_points; ++q_point)
+		      {
+			//		       cell_residual(i) +=
+		       cell_residual(i) +=
+			(((normal_sign == false) ? 1.0 : -1.0)
+		         * (0.5
+		             * ((1.0/b_u)
+			         * u_epsilon_face[q_point]
+				 * fe_face_values[u_component].value(i, q_point)
+				 * fe_face_values.JxW(q_point))
+			    +
+			    0.5
+		             * ((1.0/b_v)
+			         * v_epsilon_face[q_point]
+				 * fe_face_values[v_component].value(i, q_point)
+				* fe_face_values.JxW(q_point))));
+
+		       //		       cell_derivative_residual(i) +=
+		       cell_derivative_residual(i) +=
+			(((normal_sign == false) ? 1.0 : -1.0)
+		         * (0.5
+		             * ((1.0/b_u)
+			         * delta_u_face[q_point]
+				 * fe_face_values[u_component].value(i, q_point)
+				 * fe_face_values.JxW(q_point))
+			    +
+			    0.5
+		             * ((1.0/b_v)
+			         * delta_v_face[q_point]
+				 * fe_face_values[v_component].value(i, q_point)
+ 				 * fe_face_values.JxW(q_point))));
+			 
+		      }
+		    
+		   } // cell->face i-loop ends here		 
+	        } // Robin boundary if block
+	    } // cell->face loop ends here
+
+            cell->get_dof_indices(local_dof_indices);
+
+            // following step-6, using AffineConstriants::distribute_local_to_global()
+            hanging_node_constraints.distribute_local_to_global(cell_residual,
 								  local_dof_indices,
 								  residual_Vector);
-              hanging_node_constraints.distribute_local_to_global(cell_derivative_residual,
+            hanging_node_constraints.distribute_local_to_global(cell_derivative_residual,
 								  local_dof_indices,
 								  derivative_residual);	      
 	      
-              // for (unsigned int i = 0; i < dofs_per_cell; ++i)
-	      // 	{
-              //     residual_Vector(local_dof_indices[i])     += cell_residual(i);
-	      // 	  derivative_residual(local_dof_indices[i]) += cell_derivative_residual(i);
-	      // 	}
 	      
-	    }// end of cell loop
+	   }// end of cell loop
 
-	    // make sure DoF with Direchilet BC no contribute to residual
+	   // make sure DoF with Direchilet BC no contribute to residual
 	   std::set< types::boundary_id > Dirichilet_boundary_id_list;
 	   Dirichilet_boundary_id_list.insert(0);
 	   // Dirichilet_boundary_id_list.insert(1);
@@ -993,7 +1116,7 @@ namespace complexGL
 
 	    return std::make_pair(residual_l2_norm, derivative_epsilon_of_residual);
 
-	};
+	}; // lambda-expression ends at here
 
   const auto res_grad_0 = residual_and_gradient_func(0.0);
   std::cout << "--------------------*"
@@ -1238,7 +1361,7 @@ namespace complexGL
 
     const double tol                = 1.0e-10;
     const double tol_refined        = 1.0e-9;
-    unsigned int iteration_times    = 10;
+    unsigned int iteration_times    = 15;
     //    double       last_residual_norm = std::numeric_limits<double>::max();
     unsigned int refinement_cycle   = 0;
 
