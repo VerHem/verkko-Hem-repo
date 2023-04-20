@@ -1253,12 +1253,14 @@ namespace complexGL
 
     Triangulation<dim> prototype;
     GridGenerator::hyper_cube_with_cylindrical_hole(prototype,
-						    2.0,
-						    8.0);
+    			         /*inner radius*/   2.0, 
+			       /*half of radius*/   8.0,
+			     /*z-axis extension*/   6.0,
+			  /*subdivision along z*/   2);
 
-    GridGenerator::replicate_triangulation(prototype, {6, 2}, triangulation);
+    GridGenerator::replicate_triangulation(prototype, {2, 1, 1}, triangulation);
     
-    triangulation.refine_global(3);
+    triangulation.refine_global(2);
 
     std::ofstream out("grid-primary.vtu");
     GridOut       grid_out;
@@ -1272,21 +1274,12 @@ namespace complexGL
      * -------------------------------------------------
      */
 
-    // Dirichlet pillars centers
-    const Point<dim> p1(0., 0.),
-                     p2(16., 16.),
-                     p3(32., 0.),
-                     p4(48., 16.),
-                     p5(64., 0.),
-                     p6(80., 16.);
+    // Dirichlet pillars centers in 3D
+    const Point<dim> p1(0., 0., 0.);
+      /*p3(16., 0., 0.);*/
 
-    // diffuse pillars centers
-    const Point<dim> p7(0., 16.),
-                     p8(16., 0.),
-                     p9(32., 16.),
-                     p10(48., 0.),
-                     p11(64., 16.),
-                     p12(80., 0.);
+    // diffuse-Robin pillars centers
+    const Point<dim> p2(16., 0., 0.);
 
     
     for (const auto &cell : triangulation.cell_iterators())
@@ -1299,16 +1292,18 @@ namespace complexGL
             */
 	   if (
 	       ((std::fabs(center(0) - (-8.0)) < 1e-12)
-                 && ((center(1) - (8.0)) <= 0.0))
+                /* && ((center(1) - (8.0)) <= 0.0)*/)
 	       ||
-	       (((center(0) - (8.0)) < 0.0)
-                 && (std::fabs(center(1) - (-8.0)) < 1e-12))
+	       /*(((center(0) - (8.0)) < 0.0)
+                 && (std::fabs(center(1) - (-8.0)) < 1e-12))*/
+	       (std::fabs(center(2) - (0.0)) < 1e-12)
 	       ||
-	       ((std::fabs(center(0) - (88.0)) < 1e-12)
-                 && ((center(1) - (8.0)) >= 0.0))
+	       ((std::fabs(center(0) - (24.0)) < 1e-12)
+                /* && ((center(1) - (8.0)) >= 0.0)*/)
 	       ||
-       	       (((center(0) - (72.0)) >= 0.0)
-                 && (std::fabs(center(1) - (24.0)) < 1e-12))	       
+       	       /*(((center(0) - (72.0)) >= 0.0)
+	       && (std::fabs(center(1) - (24.0)) < 1e-12))*/
+	       (std::fabs(center(2) - (6.0)) < 1e-12)
 
 	       )
               face->set_boundary_id(1);
@@ -1324,7 +1319,7 @@ namespace complexGL
            //       && (std::fabs(center(1) - (-55.0)) < 1e-12))	       
 	   //     )
            if (
-               (std::fabs(center.distance(p7) - 2.0) <=0.15)
+               /*(std::fabs(center.distance(p7) - 2.0) <=0.15)
 	       ||
                (std::fabs(center.distance(p8) - 2.0) <=0.15)
 	       ||
@@ -1334,7 +1329,10 @@ namespace complexGL
 	       ||
                (std::fabs(center.distance(p11) - 2.0) <=0.15)
 	       ||
-               (std::fabs(center.distance(p12) - 2.0) <=0.15)
+               (std::fabs(center.distance(p12) - 2.0) <=0.15)*/
+               ((((center(0) - p2(0)) * (center(0) -p2(0)))
+		 + ((center(1) - p2(1)) * (center(1) -p2(1)))) - 4.0) <= 0.1
+	       
                )	   	   
               face->set_boundary_id(2);
 
@@ -1343,7 +1341,7 @@ namespace complexGL
             *
             */
            if (
-               (std::fabs(center.distance(p1) - 2.0) <=0.15)
+               /*(std::fabs(center.distance(p1) - 2.0) <=0.15)
 	       ||
                (std::fabs(center.distance(p2) - 2.0) <=0.15)
 	       ||
@@ -1353,7 +1351,14 @@ namespace complexGL
 	       ||
                (std::fabs(center.distance(p5) - 2.0) <=0.15)
 	       ||
-               (std::fabs(center.distance(p6) - 2.0) <=0.15)
+               (std::fabs(center.distance(p6) - 2.0) <=0.15)*/
+	       
+               (((((center(0) - p1(0)) * (center(0) -p1(0)))
+		  + ((center(1) - p1(1)) * (center(1) -p1(1)))) - 4.0) <= 0.1)
+	       /*||
+               (((((center(0) - p3(0)) * (center(0) -p3(0)))
+	       + ((center(1) - p3(1)) * (center(1) -p3(1)))) - 4.0) <= 0.1)*/
+	              
                )	   
               face->set_boundary_id(0);
          }
@@ -1463,13 +1468,13 @@ int main()
 
       ParameterHandler conf;
       ConfigurationReader  confread(conf);
-      confread.read_parameters("configuration_complexGL.prm");
+      confread.read_parameters("conf_complexGL_3d.prm");
       
-      ComplexValuedScalarGLSolver<2> GL_2d(conf);
-      GL_2d.run();
+      //      ComplexValuedScalarGLSolver<2> GL_2d(conf);
+      //      GL_2d.run();
 
-      // RealValuedScalarGLSolver<3> GL_3d;
-      // GL_3d.run();
+      ComplexValuedScalarGLSolver<3> GL_3d(conf);
+      GL_3d.run();
     }
   catch (std::exception &exception)
     {
