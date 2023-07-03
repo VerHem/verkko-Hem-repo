@@ -80,37 +80,37 @@ namespace complexGL_mpi
   /************************************************************/
   /* >>>>>>>>>>>>>>>    preconditioner class   <<<<<<<<<<<<<< */
   
-  template <class PreconditionerA, class PreconditionerS>
-  class BlockDiagonalPreconditioner : public Subscriptor
+  template <typename PreconditionerAMG>
+  class BlockAntiDiagonalPreconditioner : public Subscriptor
   {
     public:
-      BlockDiagonalPreconditioner(const PreconditionerA &preconditioner_A,
-                                  const PreconditionerS &preconditioner_S);
+      BlockAntiDiagonalPreconditioner(const PreconditionerAMG &preconditioner_B01inv,
+                                      const PreconditionerAMG &preconditioner_B10inv);
 
       void vmult(LA::MPI::BlockVector &      dst,
                  const LA::MPI::BlockVector &src) const;
 
     private:
-      const PreconditionerA &preconditioner_A;
-      const PreconditionerS &preconditioner_S;
+      const PreconditionerAMG &preconditioner_B01inv;
+      const PreconditionerAMG &preconditioner_B10inv;
   };
 
-  template <class PreconditionerA, class PreconditionerS>
-  BlockDiagonalPreconditioner<PreconditionerA, PreconditionerS>::
-  BlockDiagonalPreconditioner(const PreconditionerA &preconditioner_A,
-                              const PreconditionerS &preconditioner_S)
-    : preconditioner_A(preconditioner_A)
-    , preconditioner_S(preconditioner_S)
+  template <typename PreconditionerAMG>
+  BlockAntiDiagonalPreconditioner<PreconditionerAMG>::
+  BlockAntiDiagonalPreconditioner(const PreconditionerAMG &preconditioner_B01inv,
+                                  const PreconditionerAMG &preconditioner_B10inv)
+    : preconditioner_B01inv(preconditioner_B01inv)
+    , preconditioner_B10inv(preconditioner_B10inv)
   {}
 
 
-  template <class PreconditionerA, class PreconditionerS>
-  void BlockDiagonalPreconditioner<PreconditionerA, PreconditionerS>::vmult(
-  LA::MPI::BlockVector &      dst,
+  template <typename PreconditionerAMG>
+  void BlockAntiDiagonalPreconditioner<PreconditionerAMG>::vmult(
+  LA::MPI::BlockVector       &dst,
   const LA::MPI::BlockVector &src) const
   {
-      preconditioner_A.vmult(dst.block(0), src.block(0));
-      preconditioner_S.vmult(dst.block(1), src.block(1));
+      preconditioner_B01inv.vmult(dst.block(1), src.block(1));
+      preconditioner_B10inv.vmult(dst.block(0), src.block(0));
   }
 
   /* >>>>>>>> preconditioner class defination ends <<<<<<<<<< */
@@ -194,7 +194,7 @@ namespace complexGL_mpi
   
   /* ------------------------------------------------------------------------------------------
    *
-   * The following functions are members of ComplexValuedScalarGLSolver till the end of ScalarGL
+   * The following functions are members of ComplexGL-mpi till the end of complexGL-mpi
    * namespace.
    *
    * ------------------------------------------------------------------------------------------
@@ -235,6 +235,11 @@ namespace complexGL_mpi
     LA::MPI::BlockVector       local_solution;    // this is final solution Vector
     LA::MPI::BlockVector       system_rhs;
 
+    const double alpha_0 = 2.0;
+    const double beta    = 0.5;
+
+    double reduced_t;
+
     ConditionalOStream pcout;
     TimerOutput        computing_timer;
   };
@@ -250,6 +255,7 @@ namespace complexGL_mpi
                       Triangulation<dim>::smoothing_on_refinement |
                       Triangulation<dim>::smoothing_on_coarsening))
     , dof_handler(triangulation)
+    , reduced_t(0.0)  
     , pcout(std::cout,
             (Utilities::MPI::this_mpi_process(mpi_communicator) == 0))
     , computing_timer(mpi_communicator,
@@ -259,13 +265,37 @@ namespace complexGL_mpi
   {}
 
 
-  // The Kovasnay flow is defined on the domain [-0.5, 1.5]^2, which we
-  // create by passing the min and max values to GridGenerator::hyper_cube.
   template <int dim>
   void complexGL<dim>::make_grid()
   {
-    GridGenerator::hyper_cube(triangulation, -0.5, 1.5);
+    /*GridGenerator::hyper_cube(triangulation, -0.5, 1.5);
+      triangulation.refine_global(3);*/
+    const double half_length = 10.0, inner_radius = 2.0;
+    GridGenerator::hyper_cube_with_cylindrical_hole(triangulation,
+						    inner_radius, half_length);
+
     triangulation.refine_global(3);
+    // Dirichlet pillars centers
+    const Point<dim> p1(0., 0.);
+
+    for (const auto &cell : triangulation.cell_iterators())
+      for (const auto &face : cell->face_iterators())
+	{
+          const auto center = face->center();
+	  if (
+	      (std::fabs(center(0) - (-half_length)) < 1e-12)
+	       ||
+	      (std::fabs(center(0) - (half_length)) < 1e-12)
+	       ||
+	      (std::fabs(center(1) - (-half_length)) < 1e-12)
+	       ||
+	      (std::fabs(center(1) - (half_length)) < 1e-12)
+             )
+	    face->set_boundary_id(1);
+
+	  if ((std::fabs(center.distance(p1) - inner_radius) <=0.15))
+	    face->set_boundary_id(0);
+	}
   }
 
   template <int dim>
@@ -281,13 +311,12 @@ namespace complexGL_mpi
 
     const std::vector<types::global_dof_index> dofs_per_block = DoFTools::count_dofs_per_fe_block(dof_handler,
 												  sub_blocks_vector);
-
     const unsigned int n_u = dofs_per_block[0];
     const unsigned int n_v = dofs_per_block[1];
 
     pcout << "   Number of degrees of freedom: "
 	  << dof_handler.n_dofs()
-	  << " (" << n_u << '+' << n_p << ')'
+	  << " (" << n_u << '+' << n_v << ')'
 	  << std::endl;
 
     owned_partitioning.resize(2);
@@ -321,11 +350,10 @@ namespace complexGL_mpi
         for (unsigned int d = 0; d < 2; ++d)
           if (c == d)
             coupling[c][d] = DoFTools::always;
-          else if ((c == 0 && d == 1)
-		   || (c == 1 && d == 0))
+          else if ((c == 0 && d == 1) || (c == 1 && d == 0))
             coupling[c][d] = DoFTools::always;
           else
-            coupling[c][d] = DoFTools::none; // how about Ribin BC's contribution ?
+   	    coupling[c][d] = DoFTools::none; // how about Ribin BC's contribution ?
 
       BlockDynamicSparsityPattern dsp(dofs_per_block, dofs_per_block);
 
@@ -346,14 +374,30 @@ namespace complexGL_mpi
     std::random_device rd{};         // rd will be used to obtain a seed for the random number engine
     std::mt19937       gen{rd()};    // Standard mersenne_twister_engine seeded with rd()
 
-    std::normal_distribution<double> gaussian_distr{3.0, 2.0}; // gaussian distribution with mean 10. STD 6.0
+    std::normal_distribution<double> gaussian_distr{3.0, 0.1}; // gaussian distribution with mean 10. STD 6.0
 
-    local_solution.reinit(owned_partitioning,
-			  relevant_partitioning,
-			  mpi_communicator);
+    local_solution.reinit(/*owned_partitioning,*/
+    			  relevant_partitioning,
+    			  mpi_communicator,
+    			  false);
+    LA::MPI::BlockVector distrubuted_tmp_solution(owned_partitioning,
+                                                        mpi_communicator);
+    //distrubuted_tmp_solution = 3.0;
+    for (auto it = distrubuted_tmp_solution.begin(); it != distrubuted_tmp_solution.end(); ++it)
+      {
+	*it = gaussian_distr(gen);
+	//pcout << "local_solution *it gives: " << *it << std::endl;
+      }
+
+    constraints.distribute(distrubuted_tmp_solution);
+
+    local_solution = distrubuted_tmp_solution;
+
+    /* NOTE : if your wnat Zero Dirichlet BC for Solution,
+     *        you better set up second AffineContraint,
+     *        after then you can distribte Zero Direchelet BC.
+     */
     
-    for (auto it = local_solution.begin(); it != local_solution.end(); ++it)
-      *it = gaussian_distr(gen);
     /*---------------------------------------*/
     
     locally_relevant_newton_solution.reinit(owned_partitioning,
@@ -372,7 +416,7 @@ namespace complexGL_mpi
     system_matrix         = 0;
     system_rhs            = 0;
 
-    const QGauss<dim> quadrature_formula(velocity_degree + 1);
+    const QGauss<dim> quadrature_formula(degree + 1);
 
     FEValues<dim> fe_values(fe,
 			    quadrature_formula,
@@ -380,6 +424,8 @@ namespace complexGL_mpi
 
     const unsigned int dofs_per_cell = fe.n_dofs_per_cell();
     const unsigned int n_q_points    = quadrature_formula.size();
+
+    std::vector<types::global_dof_index> local_dof_indices(dofs_per_cell);
 
     FullMatrix<double> cell_matrix(dofs_per_cell, dofs_per_cell);
     Vector<double>     cell_rhs(dofs_per_cell);
@@ -440,19 +486,19 @@ namespace complexGL_mpi
 	      /* --------------------------------------------------*/
               // alpha + bete (3*u^(n)^2 + v^{n}^2), u-coeff, system_matrix
 	      const double bulkTerm_u_coeff_sysMatr =
-		alpha_0 * (t-1.0)
+		alpha_0 * (reduced_t - 1.0)
 		+ (beta * (3.0 * old_solution_u[q] * old_solution_u[q] + old_solution_v[q] * old_solution_v[q]));
 
 	      // alpha + bete (3*v^(n)^2 + u^{n}^2), v-coeff, system_matrix
 	      const double bulkTerm_v_coeff_sysMatr =
-		alpha_0 * (t-1.0)
+		alpha_0 * (reduced_t - 1.0)
 		+ (beta * (3.0 * old_solution_v[q] * old_solution_v[q] + old_solution_u[q] * old_solution_u[q]));
 
 	      const double bulkTerm_uv_coeff_sysMatr = (2.0 * beta * old_solution_v[q] * old_solution_u[q]);
 
 	      // alpha + bete (u^(n)^2 + v^(n)^2), u/v-coef, rhs
 	      const double bulkTerm_coeff_rhs =
-		alpha_0 * (t-1.0)
+		alpha_0 * (reduced_t - 1.0)
 		+ beta * (old_solution_u[q] * old_solution_u[q] + old_solution_v[q] * old_solution_v[q]);
 	      /* --------------------------------------------------*/
 	      
@@ -465,36 +511,63 @@ namespace complexGL_mpi
 			 scalar_product(grad_phi_u[i], grad_phi_u[j]) -
 			 div_phi_u[i] * phi_p[j] - phi_p[i] * div_phi_u[j]) *
 			 fe_values.JxW(q);*/
-			(((fe_values[u_component].gradient(i, q)       // ((\partial_q \phi^u_i
-			   * fe_values[u_component].gradient(j, q)     //   \partial_q \phi^u_j
-			   * 0.5)                                      //   * 1/2)
-			  +                                 //  +
-			  (bulkTerm_u_coeff_sysMatr                //  ((\alpha + \beta (3 u^(n)^2 + v^(n)^2)
-			   * fe_values[u_component].value(i, q)    //    * \phi_i
-			   * fe_values[u_component].value(j, q))  //    * \phi_j))
-			  +
-			  (bulkTerm_uv_coeff_sysMatr
-			   * fe_values[v_component].value(i, q)
-			   * fe_values[u_component].value(j, q))
-			  +
-			  (fe_values[v_component].gradient(i, q)       // ((\partial_q \phi^v_i
-			   * fe_values[v_component].gradient(j, q)     //   \partial_q \phi^v_j
-			   * 0.5)                                      //   * 1/2)
-			  +
-			  (bulkTerm_v_coeff_sysMatr                //  ((\alpha + \beta (3 u^(n)^2 + v^(n)^2)
-			   * fe_values[v_component].value(i, q)    //    * \phi_i
-			   * fe_values[v_component].value(j, q))  //    * \phi_j))
-			  +
-			  (bulkTerm_uv_coeff_sysMatr
-			   * fe_values[u_component].value(i, q)
-			   * fe_values[v_component].value(j, q)))
-			 * fe_values.JxW(q));                    // * dx			  
+          	    (((fe_values[u_component].gradient(i, q)       // ((\partial_q \phi^u_i
+	   	       * fe_values[u_component].gradient(j, q)     //   \partial_q \phi^u_j
+		       * 0.5)                                      //   * 1/2)
+		     +                                 //  +
+		      (bulkTerm_u_coeff_sysMatr                //  ((\alpha + \beta (3 u^(n)^2 + v^(n)^2)
+		       * fe_values[u_component].value(i, q)    //    * \phi_i
+		       * fe_values[u_component].value(j, q))  //    * \phi_j))
+                     +
+ 		      (bulkTerm_uv_coeff_sysMatr
+		       * fe_values[v_component].value(i, q)
+		       * fe_values[u_component].value(j, q))
+		     +
+		      (fe_values[v_component].gradient(i, q)       // ((\partial_q \phi^v_i
+		       * fe_values[v_component].gradient(j, q)     //   \partial_q \phi^v_j
+		       * 0.5)                                      //   * 1/2)
+                     +
+    		      (bulkTerm_v_coeff_sysMatr                //  ((\alpha + \beta (3 u^(n)^2 + v^(n)^2)
+		       * fe_values[v_component].value(i, q)    //    * \phi_i
+		       * fe_values[v_component].value(j, q))  //    * \phi_j))
+		     +
+		      (bulkTerm_uv_coeff_sysMatr
+		       * fe_values[u_component].value(i, q)
+		       * fe_values[v_component].value(j, q)))
+		    * fe_values.JxW(q));                    // * dx
+
 		    }
 
-		  const unsigned int component_i =
+		  /*const unsigned int component_i =
 		      fe.system_to_component_index(i).first;
 		  cell_rhs(i) += fe_values.shape_value(i, q) *
-			      rhs_values[q](component_i) * fe_values.JxW(q);
+		  rhs_values[q](component_i) * fe_values.JxW(q);*/
+                cell_rhs(i) -=
+		  (((fe_values[u_component].gradient(i, q)   // ((\partial_m \phi_i
+		    * old_solution_gradients_u[q]           //   * \partial_m \psi^(n)
+		    * 0.5)                                  //   * 1/2)
+		   +                                        //  +
+		   (bulkTerm_coeff_rhs                      //  ((\alpha + \beta \psi^(n)2)
+		    * fe_values[u_component].value(i, q)      //   * \phi_i
+		    * old_solution_u[q])                   //   * \psi^(n)))
+		   +
+		   (fe_values[v_component].gradient(i, q)   // ((\partial_m \phi_i
+		    * old_solution_gradients_v[q]           //   * \partial_m \psi^(n)
+		    * 0.5)                                  //   * 1/2)
+		   +
+		   (bulkTerm_coeff_rhs                      //  ((\alpha + \beta \psi^(n)2)
+		    * fe_values[v_component].value(i, q)      //   * \phi_i
+		    * old_solution_v[q]))                   //   * \psi^(n)))		  
+		   * fe_values.JxW(q));                      // * dx
+		  /*((		                                           //  +
+		   (bulkTerm_coeff_rhs                      //  ((\alpha + \beta \psi^(n)2)
+		    * fe_values[u_component].value(i, q)      //   * \phi_i
+		    * 1.0)                   //   * \psi^(n)))
+		   +
+		   (bulkTerm_coeff_rhs                      //  ((\alpha + \beta \psi^(n)2)
+		    * fe_values[v_component].value(i, q)      //   * \phi_i
+		    * 0.5))                   //   * \psi^(n)))		  
+		    * fe_values.JxW(q));*/
 		}
 	    }
 
@@ -518,18 +591,18 @@ namespace complexGL_mpi
   {
     TimerOutput::Scope t(computing_timer, "solve");
 
-    LA::MPI::PreconditionAMG B_inv;
+    LA::MPI::PreconditionAMG B01_inv;
     {
       LA::MPI::PreconditionAMG::AdditionalData data;
 
-      B_inv.initialize(system_matrix.block(?????????????????????, ???????????????????????), data);
+      B01_inv.initialize(system_matrix.block(0, 1), data);
     }
 
-    LA::MPI::PreconditionAMG BT_inv;
+    LA::MPI::PreconditionAMG B10_inv;
     {
       LA::MPI::PreconditionAMG::AdditionalData data;
 
-      prec_S.initialize(preconditioner_matrix.block(1, 0), data);
+      B10_inv.initialize(system_matrix.block(1, 0), data);
     }
 
     // The InverseMatrix is used to solve for the mass matrix:
@@ -539,15 +612,18 @@ namespace complexGL_mpi
 
     // This constructs the block preconditioner based on the preconditioners
     // for the individual blocks defined above.
-    const BlockDiagonalPreconditioner<LA::MPI::PreconditionAMG,
-                                      /*mp_inverse_t*/
-                                      LA::MPI::PreconditionAMG> preconditioner(B_inv, /*mp_inverse*/BT_inv);
+    const BlockAntiDiagonalPreconditioner<LA::MPI::PreconditionAMG
+                                      /*,mp_inverse_t
+					LA::MPI::PreconditionAMG*/> preconditioner(B01_inv, /*mp_inverse*/B10_inv);
 
     // With that, we can finally set up the linear solver and solve the system:
+    pcout << " system_rhs.l2_norm() is " << system_rhs.l2_norm() << std::endl;
     SolverControl solver_control(system_matrix.m(),
-                                 1e-10 * system_rhs.l2_norm());
+                                 1e-9 * system_rhs.l2_norm(),
+				 true);
 
-    SolverMinRes<LA::MPI::BlockVector> solver(solver_control);
+    //SolverMinRes<LA::MPI::BlockVector> solver(solver_control);
+    SolverFGMRES<LA::MPI::BlockVector> solver(solver_control);
 
     LA::MPI::BlockVector distributed_solution(owned_partitioning, mpi_communicator);
 
@@ -565,7 +641,7 @@ namespace complexGL_mpi
 
     constraints.distribute(distributed_solution);
 
-  locally_relevant_newton_solution = distributed_solution;
+    locally_relevant_newton_solution = distributed_solution;
 
   }
 
@@ -601,7 +677,8 @@ namespace complexGL_mpi
                              solution_names,
                              DataOut<dim>::type_dof_data,
                              data_component_interpretation);*/
-    data_out.add_data_vector(locally_relevant_newton_solution, newton_update_components_names);    
+    data_out.add_data_vector(locally_relevant_newton_solution, newton_update_components_names,
+			     DataOut<dim>::type_dof_data);    
 
 
     Vector<float> subdomain(triangulation.n_active_cells());
@@ -662,8 +739,8 @@ int main(int argc, char *argv[])
 
       Utilities::MPI::MPI_InitFinalize mpi_initialization(argc, argv, 1);
 
-      complexGLm<2> GLsolver(2);
-      GLSolver.run();
+      complexGL<2> GLsolver(2);
+      GLsolver.run();
     }
   catch (std::exception &exc)
     {

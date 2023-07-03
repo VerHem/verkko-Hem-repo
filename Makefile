@@ -208,41 +208,41 @@ run/fast:
 .PHONY : run/fast
 
 #=============================================================================
-# Target rules for targets named complexGL
+# Target rules for targets named complexGL-mpi
 
 # Build rule for target.
-complexGL: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 complexGL
-.PHONY : complexGL
+complexGL-mpi: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 complexGL-mpi
+.PHONY : complexGL-mpi
 
 # fast build rule for target.
-complexGL/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/complexGL.dir/build.make CMakeFiles/complexGL.dir/build
-.PHONY : complexGL/fast
+complexGL-mpi/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/complexGL-mpi.dir/build.make CMakeFiles/complexGL-mpi.dir/build
+.PHONY : complexGL-mpi/fast
 
-complexGL.o: complexGL.cc.o
-.PHONY : complexGL.o
+complexGL-mpi.o: complexGL-mpi.cc.o
+.PHONY : complexGL-mpi.o
 
 # target to build an object file
-complexGL.cc.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/complexGL.dir/build.make CMakeFiles/complexGL.dir/complexGL.cc.o
-.PHONY : complexGL.cc.o
+complexGL-mpi.cc.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/complexGL-mpi.dir/build.make CMakeFiles/complexGL-mpi.dir/complexGL-mpi.cc.o
+.PHONY : complexGL-mpi.cc.o
 
-complexGL.i: complexGL.cc.i
-.PHONY : complexGL.i
+complexGL-mpi.i: complexGL-mpi.cc.i
+.PHONY : complexGL-mpi.i
 
 # target to preprocess a source file
-complexGL.cc.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/complexGL.dir/build.make CMakeFiles/complexGL.dir/complexGL.cc.i
-.PHONY : complexGL.cc.i
+complexGL-mpi.cc.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/complexGL-mpi.dir/build.make CMakeFiles/complexGL-mpi.dir/complexGL-mpi.cc.i
+.PHONY : complexGL-mpi.cc.i
 
-complexGL.s: complexGL.cc.s
-.PHONY : complexGL.s
+complexGL-mpi.s: complexGL-mpi.cc.s
+.PHONY : complexGL-mpi.s
 
 # target to generate assembly for a file
-complexGL.cc.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/complexGL.dir/build.make CMakeFiles/complexGL.dir/complexGL.cc.s
-.PHONY : complexGL.cc.s
+complexGL-mpi.cc.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/complexGL-mpi.dir/build.make CMakeFiles/complexGL-mpi.dir/complexGL-mpi.cc.s
+.PHONY : complexGL-mpi.cc.s
 
 # Help Target
 help:
@@ -259,10 +259,10 @@ help:
 	@echo "... run"
 	@echo "... runclean"
 	@echo "... strip_comments"
-	@echo "... complexGL"
-	@echo "... complexGL.o"
-	@echo "... complexGL.i"
-	@echo "... complexGL.s"
+	@echo "... complexGL-mpi"
+	@echo "... complexGL-mpi.o"
+	@echo "... complexGL-mpi.i"
+	@echo "... complexGL-mpi.s"
 .PHONY : help
 
 
