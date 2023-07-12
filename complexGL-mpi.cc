@@ -212,7 +212,9 @@ namespace complexGL_mpi
     void make_grid();
     void setup_system();
     void assemble_system();
+    void compute_residual(const LA::MPI::BlockVector &);
     void solve();
+    void newton_iteration();
     void refine_grid();
     void output_results(const unsigned int cycle) const;
 
@@ -227,13 +229,15 @@ namespace complexGL_mpi
     std::vector<IndexSet> owned_partitioning;
     std::vector<IndexSet> relevant_partitioning;
 
-    AffineConstraints<double> constraints;
+    AffineConstraints<double> constraints_newton_update;
+    AffineConstraints<double> constraints_solution;    
 
     LA::MPI::BlockSparseMatrix system_matrix;
     //LA::MPI::BlockSparseMatrix preconditioner_matrix;
     LA::MPI::BlockVector       locally_relevant_newton_solution;
     LA::MPI::BlockVector       local_solution;    // this is final solution Vector
     LA::MPI::BlockVector       system_rhs;
+    LA::MPI::BlockVector       residual_vector;
 
     const double alpha_0 = 2.0;
     const double beta    = 0.5;
@@ -296,6 +300,8 @@ namespace complexGL_mpi
 	  if ((std::fabs(center.distance(p1) - inner_radius) <=0.15))
 	    face->set_boundary_id(0);
 	}
+
+    triangulation.refine_global(3);
   }
 
   template <int dim>
@@ -330,16 +336,29 @@ namespace complexGL_mpi
     relevant_partitioning[1] = locally_relevant_dofs.get_view(n_u, n_u + n_v);
 
     {
-      constraints.reinit(locally_relevant_dofs);
+      constraints_newton_update.reinit(locally_relevant_dofs);
 
       //FEValuesExtractors::Vector u_component(0);
-      DoFTools::make_hanging_node_constraints(dof_handler, constraints);
+      DoFTools::make_hanging_node_constraints(dof_handler, constraints_newton_update);
       VectorTools::interpolate_boundary_values(dof_handler,
                                                0,
                                                DirichletBCs_newton_update<dim>(),
-                                               constraints);
+                                               constraints_newton_update);
                                                //fe.component_mask(velocities));
-      constraints.close();
+      constraints_newton_update.close();
+    }
+
+    {
+      constraints_solution.reinit(locally_relevant_dofs);
+
+      //FEValuesExtractors::Vector u_component(0);
+      DoFTools::make_hanging_node_constraints(dof_handler, constraints_solution);
+      VectorTools::interpolate_boundary_values(dof_handler,
+                                               0,
+                                               BoundaryValues<dim>(),
+                                               constraints_solution);
+                                               //fe.component_mask(velocities));
+      constraints_solution.close();
     }
 
     {
@@ -357,7 +376,7 @@ namespace complexGL_mpi
 
       BlockDynamicSparsityPattern dsp(dofs_per_block, dofs_per_block);
 
-      DoFTools::make_sparsity_pattern(dof_handler, coupling, dsp, constraints, false);
+      DoFTools::make_sparsity_pattern(dof_handler, coupling, dsp, constraints_newton_update, false);
 
       // exchange local dsp entries between processes
       SparsityTools::distribute_sparsity_pattern(
@@ -374,9 +393,9 @@ namespace complexGL_mpi
     std::random_device rd{};         // rd will be used to obtain a seed for the random number engine
     std::mt19937       gen{rd()};    // Standard mersenne_twister_engine seeded with rd()
 
-    std::normal_distribution<double> gaussian_distr{3.0, 0.1}; // gaussian distribution with mean 10. STD 6.0
+    std::normal_distribution<double> gaussian_distr{3.0, 0.5}; // gaussian distribution with mean 10. STD 6.0
 
-    local_solution.reinit(/*owned_partitioning,*/
+    local_solution.reinit(owned_partitioning,
     			  relevant_partitioning,
     			  mpi_communicator,
     			  false);
@@ -389,11 +408,11 @@ namespace complexGL_mpi
 	//pcout << "local_solution *it gives: " << *it << std::endl;
       }
 
-    constraints.distribute(distrubuted_tmp_solution);
+    constraints_solution.distribute(distrubuted_tmp_solution);
 
     local_solution = distrubuted_tmp_solution;
 
-    /* NOTE : if your wnat Zero Dirichlet BC for Solution,
+    /* NOTE : if your want Zero Dirichlet BC for Solution,
      *        you better set up second AffineContraint,
      *        after then you can distribte Zero Direchelet BC.
      */
@@ -404,6 +423,7 @@ namespace complexGL_mpi
                                             relevant_partitioning,
                                             mpi_communicator);
     system_rhs.reinit(owned_partitioning, mpi_communicator);
+    residual_vector.reinit(owned_partitioning, mpi_communicator);    
   }
 
 
@@ -573,11 +593,11 @@ namespace complexGL_mpi
 
 
 	  cell->get_dof_indices(local_dof_indices);
-	  constraints.distribute_local_to_global(cell_matrix,
-						 cell_rhs,
-						 local_dof_indices,
-						 system_matrix,
-						 system_rhs);
+	  constraints_newton_update.distribute_local_to_global(cell_matrix,
+				  		               cell_rhs,
+						               local_dof_indices,
+						               system_matrix,
+						               system_rhs);
 
        }
 
@@ -585,7 +605,95 @@ namespace complexGL_mpi
     system_rhs.compress(VectorOperation::add);
   }
 
+  template <int dim>
+  void complexGL<dim>::compute_residual(const LA::MPI::BlockVector &damped_vector)
+  {
+    TimerOutput::Scope t(computing_timer, "compute_residual");
 
+    residual_vector = 0;
+
+    const QGauss<dim> quadrature_formula(degree + 1);
+
+    FEValues<dim> fe_values(fe,
+			    quadrature_formula,
+			    update_values | update_gradients | update_quadrature_points | update_JxW_values);
+
+    const unsigned int dofs_per_cell = fe.n_dofs_per_cell();
+    const unsigned int n_q_points    = quadrature_formula.size();
+
+    std::vector<types::global_dof_index> local_dof_indices(dofs_per_cell);
+
+    Vector<double>     cell_rhs(dofs_per_cell);
+
+    /*--------------------------------------------------*/
+    /* >>>>>>>>>>  old solution for r.h.s   <<<<<<<<<<< */
+    // vector to holding u^n, grad u^n on cell:
+    std::vector<Tensor<1, dim>> old_solution_gradients_u(n_q_points);
+    std::vector<double>         old_solution_u(n_q_points);
+
+    // vector to holding v^n, grad v^n on cell:
+    std::vector<Tensor<1, dim>> old_solution_gradients_v(n_q_points);
+    std::vector<double>         old_solution_v(n_q_points);
+    /* --------------------------------------------------*/    
+
+    // FEValuesExtractors, works for FEValues, FEFaceValues, FESubFaceValues
+    const FEValuesExtractors::Scalar u_component(0);
+    const FEValuesExtractors::Scalar v_component(1);
+
+    for (const auto &cell : dof_handler.active_cell_iterators())
+      if (cell->is_locally_owned())
+	{
+	  cell_rhs     = 0;
+
+	  fe_values.reinit(cell);
+	  //right_hand_side.vector_value_list(fe_values.get_quadrature_points(), rhs_values);
+	  
+	  for (unsigned int q = 0; q < n_q_points; ++q)
+	    {
+	      fe_values[u_component].get_function_gradients(damped_vector, old_solution_gradients_u);
+	      fe_values[u_component].get_function_values(damped_vector, old_solution_u);
+	      fe_values[v_component].get_function_gradients(damped_vector, old_solution_gradients_v);
+	      fe_values[v_component].get_function_values(damped_vector, old_solution_v);
+
+	      /* --------------------------------------------------*/
+	      // alpha + bete (u^(n)^2 + v^(n)^2), u/v-coef, rhs
+	      const double bulkTerm_coeff_rhs =
+		alpha_0 * (reduced_t - 1.0)
+		+ beta * (old_solution_u[q] * old_solution_u[q] + old_solution_v[q] * old_solution_v[q]);
+	      /* --------------------------------------------------*/
+	      
+	      for (unsigned int i = 0; i < dofs_per_cell; ++i)
+		{
+		  
+                cell_rhs(i) -=
+		  (((fe_values[u_component].gradient(i, q)   // ((\partial_m \phi_i
+		    * old_solution_gradients_u[q]           //   * \partial_m \psi^(n)
+		    * 0.5)                                  //   * 1/2)
+		   +                                        //  +
+		   (bulkTerm_coeff_rhs                      //  ((\alpha + \beta \psi^(n)2)
+		    * fe_values[u_component].value(i, q)      //   * \phi_i
+		    * old_solution_u[q])                   //   * \psi^(n)))
+		   +
+		   (fe_values[v_component].gradient(i, q)   // ((\partial_m \phi_i
+		    * old_solution_gradients_v[q]           //   * \partial_m \psi^(n)
+		    * 0.5)                                  //   * 1/2)
+		   +
+		   (bulkTerm_coeff_rhs                      //  ((\alpha + \beta \psi^(n)2)
+		    * fe_values[v_component].value(i, q)      //   * \phi_i
+		    * old_solution_v[q]))                   //   * \psi^(n)))		  
+		   * fe_values.JxW(q));                      // * dx
+		}
+	    }
+
+	  cell->get_dof_indices(local_dof_indices);
+	  constraints_newton_update.distribute_local_to_global(cell_rhs,
+						               local_dof_indices,
+						               residual_vector);
+       }
+
+    residual_vector.compress(VectorOperation::add);
+  }
+  
   template <int dim>
   void complexGL<dim>::solve()
   {
@@ -618,33 +726,73 @@ namespace complexGL_mpi
 
     // With that, we can finally set up the linear solver and solve the system:
     pcout << " system_rhs.l2_norm() is " << system_rhs.l2_norm() << std::endl;
-    SolverControl solver_control(system_matrix.m(),
-                                 1e-9 * system_rhs.l2_norm(),
+    SolverControl solver_control(5.0*system_matrix.m(),
+                                 1e-1 * system_rhs.l2_norm(),
 				 true);
 
     //SolverMinRes<LA::MPI::BlockVector> solver(solver_control);
     SolverFGMRES<LA::MPI::BlockVector> solver(solver_control);
 
-    LA::MPI::BlockVector distributed_solution(owned_partitioning, mpi_communicator);
+    LA::MPI::BlockVector distributed_newton_update(owned_partitioning, mpi_communicator);
 
     // what this .set_zero() is doing ?
     // AffineContraint::set_zero() set the values of all constrained DoFs in a vector to zero. 
-    constraints.set_zero(distributed_solution);
+    constraints_newton_update.set_zero(distributed_newton_update);
 
     solver.solve(system_matrix,
-                 distributed_solution,
+                 distributed_newton_update,
                  system_rhs,
                  preconditioner);
 
     pcout << "   Solved in " << solver_control.last_step() << " iterations."
           << std::endl;
 
-    constraints.distribute(distributed_solution);
+    constraints_newton_update.distribute(distributed_newton_update);
 
-    locally_relevant_newton_solution = distributed_solution;
+    locally_relevant_newton_solution = distributed_newton_update;
 
   }
 
+  template <int dim>
+  void complexGL<dim>::newton_iteration()
+  {
+    TimerOutput::Scope t(computing_timer, "newton_iteration");    
+    //local_solution += locally_relevant_newton_solution;
+
+    LA::MPI::BlockVector distributed_newton_update(owned_partitioning, mpi_communicator);
+    LA::MPI::BlockVector distributed_solution(owned_partitioning, mpi_communicator);
+    LA::MPI::BlockVector locally_relevant_damped_vector(owned_partitioning,
+							relevant_partitioning,
+							mpi_communicator);
+    double previous_residual = system_rhs.l2_norm();
+    // full length newton step:
+    //distributed_solution += distributed_newton_update;
+    for (unsigned int i = 0; i < 5; ++i)
+      {
+	const double alpha = std::pow(0.5, static_cast<double>(i));
+        distributed_newton_update = locally_relevant_newton_solution;
+        distributed_solution = local_solution;
+
+	// damped iteration:
+	distributed_solution.add(alpha, distributed_newton_update);
+
+	// assign un-ghosted solution to ghosted solution
+	locally_relevant_damped_vector = distributed_solution;
+
+	compute_residual(locally_relevant_damped_vector);
+	double current_residual = residual_vector.l2_norm();
+
+	pcout << " step length alpha is: " << alpha
+	      << ", residual is: " << current_residual
+	      << std::endl;
+	if (current_residual < previous_residual)
+	  break;
+      }
+
+    constraints_solution.distribute(distributed_solution);
+
+    local_solution = distributed_solution;
+  }
 
   template <int dim>
   void complexGL<dim>::refine_grid()
@@ -671,6 +819,10 @@ namespace complexGL_mpi
     newton_update_components_names.emplace_back("Re_du");
     newton_update_components_names.emplace_back("Im_dv");
 
+    std::vector<std::string> solution_components_names;
+    solution_components_names.emplace_back("Re_u");
+    solution_components_names.emplace_back("Im_v");
+
     DataOut<dim> data_out;
     data_out.attach_dof_handler(dof_handler);
     /*data_out.add_data_vector(locally_relevant_solution,
@@ -678,7 +830,9 @@ namespace complexGL_mpi
                              DataOut<dim>::type_dof_data,
                              data_component_interpretation);*/
     data_out.add_data_vector(locally_relevant_newton_solution, newton_update_components_names,
-			     DataOut<dim>::type_dof_data);    
+			     DataOut<dim>::type_dof_data);
+    data_out.add_data_vector(local_solution, solution_components_names,
+			     DataOut<dim>::type_dof_data);
 
 
     Vector<float> subdomain(triangulation.n_active_cells());
@@ -699,7 +853,8 @@ namespace complexGL_mpi
   {
     pcout << "Running using Trilinos." << std::endl;
 
-    const unsigned int n_cycles = 5;
+    const unsigned int n_cycles = 1;
+    const unsigned int n_iteration = 8;    
     for (unsigned int cycle = 0; cycle < n_cycles; ++cycle)
       {
         pcout << "Cycle " << cycle << ':' << std::endl;
@@ -708,22 +863,30 @@ namespace complexGL_mpi
           make_grid();
         else
           refine_grid();
+	
+        for (unsigned int iteration_loop = 0; iteration_loop <= n_iteration; ++iteration_loop)
+	  {
+	    if (iteration_loop == 0)
+             setup_system();
 
-        setup_system();
+            assemble_system();
+            solve();
+	    newton_iteration();
 
-        assemble_system();
-        solve();
+            if (Utilities::MPI::n_mpi_processes(mpi_communicator) <= 128)
+             {
+               TimerOutput::Scope t(computing_timer, "output");
+               //output_results(cycle);
+	       output_results(iteration_loop);
+             }
 
-        if (Utilities::MPI::n_mpi_processes(mpi_communicator) <= 128)
-          {
-            TimerOutput::Scope t(computing_timer, "output");
-            output_results(cycle);
-          }
+            computing_timer.print_summary();
+            computing_timer.reset();
 
-        computing_timer.print_summary();
-        computing_timer.reset();
+            pcout << std::endl;	    
+ 
+	  }
 
-        pcout << std::endl;
       }
   }
 } // namespace complexGL_mpi
