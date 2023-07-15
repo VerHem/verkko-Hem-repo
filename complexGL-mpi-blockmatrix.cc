@@ -277,7 +277,6 @@ namespace complexGL_mpi
     const double half_length = 10.0, inner_radius = 2.0;
     GridGenerator::hyper_cube_with_cylindrical_hole(triangulation,
 						    inner_radius, half_length);
-
     triangulation.refine_global(3);
     // Dirichlet pillars centers
     const Point<dim> p1(0., 0.);
@@ -395,7 +394,7 @@ namespace complexGL_mpi
 
     std::normal_distribution<double> gaussian_distr{3.0, 0.5}; // gaussian distribution with mean 10. STD 6.0
 
-    local_solution.reinit(owned_partitioning,
+    local_solution.reinit(/*owned_partitioning,*/
     			  relevant_partitioning,
     			  mpi_communicator,
     			  false);
@@ -408,6 +407,7 @@ namespace complexGL_mpi
 	//pcout << "local_solution *it gives: " << *it << std::endl;
       }
 
+    // AffineConstriant::distribute call
     constraints_solution.distribute(distrubuted_tmp_solution);
 
     local_solution = distrubuted_tmp_solution;
@@ -419,7 +419,7 @@ namespace complexGL_mpi
     
     /*---------------------------------------*/
     
-    locally_relevant_newton_solution.reinit(owned_partitioning,
+    locally_relevant_newton_solution.reinit(/*owned_partitioning,*/
                                             relevant_partitioning,
                                             mpi_communicator);
     system_rhs.reinit(owned_partitioning, mpi_communicator);
@@ -726,12 +726,16 @@ namespace complexGL_mpi
 
     // With that, we can finally set up the linear solver and solve the system:
     pcout << " system_rhs.l2_norm() is " << system_rhs.l2_norm() << std::endl;
-    SolverControl solver_control(5.0*system_matrix.m(),
+    SolverControl solver_control(10*system_matrix.m(),
                                  1e-1 * system_rhs.l2_norm(),
+				 /*((system_rhs.l2_norm() >= 1e-2) ? 1e-1 * system_rhs.l2_norm() : 1e-3), this cheap way can imporve accurcy, if update's accuracy is fixed, so does solution.*/ 
 				 true);
+
+    //SolverGMRES<LA::MPI::BlockVector>::AdditionalData gmres_adddata;
 
     //SolverMinRes<LA::MPI::BlockVector> solver(solver_control);
     SolverFGMRES<LA::MPI::BlockVector> solver(solver_control);
+    //SolverGMRES<LA::MPI::BlockVector> solver(solver_control, gmres_adddata);
 
     LA::MPI::BlockVector distributed_newton_update(owned_partitioning, mpi_communicator);
 
@@ -761,7 +765,7 @@ namespace complexGL_mpi
 
     LA::MPI::BlockVector distributed_newton_update(owned_partitioning, mpi_communicator);
     LA::MPI::BlockVector distributed_solution(owned_partitioning, mpi_communicator);
-    LA::MPI::BlockVector locally_relevant_damped_vector(owned_partitioning,
+    LA::MPI::BlockVector locally_relevant_damped_vector(/*owned_partitioning,*/
 							relevant_partitioning,
 							mpi_communicator);
     double previous_residual = system_rhs.l2_norm();
@@ -771,10 +775,13 @@ namespace complexGL_mpi
       {
 	const double alpha = std::pow(0.5, static_cast<double>(i));
         distributed_newton_update = locally_relevant_newton_solution;
-        distributed_solution = local_solution;
+        distributed_solution      = local_solution;
 
 	// damped iteration:
 	distributed_solution.add(alpha, distributed_newton_update);
+
+	// AffineConstraint::distribute call
+        constraints_solution.distribute(distributed_solution);	
 
 	// assign un-ghosted solution to ghosted solution
 	locally_relevant_damped_vector = distributed_solution;
@@ -782,14 +789,25 @@ namespace complexGL_mpi
 	compute_residual(locally_relevant_damped_vector);
 	double current_residual = residual_vector.l2_norm();
 
-	pcout << " step length alpha is: " << alpha
-	      << ", residual is: " << current_residual
+	pcout << " step length alpha is: "  << alpha
+	      << ", residual is: "          << current_residual
+	      << ", previous_residual is: " << previous_residual
 	      << std::endl;
 	if (current_residual < previous_residual)
-	  break;
+	  {
+	    pcout << " ohh! current_residual < previous_residual, we get better solution ! "
+	          << std::endl;
+  	    break;
+          }
+	else
+	  {
+            pcout << " haa! current_residual >= previous_residual, more line search ! "
+	          << std::endl;
+	  }
+	//previous_residual = current_residial;
       }
 
-    constraints_solution.distribute(distributed_solution);
+    //constraints_solution.distribute(distributed_solution);
 
     local_solution = distributed_solution;
   }
@@ -853,8 +871,8 @@ namespace complexGL_mpi
   {
     pcout << "Running using Trilinos." << std::endl;
 
-    const unsigned int n_cycles = 1;
-    const unsigned int n_iteration = 8;    
+    const unsigned int n_cycles    = 1;
+    const unsigned int n_iteration = 30;    
     for (unsigned int cycle = 0; cycle < n_cycles; ++cycle)
       {
         pcout << "Cycle " << cycle << ':' << std::endl;
@@ -866,28 +884,30 @@ namespace complexGL_mpi
 	
         for (unsigned int iteration_loop = 0; iteration_loop <= n_iteration; ++iteration_loop)
 	  {
+	    pcout << "iteration_loop: " << iteration_loop << std::endl;
 	    if (iteration_loop == 0)
-             setup_system();
+	      {setup_system();}
 
-            assemble_system();
-            solve();
-	    newton_iteration();
+             assemble_system();
+             solve();
+	     newton_iteration();
 
-            if (Utilities::MPI::n_mpi_processes(mpi_communicator) <= 128)
-             {
+             if (Utilities::MPI::n_mpi_processes(mpi_communicator) <= 128)
+              {
                TimerOutput::Scope t(computing_timer, "output");
                //output_results(cycle);
 	       output_results(iteration_loop);
-             }
+              }
 
-            computing_timer.print_summary();
-            computing_timer.reset();
+             computing_timer.print_summary();
+             computing_timer.reset();
 
-            pcout << std::endl;	    
+             pcout << std::endl;	    
  
 	  }
 
       }
+     computing_timer.print_summary();	
   }
 } // namespace complexGL_mpi
 
