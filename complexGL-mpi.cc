@@ -256,35 +256,73 @@ namespace complexGL_mpi
   template <int dim>
   void complexGL<dim>::make_grid()
   {
-    /*GridGenerator::hyper_cube(triangulation, -0.5, 1.5);
-      triangulation.refine_global(3);*/
-    const double half_length = 10.0, inner_radius = 2.0;
-    GridGenerator::hyper_cube_with_cylindrical_hole(triangulation,
+    if (dim==2)
+      {
+        const double half_length = 10.0, inner_radius = 2.0;
+        GridGenerator::hyper_cube_with_cylindrical_hole(triangulation,
 						    inner_radius, half_length);
-    triangulation.refine_global(3);
-    // Dirichlet pillars centers
-    const Point<dim> p1(0., 0.);
+        triangulation.refine_global(3);
+        // Dirichlet pillars centers
+        const Point<dim> p1(0., 0.);
 
-    for (const auto &cell : triangulation.cell_iterators())
-      for (const auto &face : cell->face_iterators())
-	{
-          const auto center = face->center();
-	  if (
-	      (std::fabs(center(0) - (-half_length)) < 1e-12)
-	       ||
-	      (std::fabs(center(0) - (half_length)) < 1e-12)
-	       ||
-	      (std::fabs(center(1) - (-half_length)) < 1e-12)
-	       ||
-	      (std::fabs(center(1) - (half_length)) < 1e-12)
-             )
-	    face->set_boundary_id(1);
+        for (const auto &cell : triangulation.cell_iterators())
+        for (const auto &face : cell->face_iterators())
+ 	  {
+            const auto center = face->center();
+	    if (
+	        (std::fabs(center(0) - (-half_length)) < 1e-12)
+	        ||
+	        (std::fabs(center(0) - (half_length)) < 1e-12)
+	        ||
+	        (std::fabs(center(1) - (-half_length)) < 1e-12)
+	        ||
+	        (std::fabs(center(1) - (half_length)) < 1e-12)
+               )
+	       face->set_boundary_id(1);
 
-	  if ((std::fabs(center.distance(p1) - inner_radius) <=0.15))
-	    face->set_boundary_id(0);
-	}
+	    if ((std::fabs(center.distance(p1) - inner_radius) <=0.15))
+	      face->set_boundary_id(0);
+	  }
 
-    triangulation.refine_global(4);
+        triangulation.refine_global(4);
+      }
+    else if (dim==3)
+      {
+	const double half_length = 10.0, inner_radius = 2.0, z_extension = 10.0;
+	GridGenerator::hyper_cube_with_cylindrical_hole(triangulation,
+							inner_radius, half_length, z_extension);
+
+	triangulation.refine_global(3);
+	// Dirichlet pillars centers
+	const Point<dim> p1(0., 0., 0.);
+
+	for (const auto &cell : triangulation.cell_iterators())
+	  for (const auto &face : cell->face_iterators())
+	    {
+	      const auto center = face->center();
+	      if (
+		  (std::fabs(center(0) - (-half_length)) < 1e-12)
+		                   ||
+		  (std::fabs(center(0) - (half_length)) < 1e-12)
+		                   ||
+		  (std::fabs(center(1) - (-half_length)) < 1e-12)
+		                   ||
+		  (std::fabs(center(1) - (half_length)) < 1e-12)
+		                   ||
+		  (std::fabs(center(2) - 0.0) < 1e-12)
+		                   ||
+		  (std::fabs(center(2) - (half_length)) < 1e-12)
+		  )
+		face->set_boundary_id(1);
+
+	      if (std::fabs(std::sqrt(center(0) * center(0)
+				      + center(1) * center(1))
+			    - inner_radius) <=0.15)
+		face->set_boundary_id(0);
+	    }
+
+	triangulation.refine_global(2);
+      }
   }
 
   template <int dim>
@@ -852,7 +890,7 @@ int main(int argc, char *argv[])
 
       Utilities::MPI::MPI_InitFinalize mpi_initialization(argc, argv, 1);
 
-      complexGL<2> GLsolver(2);
+      complexGL<3> GLsolver(2);
       GLsolver.run();
     }
   catch (std::exception &exc)
