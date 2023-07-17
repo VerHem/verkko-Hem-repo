@@ -97,15 +97,13 @@ namespace LA
 #include <fstream>
 #include <iostream>
 
-namespace complexGL_mpi
+namespace FemGL_mpi
 {
   using namespace dealii;
 
   /* ------------------------------------------------------------------------------------------
-   *
    * class template BoundaryValues inhereted from Function<dim>.
    * set the reference value_list as Zero Dirichilet BC.
-   *
    * ------------------------------------------------------------------------------------------
    */
   
@@ -114,16 +112,15 @@ namespace complexGL_mpi
   {
   public:
     BoundaryValues()
-      : Function<dim>(2) // tell base Function<dim> class I want a 2-components vector-valued function
+      : Function<dim>(18) // tell base Function<dim> class I want a 2-components vector-valued function
     {}
 
     virtual void vector_value(const Point<dim> & /*p*/,
                               Vector<double> &values) const override
     {
-      Assert(values.size() == 2, ExcDimensionMismatch(values.size(), 2));
-
-      values(0) = 0;
-      values(1) = 0;
+      Assert(values.size() == 18, ExcDimensionMismatch(values.size(), 18));
+      for (auto &value_of_index : values)                                                                              
+        value_of_index = 0.0;    
     }
 
     virtual void
@@ -140,9 +137,7 @@ namespace complexGL_mpi
 
   
   /* ------------------------------------------------------------------------------------------
-   *
    * Zero Dirichlet BCs of newton-update
-   *
    * ------------------------------------------------------------------------------------------
    */
   template <int dim>
@@ -150,16 +145,15 @@ namespace complexGL_mpi
   {
   public:
     DirichletBCs_newton_update()
-      : Function<dim>(2) // tell base Function<dim> class I want a 2-components vector-valued function
+      : Function<dim>(18) // tell base Function<dim> class I want a 2-components vector-valued function
     {}
 
     virtual void vector_value(const Point<dim> & /*p*/,
                               Vector<double> &values) const override
     {
-      Assert(values.size() == 2, ExcDimensionMismatch(values.size(), 2));
-
-      values(0) = 0;
-      values(1) = 0;
+      Assert(values.size() == 18, ExcDimensionMismatch(values.size(), 18));
+      for (auto &value_of_index : values)                                                                              
+        value_of_index = 0.0;    
     }
 
     virtual void
@@ -183,10 +177,10 @@ namespace complexGL_mpi
    */
     
   template <int dim>
-  class complexGL
+  class FemGL
   {
   public:
-    complexGL(unsigned int Q_degree);
+    FemGL(unsigned int Q_degree);
 
     void run();
 
@@ -200,6 +194,34 @@ namespace complexGL_mpi
     void refine_grid();
     void output_results(const unsigned int cycle) const;
 
+    // matrices constraction function for last step u, v tensors
+    void   vector_matrix_generator(const FEValues<dim>  &fe_values,
+				   /*const Vector<double> &vector_solution,*/
+				   const char &vector_flag,
+				   const unsigned int   q, const unsigned int   n_q_point,
+				   FullMatrix<double>   &u_matrix_at_q,
+				   FullMatrix<double>   &v_matrix_at_q);
+
+    // matrices constraction function for last step u, v tensors
+    void   grad_vector_matrix_generator(const FEValues<dim>  &fe_values,
+					/*const Vector<double> &vector_solution,*/
+					const char &vector_flag,
+					const unsigned int   q, const unsigned int   n_q_point,
+					std::vector<FullMatrix<double>> &grad_u_at_q,
+					std::vector<FullMatrix<double>> &grad_v_at_q);
+
+    // matrices construction function for shape function phi_u, phi_v at given local dof x and Gaussian q
+    void   phi_matrix_generator(const FEValues<dim> &fe_values,
+				const unsigned int  x, const unsigned int q,
+				FullMatrix<double>  &phi_u_at_x_q,
+				FullMatrix<double>  &phi_v_at_x_q);
+
+    // matrices construction function for gradient of shape function, grad_k_phi_u/v at local dof x and Gaussian q
+    void   grad_phi_matrix_container_generator(const FEValues<dim> &fe_values,
+					       const unsigned int x, const unsigned int q,
+					       std::vector<FullMatrix<double>> &container_grad_phi_u_x_q,
+					       std::vector<FullMatrix<double>> &container_grad_phi_v_x_q); 
+
     unsigned int  degree;
     
     MPI_Comm           mpi_communicator;
@@ -207,6 +229,15 @@ namespace complexGL_mpi
     FESystem<dim>                             fe;
     parallel::distributed::Triangulation<dim> triangulation;
     DoFHandler<dim>                           dof_handler;
+
+    /* container for FEValuesExtractors::scalar
+     * FEValuesExtractors, works for FEValues, FEFaceValues, FESubFaceValues
+     * for he3 GL eqn, 18 copies of scalar extractors are needed, they are
+     * defined by the matrix components they represents for.*/
+
+    std::vector<FEValuesExtractors::Scalar> components_u;
+    std::vector<FEValuesExtractors::Scalar> components_v;
+
 
     IndexSet locally_owned_dofs;
     IndexSet locally_relevant_dofs;
@@ -221,6 +252,7 @@ namespace complexGL_mpi
     LA::MPI::Vector       system_rhs;
     LA::MPI::Vector       residual_vector;
 
+    const double K1      = 0.5;
     const double alpha_0 = 2.0;
     const double beta    = 0.5;
 
@@ -228,22 +260,23 @@ namespace complexGL_mpi
 
     ConditionalOStream pcout;
     TimerOutput        computing_timer;
-    
-    
+        
   };
 
 
   template <int dim>
-  complexGL<dim>::complexGL(unsigned int Q_degree)
+  FemGL<dim>::FemGL(unsigned int Q_degree)
     : degree(Q_degree)
     , mpi_communicator(MPI_COMM_WORLD)
-    , fe(FE_Q<dim>(Q_degree), 2)
+    , fe(FE_Q<dim>(Q_degree), 18)
     , triangulation(mpi_communicator,
                     typename Triangulation<dim>::MeshSmoothing(
                       Triangulation<dim>::smoothing_on_refinement |
                       Triangulation<dim>::smoothing_on_coarsening))
     , dof_handler(triangulation)
-    , reduced_t(0.0)  
+    , reduced_t(0.0)
+    , components_u(9, FEValuesExtractors::Scalar())
+    , components_v(9, FEValuesExtractors::Scalar())
     , pcout(std::cout,
             (Utilities::MPI::this_mpi_process(mpi_communicator) == 0))
     , computing_timer(mpi_communicator,
@@ -254,7 +287,7 @@ namespace complexGL_mpi
 
 
   template <int dim>
-  void complexGL<dim>::make_grid()
+  void FemGL<dim>::make_grid()
   {
     if (dim==2)
       {
@@ -326,7 +359,7 @@ namespace complexGL_mpi
   }
 
   template <int dim>
-  void complexGL<dim>::setup_system()
+  void FemGL<dim>::setup_system()
   {
     TimerOutput::Scope t(computing_timer, "setup");
     dof_handler.distribute_dofs(fe);
@@ -390,7 +423,6 @@ namespace complexGL_mpi
     for (auto it = distrubuted_tmp_solution.begin(); it != distrubuted_tmp_solution.end(); ++it)
       {
 	*it = gaussian_distr(gen);
-	//pcout << "local_solution *it gives: " << *it << std::endl;
       }
 
     // AffineConstriant::distribute call
@@ -408,7 +440,7 @@ namespace complexGL_mpi
 
 
   template <int dim>
-  void complexGL<dim>::assemble_system()
+  void FemGL<dim>::assemble_system()
   {
     TimerOutput::Scope t(computing_timer, "assembly");
 
@@ -429,6 +461,55 @@ namespace complexGL_mpi
     FullMatrix<double> cell_matrix(dofs_per_cell, dofs_per_cell);
     Vector<double>     cell_rhs(dofs_per_cell);
 
+    /* --------------------------------------------------------------------------------
+     * matrices objects for old_solution_u, old_solution_v tensors,
+     * matrices objects for old_solution_gradients_u, old_solution_gradients_v.
+     * --------------------------------------------------------------------------------
+     */
+
+    FullMatrix<double> old_solution_u(3,3);
+    FullMatrix<double> old_solution_v(3,3);
+
+    // containers of old_solution_gradients_u(3,3), old_solution_gradient_v(3,3);
+    const FullMatrix<double>        identity (IdentityMatrix(3));
+    std::vector<FullMatrix<double>> grad_old_u_q(dim, identity);     // grad_phi_u_i container of gradient matrics, [0, dim-1]
+    std::vector<FullMatrix<double>> grad_old_v_q(dim, identity);     // grad_phi_v_i container of gradient matrics, [0, dim-1]
+
+    /* --------------------------------------------------------------------------------
+     * matrices objects for shape functions tensors phi^u, phi^v.    
+     * These matrices depend on local Dof and Gaussian quadrature point
+     * --------------------------------------------------------------------------------
+     */
+
+    FullMatrix<double> phi_u_i_q(3,3);
+    FullMatrix<double> phi_u_j_q(3,3);
+    FullMatrix<double> phi_v_i_q(3,3);
+    FullMatrix<double> phi_v_j_q(3,3);
+
+    //types::global_dof_index spacedim = (dim == 2)? 2 : 3;              // using  size_type = types::global_dof_index
+    std::vector<FullMatrix<double>> grad_phi_u_i_q(dim, identity);     // grad_phi_u_i container of gradient matrics, [0, dim-1]
+    std::vector<FullMatrix<double>> grad_phi_v_i_q(dim, identity);     // grad_phi_v_i container of gradient matrics, [0, dim-1]
+    std::vector<FullMatrix<double>> grad_phi_u_j_q(dim, identity);     // grad_phi_u_j container of gradient matrics, [0, dim-1]
+    std::vector<FullMatrix<double>> grad_phi_v_j_q(dim, identity);     // grad_phi_v_j container of gradient matrics, [0, dim-1]
+
+    /* --------------------------------------------------------------------------------
+     * matrics for free energy terms: gradient terms, alpha-term, beta-term,
+     * they are products of phi tensors or u/v tensors.
+     * --------------------------------------------------------------------------------
+     */
+    FullMatrix<double>              phi_u_phi_ut(3,3), phi_v_phi_vt(3,3);
+    FullMatrix<double>              old_u_old_ut(3,3), old_v_old_vt(3,3);
+
+    FullMatrix<double>              old_u_phi_ut_i_q(3,3),
+                                    old_u_phi_ut_j_q(3,3),
+                                    old_v_phi_vt_i_q(3,3),
+                                    old_v_phi_vt_j_q(3,3);
+
+    FullMatrix<double>              K1grad_matrics_sum_i_j_q(3,3),
+                                    rhs_K1grad_matrics_sum_i_q(3,3);                // matrix for storing K1 gradients before trace
+    FullMatrix<double>              phi_phit_matrics_i_j_q(3,3);
+    /*--------------------------------------------------------------------------------*/
+
     /* --------------------------------------------------*/
     //std::vector<Tensor<2, dim>> grad_phi_u(dofs_per_cell);
     //std::vector<double>         div_phi_u(dofs_per_cell);
@@ -438,12 +519,12 @@ namespace complexGL_mpi
     /*--------------------------------------------------*/
     /* >>>>>>>>>>  old solution for r.h.s   <<<<<<<<<<< */
     // vector to holding u^n, grad u^n on cell:
-    std::vector<Tensor<1, dim>> old_solution_gradients_u(n_q_points);
+    /*std::vector<Tensor<1, dim>> old_solution_gradients_u(n_q_points);
     std::vector<double>         old_solution_u(n_q_points);
 
     // vector to holding v^n, grad v^n on cell:
     std::vector<Tensor<1, dim>> old_solution_gradients_v(n_q_points);
-    std::vector<double>         old_solution_v(n_q_points);
+    std::vector<double>         old_solution_v(n_q_points);*/
     /* --------------------------------------------------*/    
 
     /*std::vector<types::global_dof_index> local_dof_indices(dofs_per_cell);
@@ -451,8 +532,11 @@ namespace complexGL_mpi
     const FEValuesExtractors::Scalar     pressure(dim);*/
 
     // FEValuesExtractors, works for FEValues, FEFaceValues, FESubFaceValues
-    const FEValuesExtractors::Scalar u_component(0);
-    const FEValuesExtractors::Scalar v_component(1);
+    //const FEValuesExtractors::Scalar u_component(0);
+    //const FEValuesExtractors::Scalar v_component(1);
+    
+    // vector-flag for old_soluttion
+    char flag_solution = 's';
 
     for (const auto &cell : dof_handler.active_cell_iterators())
       if (cell->is_locally_owned())
@@ -473,102 +557,121 @@ namespace complexGL_mpi
 		  phi_p[k]      = fe_values[pressure].value(k, q);
 		  }*/
               /*--------------------------------------------------*/
+	      
+	      /*--------------------------------------------------*/
+	      /*         u, v matrices cooking up                 */
+	      /*--------------------------------------------------*/
+	      old_solution_u = 0.0;
+	      old_solution_v = 0.0;
 
-	      /* FeValuesViews[Extractor] returns on-cell values,
-	       * gradients of unkown functions corresponding to
-	       * given indexed component through Extractor.*/
-	      fe_values[u_component].get_function_gradients(local_solution, old_solution_gradients_u);
-	      fe_values[u_component].get_function_values(local_solution, old_solution_u);
-	      fe_values[v_component].get_function_gradients(local_solution, old_solution_gradients_v);
-	      fe_values[v_component].get_function_values(local_solution, old_solution_v);
+	      for (auto it = grad_old_u_q.begin(); it != grad_old_u_q.end(); ++it) {*it = 0.0;}
+	      for (auto it = grad_old_v_q.begin(); it != grad_old_v_q.end(); ++it) {*it = 0.0;}
 
-	      /* --------------------------------------------------*/
-              // alpha + bete (3*u^(n)^2 + v^{n}^2), u-coeff, system_matrix
-	      const double bulkTerm_u_coeff_sysMatr =
-		alpha_0 * (reduced_t - 1.0)
-		+ (beta * (3.0 * old_solution_u[q] * old_solution_u[q] + old_solution_v[q] * old_solution_v[q]));
+	      vector_matrix_generator(fe_values, flag_solution, q, n_q_points, old_solution_u, old_solution_v);
+	      grad_vector_matrix_generator(fe_values, flag_solution, q, n_q_points, grad_old_u_q, grad_old_v_q);
 
-	      // alpha + bete (3*v^(n)^2 + u^{n}^2), v-coeff, system_matrix
-	      const double bulkTerm_v_coeff_sysMatr =
-		alpha_0 * (reduced_t - 1.0)
-		+ (beta * (3.0 * old_solution_v[q] * old_solution_v[q] + old_solution_u[q] * old_solution_u[q]));
+	      // u.ut and v.vt
+	      old_u_old_ut   = 0.0;
+	      old_v_old_vt   = 0.0;
 
-	      const double bulkTerm_uv_coeff_sysMatr = (2.0 * beta * old_solution_v[q] * old_solution_u[q]);
-
-	      // alpha + bete (u^(n)^2 + v^(n)^2), u/v-coef, rhs
-	      const double bulkTerm_coeff_rhs =
-		alpha_0 * (reduced_t - 1.0)
-		+ beta * (old_solution_u[q] * old_solution_u[q] + old_solution_v[q] * old_solution_v[q]);
-	      /* --------------------------------------------------*/
+	      old_solution_u.mTmult(old_u_old_ut, old_solution_u);
+	      old_solution_v.mTmult(old_v_old_vt, old_solution_v);
+	      /*--------------------------------------------------*/            
 	      
 	      for (unsigned int i = 0; i < dofs_per_cell; ++i)
 		{
 		  for (unsigned int j = 0; j < dofs_per_cell; ++j)
 		    {
-		      cell_matrix(i, j) +=
-			/*(viscosity *
-			 scalar_product(grad_phi_u[i], grad_phi_u[j]) -
-			 div_phi_u[i] * phi_p[j] - phi_p[i] * div_phi_u[j]) *
-			 fe_values.JxW(q);*/
-          	    (((fe_values[u_component].gradient(i, q)       // ((\partial_q \phi^u_i
-	   	       * fe_values[u_component].gradient(j, q)     //   \partial_q \phi^u_j
-		       * 0.5)                                      //   * 1/2)
-		     +                                 //  +
-		      (bulkTerm_u_coeff_sysMatr                //  ((\alpha + \beta (3 u^(n)^2 + v^(n)^2)
-		       * fe_values[u_component].value(i, q)    //    * \phi_i
-		       * fe_values[u_component].value(j, q))  //    * \phi_j))
-                     +
- 		      (bulkTerm_uv_coeff_sysMatr
-		       * fe_values[v_component].value(i, q)
-		       * fe_values[u_component].value(j, q))
-		     +
-		      (fe_values[v_component].gradient(i, q)       // ((\partial_q \phi^v_i
-		       * fe_values[v_component].gradient(j, q)     //   \partial_q \phi^v_j
-		       * 0.5)                                      //   * 1/2)
-                     +
-    		      (bulkTerm_v_coeff_sysMatr                //  ((\alpha + \beta (3 u^(n)^2 + v^(n)^2)
-		       * fe_values[v_component].value(i, q)    //    * \phi_i
-		       * fe_values[v_component].value(j, q))  //    * \phi_j))
-		     +
-		      (bulkTerm_uv_coeff_sysMatr
-		       * fe_values[u_component].value(i, q)
-		       * fe_values[v_component].value(j, q)))
-		    * fe_values.JxW(q));                    // * dx
+		      /*--------------------------------------------------*/
+		      /*     phi^u, phi^v matrices cooking up             */
+		      /*     grad_u, grad_v matrics cookup                */
+		      /*--------------------------------------------------*/
 
+		      phi_u_i_q = 0.0; phi_u_j_q = 0.0;
+		      phi_v_i_q = 0.0; phi_v_j_q = 0.0;
+
+		      for (auto it = grad_phi_u_i_q.begin(); it != grad_phi_u_i_q.end(); ++it) {*it = 0.0;}
+		      for (auto it = grad_phi_v_i_q.begin(); it != grad_phi_v_i_q.end(); ++it) {*it = 0.0;}
+		      for (auto it = grad_phi_u_j_q.begin(); it != grad_phi_u_j_q.end(); ++it) {*it = 0.0;}
+		      for (auto it = grad_phi_v_j_q.begin(); it != grad_phi_v_j_q.end(); ++it) {*it = 0.0;}
+
+		      phi_matrix_generator(fe_values, i, q, phi_u_i_q, phi_v_i_q);
+		      phi_matrix_generator(fe_values, j, q, phi_u_j_q, phi_v_j_q);
+
+		      grad_phi_matrix_container_generator(fe_values, i, q, grad_phi_u_i_q, grad_phi_v_i_q);
+		      grad_phi_matrix_container_generator(fe_values, j, q, grad_phi_u_j_q, grad_phi_v_j_q);
+		      /*--------------------------------------------------*/
+		      phi_u_phi_ut        = 0.0;
+		      phi_v_phi_vt        = 0.0;
+
+		      old_u_phi_ut_i_q    = 0.0;
+		      old_u_phi_ut_j_q    = 0.0;
+		      old_v_phi_vt_i_q    = 0.0;
+		      old_v_phi_vt_j_q    = 0.0;
+
+		      K1grad_matrics_sum_i_j_q = 0.0;
+		      phi_phit_matrics_i_j_q   = 0.0;
+		      /*--------------------------------------------------*/
+
+		      /* --------------------------------------------------
+		       * conduct matrices multiplacations
+		       * --------------------------------------------------
+		       */
+		      // phi_u_phi_ut_ijq, phi_v_phi_vt_ijq matrics
+		      phi_u_i_q.mTmult(phi_u_phi_ut, phi_u_j_q);
+		      phi_v_i_q.mTmult(phi_v_phi_vt, phi_v_j_q);
+
+		      // old_u/v_phi_ut/vt_i/jq matrics
+		      old_solution_u.mTmult(old_u_phi_ut_i_q, phi_u_i_q);
+		      old_solution_u.mTmult(old_u_phi_ut_j_q, phi_u_j_q);
+		      old_solution_v.mTmult(old_v_phi_vt_i_q, phi_v_i_q);
+		      old_solution_v.mTmult(old_v_phi_vt_j_q, phi_v_j_q);
+
+		      // alpha terms matrics
+		      phi_phit_matrics_i_j_q.add(1.0, phi_u_phi_ut, 1.0, phi_v_phi_vt);
+
+		      for (unsigned int k = 0; k < dim; ++k)
+			{
+			  grad_phi_u_i_q[k].mTmult(K1grad_matrics_sum_i_j_q, grad_phi_u_j_q[k], true);
+			  grad_phi_v_i_q[k].mTmult(K1grad_matrics_sum_i_j_q, grad_phi_v_j_q[k], true);
+			}
+		      
+		      /*--------------------------------------------------*/		          
+		      
+		      cell_matrix(i,j) +=
+			(((K1
+			   * K1grad_matrics_sum_i_j_q.trace())
+			  +(alpha_0
+			    * (t-1.0)
+			    * phi_phit_matrics_i_j_q.trace())
+			  +(beta
+			    * ((old_u_old_ut.trace() + old_v_old_vt.trace()) * phi_phit_matrics_i_j_q.trace()
+			       + 2.0 * ((old_u_phi_ut_i_q.trace() + old_v_phi_vt_i_q.trace())
+					* (old_u_phi_ut_j_q.trace() + old_v_phi_vt_j_q.trace()))))
+			  ) * fe_values.JxW(q));
+		    } // cell_matrix ends here
+
+		  rhs_K1grad_matrics_sum_i_q = 0.0;
+		  for (unsigned int k = 0; k < dim; ++k)
+		    {
+		      grad_old_u_q[k].mTmult(rhs_K1grad_matrics_sum_i_q, grad_phi_u_i_q[k], true);
+		      grad_old_v_q[k].mTmult(rhs_K1grad_matrics_sum_i_q, grad_phi_v_i_q[k], true);
 		    }
 
-		  /*const unsigned int component_i =
-		      fe.system_to_component_index(i).first;
-		  cell_rhs(i) += fe_values.shape_value(i, q) *
-		  rhs_values[q](component_i) * fe_values.JxW(q);*/
-                cell_rhs(i) -=
-		  (((fe_values[u_component].gradient(i, q)   // ((\partial_m \phi_i
-		    * old_solution_gradients_u[q]           //   * \partial_m \psi^(n)
-		    * 0.5)                                  //   * 1/2)
-		   +                                        //  +
-		   (bulkTerm_coeff_rhs                      //  ((\alpha + \beta \psi^(n)2)
-		    * fe_values[u_component].value(i, q)      //   * \phi_i
-		    * old_solution_u[q])                   //   * \psi^(n)))
-		   +
-		   (fe_values[v_component].gradient(i, q)   // ((\partial_m \phi_i
-		    * old_solution_gradients_v[q]           //   * \partial_m \psi^(n)
-		    * 0.5)                                  //   * 1/2)
-		   +
-		   (bulkTerm_coeff_rhs                      //  ((\alpha + \beta \psi^(n)2)
-		    * fe_values[v_component].value(i, q)      //   * \phi_i
-		    * old_solution_v[q]))                   //   * \psi^(n)))		  
-		   * fe_values.JxW(q));                      // * dx
-		  /*((		                                           //  +
-		   (bulkTerm_coeff_rhs                      //  ((\alpha + \beta \psi^(n)2)
-		    * fe_values[u_component].value(i, q)      //   * \phi_i
-		    * 1.0)                   //   * \psi^(n)))
-		   +
-		   (bulkTerm_coeff_rhs                      //  ((\alpha + \beta \psi^(n)2)
-		    * fe_values[v_component].value(i, q)      //   * \phi_i
-		    * 0.5))                   //   * \psi^(n)))		  
-		    * fe_values.JxW(q));*/
-		}
-	    }
+		  cell_rhs(i) -=
+		    (((K1
+		       * rhs_K1grad_matrics_sum_i_q.trace())
+		      +(alpha_0
+			* (t-1.0)
+			* (old_u_phi_ut_i_q.trace()
+			   + old_v_phi_vt_i_q.trace()))
+		      +(beta
+			* (old_u_old_ut.trace() + old_v_old_vt.trace())
+			* (old_u_phi_ut_i_q.trace() + old_v_phi_vt_i_q.trace()))
+		      ) * fe_values.JxW(q));                      // * dx
+
+		} // i-index ends here
+	    } // q-loop ends at here
 
 
 	  cell->get_dof_indices(local_dof_indices);
@@ -585,7 +688,7 @@ namespace complexGL_mpi
   }
 
   template <int dim>
-  void complexGL<dim>::compute_residual(const LA::MPI::Vector &damped_vector)
+  void FemGL<dim>::compute_residual(const LA::MPI::Vector &damped_vector)
   {
     TimerOutput::Scope t(computing_timer, "compute_residual");
 
@@ -604,21 +707,49 @@ namespace complexGL_mpi
 
     Vector<double>     cell_rhs(dofs_per_cell);
 
-    /*--------------------------------------------------*/
-    /* >>>>>>>>>>  old solution for r.h.s   <<<<<<<<<<< */
-    // vector to holding u^n, grad u^n on cell:
-    std::vector<Tensor<1, dim>> old_solution_gradients_u(n_q_points);
-    std::vector<double>         old_solution_u(n_q_points);
+    /* --------------------------------------------------------------------------------
+     * matrices objects for old_solution_u, old_solution_v tensors,
+     * matrices objects for old_solution_gradients_u, old_solution_gradients_v.
+     * --------------------------------------------------------------------------------
+     */
 
-    // vector to holding v^n, grad v^n on cell:
-    std::vector<Tensor<1, dim>> old_solution_gradients_v(n_q_points);
-    std::vector<double>         old_solution_v(n_q_points);
-    /* --------------------------------------------------*/    
+    FullMatrix<double> old_solution_u(3,3);
+    FullMatrix<double> old_solution_v(3,3);
 
-    // FEValuesExtractors, works for FEValues, FEFaceValues, FESubFaceValues
-    const FEValuesExtractors::Scalar u_component(0);
-    const FEValuesExtractors::Scalar v_component(1);
+    // containers of old_solution_gradients_u(3,3), old_solution_gradient_v(3,3);
+    const FullMatrix<double>        identity (IdentityMatrix(3));
+    std::vector<FullMatrix<double>> grad_old_u_q(dim, identity);     // grad_phi_u_i container of gradient matrics, [0, dim-1]
+    std::vector<FullMatrix<double>> grad_old_v_q(dim, identity);     // grad_phi_v_i container of gradient matrics, [0, dim-1]
 
+    /* --------------------------------------------------------------------------------
+     * matrices objects for shape functions tensors phi^u, phi^v.    
+     * These matrices depend on local Dof and Gaussian quadrature point
+     * --------------------------------------------------------------------------------
+     */
+
+    FullMatrix<double> phi_u_i_q(3,3);
+    FullMatrix<double> phi_v_i_q(3,3);
+
+    //types::global_dof_index spacedim = (dim == 2)? 2 : 3;              // using  size_type = types::global_dof_index
+    std::vector<FullMatrix<double>> grad_phi_u_i_q(dim, identity);     // grad_phi_u_i container of gradient matrics, [0, dim-1]
+    std::vector<FullMatrix<double>> grad_phi_v_i_q(dim, identity);     // grad_phi_v_i container of gradient matrics, [0, dim-1]
+
+    /* --------------------------------------------------------------------------------
+     * matrics for free energy terms: gradient terms, alpha-term, beta-term,
+     * they are products of phi tensors or u/v tensors.
+     * --------------------------------------------------------------------------------
+     */
+    FullMatrix<double>              phi_u_phi_ut(3,3), phi_v_phi_vt(3,3);
+    FullMatrix<double>              old_u_old_ut(3,3), old_v_old_vt(3,3);
+
+    FullMatrix<double>              old_u_phi_ut_i_q(3,3),
+                                    old_v_phi_vt_i_q(3,3);
+
+    FullMatrix<double>              rhs_K1grad_matrics_sum_i_q(3,3); // matrix for storing K1 gradients before trace
+    /*--------------------------------------------------------------------------------*/
+
+    char flag_solution = 's';
+    
     for (const auto &cell : dof_handler.active_cell_iterators())
       if (cell->is_locally_owned())
 	{
@@ -629,52 +760,94 @@ namespace complexGL_mpi
 	  
 	  for (unsigned int q = 0; q < n_q_points; ++q)
 	    {
-	      fe_values[u_component].get_function_gradients(damped_vector, old_solution_gradients_u);
-	      fe_values[u_component].get_function_values(damped_vector, old_solution_u);
-	      fe_values[v_component].get_function_gradients(damped_vector, old_solution_gradients_v);
-	      fe_values[v_component].get_function_values(damped_vector, old_solution_v);
 
-	      /* --------------------------------------------------*/
-	      // alpha + bete (u^(n)^2 + v^(n)^2), u/v-coef, rhs
-	      const double bulkTerm_coeff_rhs =
-		alpha_0 * (reduced_t - 1.0)
-		+ beta * (old_solution_u[q] * old_solution_u[q] + old_solution_v[q] * old_solution_v[q]);
-	      /* --------------------------------------------------*/
+	      /*--------------------------------------------------*/
+	      /*         u, v matrices cooking up                 */
+	      /*--------------------------------------------------*/
+	      old_solution_u = 0.0;
+	      old_solution_v = 0.0;
+
+	      for (auto it = grad_old_u_q.begin(); it != grad_old_u_q.end(); ++it) {*it = 0.0;}
+	      for (auto it = grad_old_v_q.begin(); it != grad_old_v_q.end(); ++it) {*it = 0.0;}
+
+	      vector_matrix_generator(fe_values, flag_solution, q, n_q_points, old_solution_u, old_solution_v);
+	      grad_vector_matrix_generator(fe_values, flag_solution, q, n_q_points, grad_old_u_q, grad_old_v_q);
+
+	      // u.ut and v.vt
+	      old_u_old_ut   = 0.0;
+	      old_v_old_vt   = 0.0;
+
+	      old_solution_u.mTmult(old_u_old_ut, old_solution_u);
+	      old_solution_v.mTmult(old_v_old_vt, old_solution_v);
+	      /*--------------------------------------------------*/            
 	      
 	      for (unsigned int i = 0; i < dofs_per_cell; ++i)
 		{
+		  /*--------------------------------------------------*/
+		  /*     phi^u, phi^v matrices cooking up             */
+		  /*     grad_u, grad_v matrics cookup                */
+		  /*--------------------------------------------------*/
+
+		  phi_u_i_q = 0.0; 
+		  phi_v_i_q = 0.0; 
+
+		  for (auto it = grad_phi_u_i_q.begin(); it != grad_phi_u_i_q.end(); ++it) {*it = 0.0;}
+		  for (auto it = grad_phi_v_i_q.begin(); it != grad_phi_v_i_q.end(); ++it) {*it = 0.0;}
+
+		  phi_matrix_generator(fe_values, i, q, phi_u_i_q, phi_v_i_q);
+
+		  grad_phi_matrix_container_generator(fe_values, i, q, grad_phi_u_i_q, grad_phi_v_i_q);
+
+		  /*--------------------------------------------------*/
+		  old_u_phi_ut_i_q    = 0.0;
+		  old_v_phi_vt_i_q    = 0.0;
+		  /*--------------------------------------------------*/
+
+		  /* --------------------------------------------------
+		   * conduct matrices multiplacations
+		   * --------------------------------------------------
+		   */
+
+		  // old_u/v_phi_ut/vt_i/jq matrics
+		  old_solution_u.mTmult(old_u_phi_ut_i_q, phi_u_i_q);
+		  old_solution_v.mTmult(old_v_phi_vt_i_q, phi_v_i_q);
+
+		  // alpha terms matrics
+		  phi_phit_matrics_i_j_q.add(1.0, phi_u_phi_ut, 1.0, phi_v_phi_vt);
 		  
-                cell_rhs(i) -=
-		  (((fe_values[u_component].gradient(i, q)   // ((\partial_m \phi_i
-		    * old_solution_gradients_u[q]           //   * \partial_m \psi^(n)
-		    * 0.5)                                  //   * 1/2)
-		   +                                        //  +
-		   (bulkTerm_coeff_rhs                      //  ((\alpha + \beta \psi^(n)2)
-		    * fe_values[u_component].value(i, q)      //   * \phi_i
-		    * old_solution_u[q])                   //   * \psi^(n)))
-		   +
-		   (fe_values[v_component].gradient(i, q)   // ((\partial_m \phi_i
-		    * old_solution_gradients_v[q]           //   * \partial_m \psi^(n)
-		    * 0.5)                                  //   * 1/2)
-		   +
-		   (bulkTerm_coeff_rhs                      //  ((\alpha + \beta \psi^(n)2)
-		    * fe_values[v_component].value(i, q)      //   * \phi_i
-		    * old_solution_v[q]))                   //   * \psi^(n)))		  
-		   * fe_values.JxW(q));                      // * dx
-		}
-	    }
+		  rhs_K1grad_matrics_sum_i_q = 0.0;
+		  for (unsigned int k = 0; k < dim; ++k)
+		    {
+		      grad_old_u_q[k].mTmult(rhs_K1grad_matrics_sum_i_q, grad_phi_u_i_q[k], true);
+		      grad_old_v_q[k].mTmult(rhs_K1grad_matrics_sum_i_q, grad_phi_v_i_q[k], true);
+		    }
+
+		  cell_rhs(i) -=
+		    (((K1
+		       * rhs_K1grad_matrics_sum_i_q.trace())
+		      +(alpha_0
+			* (t-1.0)
+			* (old_u_phi_ut_i_q.trace()
+			   + old_v_phi_vt_i_q.trace()))
+		      +(beta
+			* (old_u_old_ut.trace() + old_v_old_vt.trace())
+			* (old_u_phi_ut_i_q.trace() + old_v_phi_vt_i_q.trace()))
+		      ) * fe_values.JxW(q));                      // * dx
+
+		} // i-index ends here
+	    } // q-loop ends at here
 
 	  cell->get_dof_indices(local_dof_indices);
 	  constraints_newton_update.distribute_local_to_global(cell_rhs,
 						               local_dof_indices,
 						               residual_vector);
-       }
+	}
 
     residual_vector.compress(VectorOperation::add);
   }
   
   template <int dim>
-  void complexGL<dim>::solve()
+  void FemGL<dim>::solve()
   {
     TimerOutput::Scope t(computing_timer, "solve");
 
@@ -729,7 +902,7 @@ namespace complexGL_mpi
   }
 
   template <int dim>
-  void complexGL<dim>::newton_iteration()
+  void FemGL<dim>::newton_iteration()
   {
     TimerOutput::Scope t(computing_timer, "newton_iteration");    
 
@@ -778,7 +951,7 @@ namespace complexGL_mpi
   }
 
   template <int dim>
-  void complexGL<dim>::refine_grid()
+  void FemGL<dim>::refine_grid()
   {
     TimerOutput::Scope t(computing_timer, "refine");
 
@@ -788,35 +961,56 @@ namespace complexGL_mpi
 
 
   template <int dim>
-  void complexGL<dim>::output_results(const unsigned int cycle) const
+  void FemGL<dim>::output_results(const unsigned int cycle) const
   {
 
-    /*std::vector<std::string> solution_names(dim, "velocity");
-    solution_names.emplace_back("pressure");
-    std::vector<DataComponentInterpretation::DataComponentInterpretation>
-      data_component_interpretation(
-        dim, DataComponentInterpretation::component_is_part_of_vector);
-    data_component_interpretation.push_back(
-    DataComponentInterpretation::component_is_scalar);*/
     std::vector<std::string> newton_update_components_names;
-    newton_update_components_names.emplace_back("Re_du");
-    newton_update_components_names.emplace_back("Im_dv");
+    newton_update_components_names.emplace_back("du_11");
+    newton_update_components_names.emplace_back("du_12");
+    newton_update_components_names.emplace_back("du_13");
+    newton_update_components_names.emplace_back("du_21");
+    newton_update_components_names.emplace_back("du_22");
+    newton_update_components_names.emplace_back("du_23");
+    newton_update_components_names.emplace_back("du_31");
+    newton_update_components_names.emplace_back("du_32");
+    newton_update_components_names.emplace_back("du_33");
+    newton_update_components_names.emplace_back("dv_11");
+    newton_update_components_names.emplace_back("dv_12");
+    newton_update_components_names.emplace_back("dv_13");
+    newton_update_components_names.emplace_back("dv_21");
+    newton_update_components_names.emplace_back("dv_22");
+    newton_update_components_names.emplace_back("dv_23");
+    newton_update_components_names.emplace_back("dv_31");
+    newton_update_components_names.emplace_back("dv_32");
+    newton_update_components_names.emplace_back("dv_33");
 
     std::vector<std::string> solution_components_names;
-    solution_components_names.emplace_back("Re_u");
-    solution_components_names.emplace_back("Im_v");
-
+    solution_components_names.emplace_back("u_11");
+    solution_components_names.emplace_back("u_12");
+    solution_components_names.emplace_back("u_13");
+    solution_components_names.emplace_back("u_21");
+    solution_components_names.emplace_back("u_22");
+    solution_components_names.emplace_back("u_23");
+    solution_components_names.emplace_back("u_31");
+    solution_components_names.emplace_back("u_32");
+    solution_components_names.emplace_back("u_33");
+    solution_components_names.emplace_back("v_11");
+    solution_components_names.emplace_back("v_12");
+    solution_components_names.emplace_back("v_13");
+    solution_components_names.emplace_back("v_21");
+    solution_components_names.emplace_back("v_22");
+    solution_components_names.emplace_back("v_23");
+    solution_components_names.emplace_back("v_31");
+    solution_components_names.emplace_back("v_32");
+    solution_components_names.emplace_back("v_33");
+    
     DataOut<dim> data_out;
     data_out.attach_dof_handler(dof_handler);
-    /*data_out.add_data_vector(locally_relevant_solution,
-                             solution_names,
-                             DataOut<dim>::type_dof_data,
-                             data_component_interpretation);*/
+
     data_out.add_data_vector(locally_relevant_newton_solution, newton_update_components_names,
 			     DataOut<dim>::type_dof_data);
     data_out.add_data_vector(local_solution, solution_components_names,
 			     DataOut<dim>::type_dof_data);
-
 
     Vector<float> subdomain(triangulation.n_active_cells());
     for (unsigned int i = 0; i < subdomain.size(); ++i)
@@ -829,10 +1023,8 @@ namespace complexGL_mpi
       "./", "solution", cycle, mpi_communicator, 2);
   }
 
-
-
   template <int dim>
-  void complexGL<dim>::run()
+  void FemGL<dim>::run()
   {
     pcout << "Running using Trilinos." << std::endl;
 
@@ -877,8 +1069,131 @@ namespace complexGL_mpi
       }
      computing_timer.print_summary();	
   }
-} // namespace complexGL_mpi
 
+  /* --------------------------------------------------------------------------------
+   * old_solution_matrix_generator
+   * phi_matrix_generator
+   * grad_phi_matrix_container_generator
+   * --------------------------------------------------------------------------------
+   */
+  template <int dim>
+  void FemGL<dim>::vector_matrix_generator(const FEValues<dim>  &fe_values,
+					   const char &vector_flag,
+					   const unsigned int   q, const unsigned int n_q_points,
+					   FullMatrix<double>   &u_matrix_at_q,
+					   FullMatrix<double>   &v_matrix_at_q)
+  {
+    LA::MPI::Vector vector_solution(locally_relevant_dofs, mpi_communicator);
+    switch (vector_flag)
+      {
+      case 's':
+	vector_solution = locally_solution; break;
+      case 'd':
+	vector_solution = locally_relevant_newton_solution; break;
+      }
+    // vector to holding u_mu_i^n, grad u_mu_i^n on cell:
+    /*std::vector<Tensor<1, dim>> old_solution_gradients_u11(n_q_points);
+      std::vector<double>         old_solution_u11(n_q_points);*/
+    std::vector<double>                  vector_solution_uxx(n_q_points),
+      vector_solution_vxx(n_q_points);
+
+    for (unsigned int comp_index = 0; comp_index <= 8; ++comp_index)
+      {
+	fe_values[components_u[comp_index]].get_function_values(vector_solution, vector_solution_uxx);
+	fe_values[components_v[comp_index]].get_function_values(vector_solution, vector_solution_vxx);
+
+	u_matrix_at_q.set(comp_index/3u, comp_index%3u, vector_solution_uxx[q]);
+	v_matrix_at_q.set(comp_index/3u, comp_index%3u, vector_solution_vxx[q]);
+
+      }
+    /*fe_values[v33_component].get_function_gradients(old_solution, old_solution_gradients_v33);
+      fe_values[v33_component].get_function_values(old_solution, old_solution_v33);*/
+    /*--------------------------------------------------*/
+    // old_u_matrix_at_q.set(0,0,old_solution_u_container[0][q]);
+    // old_v_matrix_at_q.set(2,2,old_solution_v_container[8][q]);
+    // /*--------------------------------------------------*/
+    /* for (unsigned int k = 0; k < dim; ++k)
+      {
+      grad_old_u[k].set(0,0,old_solution_gradients_u11[q][k]);
+      grad_old_v[k].set(2,2,old_solution_gradients_v33[q][k]);
+      }*/
+  }
+
+  template <int dim>
+  void FemGL<dim>::grad_vector_matrix_generator(const FEValues<dim>  &fe_values,
+							const char &vector_flag,
+							const unsigned int q, const unsigned int n_q_points,
+							std::vector<FullMatrix<double>> &grad_u_at_q,
+							std::vector<FullMatrix<double>> &grad_v_at_q)
+  {
+    Vector<double> vector_solution;
+    switch (vector_flag)
+      {
+      case 's':
+	vector_solution = locally_solution; break;
+      case 'd':
+	vector_solution = locally_relevant_newton_solution; break;
+      }
+    // vector to holding u_mu_i^n, grad u_mu_i^n on cell:
+    std::vector< Tensor<1, dim> >          container_solution_gradients_uxx(n_q_points),
+      container_solution_gradients_vxx(n_q_points);
+
+    for (unsigned int comp_index = 0; comp_index <= 8; ++comp_index)
+      {
+	fe_values[components_u[comp_index]].get_function_gradients(vector_solution, container_solution_gradients_uxx);
+	fe_values[components_v[comp_index]].get_function_gradients(vector_solution, container_solution_gradients_vxx);
+
+	for (unsigned int k = 0; k < dim; ++k) // loop over dim spatial derivatives [0, dim-1]
+	  {
+	    grad_u_at_q[k].set(comp_index/3u, comp_index%3u, container_solution_gradients_uxx[q][k]);
+	    grad_v_at_q[k].set(comp_index/3u, comp_index%3u, container_solution_gradients_vxx[q][k]);
+	  }
+      }
+
+  }
+
+  template <int dim>
+  void FemGL<dim>::phi_matrix_generator(const FEValues<dim> &fe_values,
+					      const unsigned int  x, const unsigned int q,
+					      FullMatrix<double>  &phi_u_at_x_q,
+					      FullMatrix<double>  &phi_v_at_x_q)
+  {
+    for (unsigned int comp_index = 0; comp_index <= 8; ++comp_index)
+      {
+	phi_u_at_x_q.set(comp_index/3u, comp_index%3u, fe_values[components_u[comp_index]].value(x, q));
+	phi_v_at_x_q.set(comp_index/3u, comp_index%3u, fe_values[components_v[comp_index]].value(x, q));
+      }
+    /*matrix_u_at_x_q.set(0,0,fe_values[u11_component].value(x, q));
+      matrix_v_at_x_q.set(2,2,fe_values[v33_component].value(x, q));*/
+  }
+
+  template <int dim>
+  void FemGL<dim>::grad_phi_matrix_container_generator(const FEValues<dim> &fe_values,
+							     const unsigned int x, const unsigned int q,
+							     std::vector<FullMatrix<double>> &container_grad_phi_u_x_q,
+							     std::vector<FullMatrix<double>> &container_grad_phi_v_x_q)
+  {
+    /* auto grad_u11_x_q = fe_values[u11_component].gradient(x, q);
+       auto grad_v33_x_q = fe_values[v33_component].gradient(x, q);*/
+    for (unsigned int comp_index = 0; comp_index <= 8; ++comp_index)
+      {
+	auto gradient_uxx_at_q = fe_values[components_u[comp_index]].gradient(x, q);
+	auto gradient_vxx_at_q = fe_values[components_v[comp_index]].gradient(x, q);
+
+	for (unsigned int k = 0; k < dim; ++k)
+	  {
+	    container_grad_phi_u_x_q[k].set(comp_index/3u, comp_index%3u, gradient_uxx_at_q[k]);
+	    container_grad_phi_v_x_q[k].set(comp_index/3u, comp_index%3u, gradient_vxx_at_q[k]);
+	  }
+      }
+
+  }
+
+  /*--------------------------------------------------------------------------------*/
+  /*             ^^^^  All matrices genertors end at here  ^^^                      */
+  /*--------------------------------------------------------------------------------*/
+    
+} // namespace FemGL_mpi
 
 
 int main(int argc, char *argv[])
@@ -886,11 +1201,11 @@ int main(int argc, char *argv[])
   try
     {
       using namespace dealii;
-      using namespace complexGL_mpi;
+      using namespace FemGL_mpi;
 
       Utilities::MPI::MPI_InitFinalize mpi_initialization(argc, argv, 1);
 
-      complexGL<3> GLsolver(2);
+      FemGL<2> GLsolver(2);
       GLsolver.run();
     }
   catch (std::exception &exc)
