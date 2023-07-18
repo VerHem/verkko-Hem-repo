@@ -188,7 +188,7 @@ namespace FemGL_mpi
     void make_grid();
     void setup_system();
     void assemble_system();
-    void compute_residual(const LA::MPI::Vector &);
+    void compute_residual(/*const LA::MPI::Vector &*/);
     void solve();
     void newton_iteration();
     void refine_grid();
@@ -196,7 +196,6 @@ namespace FemGL_mpi
 
     // matrices constraction function for last step u, v tensors
     void   vector_matrix_generator(const FEValues<dim>  &fe_values,
-				   /*const Vector<double> &vector_solution,*/
 				   const char &vector_flag,
 				   const unsigned int   q, const unsigned int   n_q_point,
 				   FullMatrix<double>   &u_matrix_at_q,
@@ -204,7 +203,6 @@ namespace FemGL_mpi
 
     // matrices constraction function for last step u, v tensors
     void   grad_vector_matrix_generator(const FEValues<dim>  &fe_values,
-					/*const Vector<double> &vector_solution,*/
 					const char &vector_flag,
 					const unsigned int   q, const unsigned int   n_q_point,
 					std::vector<FullMatrix<double>> &grad_u_at_q,
@@ -222,8 +220,7 @@ namespace FemGL_mpi
 					       std::vector<FullMatrix<double>> &container_grad_phi_u_x_q,
 					       std::vector<FullMatrix<double>> &container_grad_phi_v_x_q); 
 
-    unsigned int  degree;
-    
+    unsigned int       degree;    
     MPI_Comm           mpi_communicator;
     
     FESystem<dim>                             fe;
@@ -249,6 +246,7 @@ namespace FemGL_mpi
 
     LA::MPI::Vector       locally_relevant_newton_solution;
     LA::MPI::Vector       local_solution;    // this is final solution Vector
+    LA::MPI::Vector       locally_relevant_damped_vector;
     LA::MPI::Vector       system_rhs;
     LA::MPI::Vector       residual_vector;
 
@@ -274,16 +272,27 @@ namespace FemGL_mpi
                       Triangulation<dim>::smoothing_on_refinement |
                       Triangulation<dim>::smoothing_on_coarsening))
     , dof_handler(triangulation)
-    , reduced_t(0.0)
     , components_u(9, FEValuesExtractors::Scalar())
-    , components_v(9, FEValuesExtractors::Scalar())
+    , components_v(9, FEValuesExtractors::Scalar())      
+    , reduced_t(0.0)
     , pcout(std::cout,
             (Utilities::MPI::this_mpi_process(mpi_communicator) == 0))
     , computing_timer(mpi_communicator,
                       pcout,
                       TimerOutput::summary,
                       TimerOutput::wall_times)
-  {}
+  {
+    /* -------------------------------------------------- 
+     * Initiate FEValuesExtractors::Scalar container
+     * --------------------------------------------------
+     */
+    for (unsigned int comp_index = 0; comp_index <= 8; ++comp_index)
+      {
+	FEValuesExtractors::Scalar extractor_u(comp_index), extractor_v(comp_index + 9);
+	components_u[comp_index] = extractor_u; components_v[comp_index] = extractor_v;
+      }
+    /*--------------------------------------------------*/
+  }
 
 
   template <int dim>
@@ -317,11 +326,11 @@ namespace FemGL_mpi
 	      face->set_boundary_id(0);
 	  }
 
-        triangulation.refine_global(4);
+        triangulation.refine_global(1);
       }
     else if (dim==3)
       {
-	const double half_length = 10.0, inner_radius = 2.0, z_extension = 10.0;
+	const double half_length = 5.0, inner_radius = 2.0, z_extension =2.0;
 	GridGenerator::hyper_cube_with_cylindrical_hole(triangulation,
 							inner_radius, half_length, z_extension);
 
@@ -344,7 +353,7 @@ namespace FemGL_mpi
 		                   ||
 		  (std::fabs(center(2) - 0.0) < 1e-12)
 		                   ||
-		  (std::fabs(center(2) - (half_length)) < 1e-12)
+		  (std::fabs(center(2) - (z_extension)) < 1e-12)
 		  )
 		face->set_boundary_id(1);
 
@@ -354,7 +363,7 @@ namespace FemGL_mpi
 		face->set_boundary_id(0);
 	    }
 
-	triangulation.refine_global(2);
+	triangulation.refine_global(1);
       }
   }
 
@@ -433,6 +442,8 @@ namespace FemGL_mpi
     
     locally_relevant_newton_solution.reinit(locally_relevant_dofs,
                                             mpi_communicator);
+    locally_relevant_damped_vector.reinit(locally_relevant_dofs,
+				          mpi_communicator);
     system_rhs.reinit(locally_owned_dofs, mpi_communicator);
     residual_vector.reinit(locally_owned_dofs, mpi_communicator);    
   }
@@ -546,9 +557,11 @@ namespace FemGL_mpi
 
 	  fe_values.reinit(cell);
 	  //right_hand_side.vector_value_list(fe_values.get_quadrature_points(), rhs_values);
+	  //pcout << " now get on new cell!" << std::endl;
 	  
 	  for (unsigned int q = 0; q < n_q_points; ++q)
 	    {
+	      //pcout << " q-loop starts ! q is " << q << std::endl;
 	      /*--------------------------------------------------*/
 	      /*for (unsigned int k = 0; k < dofs_per_cell; ++k)
 		{
@@ -567,9 +580,11 @@ namespace FemGL_mpi
 	      for (auto it = grad_old_u_q.begin(); it != grad_old_u_q.end(); ++it) {*it = 0.0;}
 	      for (auto it = grad_old_v_q.begin(); it != grad_old_v_q.end(); ++it) {*it = 0.0;}
 
+	      //pcout << " vector-matrix function call starts !" << std::endl;
 	      vector_matrix_generator(fe_values, flag_solution, q, n_q_points, old_solution_u, old_solution_v);
 	      grad_vector_matrix_generator(fe_values, flag_solution, q, n_q_points, grad_old_u_q, grad_old_v_q);
-
+	      //pcout << " vector-matrix function call ends !" << std::endl;
+	      
 	      // u.ut and v.vt
 	      old_u_old_ut   = 0.0;
 	      old_v_old_vt   = 0.0;
@@ -577,7 +592,8 @@ namespace FemGL_mpi
 	      old_solution_u.mTmult(old_u_old_ut, old_solution_u);
 	      old_solution_v.mTmult(old_v_old_vt, old_solution_v);
 	      /*--------------------------------------------------*/            
-	      
+
+              //pcout << " now starts i-j loop! " << std::endl;
 	      for (unsigned int i = 0; i < dofs_per_cell; ++i)
 		{
 		  for (unsigned int j = 0; j < dofs_per_cell; ++j)
@@ -642,13 +658,14 @@ namespace FemGL_mpi
 			(((K1
 			   * K1grad_matrics_sum_i_j_q.trace())
 			  +(alpha_0
-			    * (t-1.0)
+			    * (reduced_t-1.0)
 			    * phi_phit_matrics_i_j_q.trace())
 			  +(beta
 			    * ((old_u_old_ut.trace() + old_v_old_vt.trace()) * phi_phit_matrics_i_j_q.trace()
 			       + 2.0 * ((old_u_phi_ut_i_q.trace() + old_v_phi_vt_i_q.trace())
 					* (old_u_phi_ut_j_q.trace() + old_v_phi_vt_j_q.trace()))))
 			  ) * fe_values.JxW(q));
+		      //pcout << " now one j loop finishes! j is " << j << std::endl;		      
 		    } // cell_matrix ends here
 
 		  rhs_K1grad_matrics_sum_i_q = 0.0;
@@ -662,25 +679,26 @@ namespace FemGL_mpi
 		    (((K1
 		       * rhs_K1grad_matrics_sum_i_q.trace())
 		      +(alpha_0
-			* (t-1.0)
+			* (reduced_t-1.0)
 			* (old_u_phi_ut_i_q.trace()
 			   + old_v_phi_vt_i_q.trace()))
 		      +(beta
 			* (old_u_old_ut.trace() + old_v_old_vt.trace())
 			* (old_u_phi_ut_i_q.trace() + old_v_phi_vt_i_q.trace()))
 		      ) * fe_values.JxW(q));                      // * dx
-
+	          // pcout << " now get one i-loop finished! i is " << i << std::endl;  
 		} // i-index ends here
+
 	    } // q-loop ends at here
 
-
+       	  //pcout << " now q-loop finished!" << std::endl;
 	  cell->get_dof_indices(local_dof_indices);
 	  constraints_newton_update.distribute_local_to_global(cell_matrix,
 				  		               cell_rhs,
 						               local_dof_indices,
 						               system_matrix,
 						               system_rhs);
-
+          //pcout << " just distribited cell contribution! " << std::endl;
        }
 
     system_matrix.compress(VectorOperation::add);
@@ -688,7 +706,7 @@ namespace FemGL_mpi
   }
 
   template <int dim>
-  void FemGL<dim>::compute_residual(const LA::MPI::Vector &damped_vector)
+  void FemGL<dim>::compute_residual(/*const LA::MPI::Vector &damped_vector*/)
   {
     TimerOutput::Scope t(computing_timer, "compute_residual");
 
@@ -748,7 +766,7 @@ namespace FemGL_mpi
     FullMatrix<double>              rhs_K1grad_matrics_sum_i_q(3,3); // matrix for storing K1 gradients before trace
     /*--------------------------------------------------------------------------------*/
 
-    char flag_solution = 's';
+    char flag_solution = 'l'; // "l" means linear search
     
     for (const auto &cell : dof_handler.active_cell_iterators())
       if (cell->is_locally_owned())
@@ -813,7 +831,7 @@ namespace FemGL_mpi
 		  old_solution_v.mTmult(old_v_phi_vt_i_q, phi_v_i_q);
 
 		  // alpha terms matrics
-		  phi_phit_matrics_i_j_q.add(1.0, phi_u_phi_ut, 1.0, phi_v_phi_vt);
+		  //phi_phit_matrics_i_j_q.add(1.0, phi_u_phi_ut, 1.0, phi_v_phi_vt);
 		  
 		  rhs_K1grad_matrics_sum_i_q = 0.0;
 		  for (unsigned int k = 0; k < dim; ++k)
@@ -826,7 +844,7 @@ namespace FemGL_mpi
 		    (((K1
 		       * rhs_K1grad_matrics_sum_i_q.trace())
 		      +(alpha_0
-			* (t-1.0)
+			* (reduced_t-1.0)
 			* (old_u_phi_ut_i_q.trace()
 			   + old_v_phi_vt_i_q.trace()))
 		      +(beta
@@ -855,6 +873,7 @@ namespace FemGL_mpi
     {
       TimerOutput::Scope t(computing_timer, "Solve: setup preconditioner");
 
+      pcout << " start to build AMG preconditioner." << std::endl;      
       std::vector<std::vector<bool>> constant_modes;
       DoFTools::extract_constant_modes(dof_handler,
 				       ComponentMask(),
@@ -870,6 +889,7 @@ namespace FemGL_mpi
       additional_data.aggregation_threshold = 1e-2;
 
       preconditioner.initialize(system_matrix, additional_data);
+      pcout << " AMG preconditioner is built up." << std::endl;      
     }
 
     // With that, we can finally set up the linear solver and solve the system:
@@ -908,7 +928,6 @@ namespace FemGL_mpi
 
     LA::MPI::Vector distributed_newton_update(locally_owned_dofs, mpi_communicator);
     LA::MPI::Vector distributed_solution(locally_owned_dofs, mpi_communicator);
-    LA::MPI::Vector locally_relevant_damped_vector(locally_relevant_dofs, mpi_communicator);
     
     double previous_residual = system_rhs.l2_norm();
 
@@ -927,7 +946,7 @@ namespace FemGL_mpi
 	// assign un-ghosted solution to ghosted solution
 	locally_relevant_damped_vector = distributed_solution;
 
-	compute_residual(locally_relevant_damped_vector);
+	compute_residual(/*locally_relevant_damped_vector*/);
 	double current_residual = residual_vector.l2_norm();
 
 	pcout << " step length alpha is: "  << alpha
@@ -1049,7 +1068,7 @@ namespace FemGL_mpi
              solve();
 	     newton_iteration();
 
-             if (Utilities::MPI::n_mpi_processes(mpi_communicator) <= 128)
+             if (Utilities::MPI::n_mpi_processes(mpi_communicator) <= 1280)
               {
                TimerOutput::Scope t(computing_timer, "output");
                //output_results(cycle);
@@ -1084,18 +1103,22 @@ namespace FemGL_mpi
 					   FullMatrix<double>   &v_matrix_at_q)
   {
     LA::MPI::Vector vector_solution(locally_relevant_dofs, mpi_communicator);
+    //LA::MPI::Vector *ptr_vector_solution;
     switch (vector_flag)
       {
       case 's':
-	vector_solution = locally_solution; break;
+	vector_solution = local_solution; break;
+	//ptr_vector_solution = &local_solution; break;
       case 'd':
 	vector_solution = locally_relevant_newton_solution; break;
+      case 'l':
+	vector_solution = locally_relevant_damped_vector; break;	
       }
     // vector to holding u_mu_i^n, grad u_mu_i^n on cell:
     /*std::vector<Tensor<1, dim>> old_solution_gradients_u11(n_q_points);
       std::vector<double>         old_solution_u11(n_q_points);*/
     std::vector<double>                  vector_solution_uxx(n_q_points),
-      vector_solution_vxx(n_q_points);
+                                         vector_solution_vxx(n_q_points);
 
     for (unsigned int comp_index = 0; comp_index <= 8; ++comp_index)
       {
@@ -1126,17 +1149,20 @@ namespace FemGL_mpi
 							std::vector<FullMatrix<double>> &grad_u_at_q,
 							std::vector<FullMatrix<double>> &grad_v_at_q)
   {
-    Vector<double> vector_solution;
+    LA::MPI::Vector vector_solution(locally_relevant_dofs, mpi_communicator);
+    //LA::MPI::Vector *ptr_vector_solution;
     switch (vector_flag)
       {
       case 's':
-	vector_solution = locally_solution; break;
+	vector_solution = local_solution; break;
       case 'd':
 	vector_solution = locally_relevant_newton_solution; break;
+      case 'l':
+	vector_solution = locally_relevant_damped_vector; break;	
       }
     // vector to holding u_mu_i^n, grad u_mu_i^n on cell:
     std::vector< Tensor<1, dim> >          container_solution_gradients_uxx(n_q_points),
-      container_solution_gradients_vxx(n_q_points);
+                                           container_solution_gradients_vxx(n_q_points);
 
     for (unsigned int comp_index = 0; comp_index <= 8; ++comp_index)
       {
@@ -1205,7 +1231,8 @@ int main(int argc, char *argv[])
 
       Utilities::MPI::MPI_InitFinalize mpi_initialization(argc, argv, 1);
 
-      FemGL<2> GLsolver(2);
+      //FemGL<2> GLsolver(2);
+      FemGL<3> GLsolver(1);
       GLsolver.run();
     }
   catch (std::exception &exc)
