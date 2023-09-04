@@ -330,7 +330,7 @@ namespace FemGL_mpi
       }
     else if (dim==3)
       {
-	const double half_length = 5.0, inner_radius = 2.0, z_extension =2.0;
+	const double half_length = 10.0, inner_radius = 2.0, z_extension =10.0;
 	GridGenerator::hyper_cube_with_cylindrical_hole(triangulation,
 							inner_radius, half_length, z_extension);
 
@@ -363,7 +363,7 @@ namespace FemGL_mpi
 		face->set_boundary_id(0);
 	    }
 
-	triangulation.refine_global(1);
+	triangulation.refine_global(3);
       }
   }
 
