@@ -19,6 +19,9 @@
  *
  */
 
+#ifndef FEMGL_H
+#define FEMGL_H
+
 /* #define FORCE_USE_OF_TRILINOS */
 
 namespace LA
@@ -119,7 +122,7 @@ namespace FemGL_mpi
     void compute_residual(/*const LA::MPI::Vector &*/);
     void solve();
     void newton_iteration();
-    void refine_grid();
+    void refine_grid(std::string &);
     void output_results(const unsigned int cycle) const;
 
     // matrices constraction function for last step u, v tensors
@@ -191,3 +194,5 @@ namespace FemGL_mpi
   };
 
 } // namespace FemGL_mpi ends here
+
+#endif
