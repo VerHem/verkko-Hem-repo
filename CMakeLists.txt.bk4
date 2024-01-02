@@ -1,0 +1,25 @@
+cmake_minimum_required(VERSION 3.13.4)
+
+find_package(deal.II 9.3.3 REQUIRED
+  HINTS ${DEAL_II_DIR} ../ ../../ $ENV{DEAL_II_DIR}
+  )
+deal_ii_initialize_cached_variables()
+
+project(cmaketest)
+
+include_directories(femgl)
+link_directories(femgl)
+
+add_subdirectory(femgl)
+
+add_executable(mycode main.cc)
+deal_ii_setup_target(mycode)
+target_link_libraries(mycode femgl)
+
+
+
+
+
+
+
+
