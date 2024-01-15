@@ -43,9 +43,6 @@ namespace LA
 #include <deal.II/base/function.h>
 #include <deal.II/base/timer.h>
 
-// The following chunk out code is identical to step-40 and allows
-// switching between PETSc and Trilinos:
-
 #include <deal.II/lac/generic_linear_algebra.h>
 
 #include <deal.II/lac/vector.h>
@@ -125,6 +122,44 @@ namespace FemGL_mpi
     void refine_grid(std::string &);
     void output_results(const unsigned int cycle) const;
 
+
+    /*------------------------------------------------------------------------------------
+     * declear cell-functions of K_i terms, alpha term and beta_i term, both lhs and rhs
+     * they handle all cell calculations of rhl and rhs on assembly and residual fucntions
+     *------------------------------------------------------------------------------------*/
+
+    /* >>>>>>>>  lhs cell matrices terms <<<<<<<<< */
+    
+    double mat_lhs_alpha(FullMatrix<double> &phi_u_i_q, FullMatrix<double> &phi_u_j_q,
+		         FullMatrix<double> &phi_v_i_q, FullMatrix<double> &phi_v_j_q);
+
+    double mat_lhs_beta2(FullMatrix<double> &old_solution_u, FullMatrix<double> &old_solution_v,
+			 FullMatrix<double> &phi_u_i_q, FullMatrix<double> &phi_u_j_q,
+		         FullMatrix<double> &phi_v_i_q, FullMatrix<double> &phi_v_j_q);
+
+    double mat_lhs_K1(std::vector<FullMatrix<double>> &grad_phi_u_i_q, std::vector<FullMatrix<double>> &grad_phi_v_i_q,
+		      std::vector<FullMatrix<double>> &grad_phi_u_j_q, std::vector<FullMatrix<double>> &grad_phi_v_j_q);
+
+    double mat_lhs_K2K3(std::vector<FullMatrix<double>> &grad_phi_u_i_q, std::vector<FullMatrix<double>> &grad_phi_v_i_q,
+			std::vector<FullMatrix<double>> &grad_phi_u_j_q, std::vector<FullMatrix<double>> &grad_phi_v_j_q);
+    
+    /* >>>>>>>>  rhs cell matrices terms <<<<<<<<< */
+    
+    double vec_rhs_alpha(FullMatrix<double> &phi_u_i_q, FullMatrix<double> &phi_v_i_q,
+			 FullMatrix<double> &old_solution_u, FullMatrix<double> &old_solution_v);
+
+    double vec_rhs_beta2(FullMatrix<double> &old_solution_u, FullMatrix<double> &old_solution_v,
+		         FullMatrix<double> &phi_u_i_q, FullMatrix<double> &phi_v_i_q);
+
+    double vec_rhs_K1(std::vector<FullMatrix<double>> &grad_old_u_q, std::vector<FullMatrix<double>> &grad_old_v_q,
+		      std::vector<FullMatrix<double>> &grad_phi_u_i_q, std::vector<FullMatrix<double>> &grad_phi_v_i_q);
+    
+    
+    /*------------------------------------------------------------------------------------
+     * declearations of cell-functions of K_i terms, alpha term and beta_i term, end here.
+     *------------------------------------------------------------------------------------*/
+    
+    
     // matrices constraction function for last step u, v tensors
     void   vector_matrix_generator(const FEValues<dim>  &fe_values,
                                    const char &vector_flag,
@@ -149,8 +184,8 @@ namespace FemGL_mpi
     void   grad_phi_matrix_container_generator(const FEValues<dim> &fe_values,
                                                const unsigned int x, const unsigned int q,
                                                std::vector<FullMatrix<double>> &container_grad_phi_u_x_q,
-                                               std::vector<FullMatrix<double>> &container_grad_phi_v_x_q); 
-
+                                               std::vector<FullMatrix<double>> &container_grad_phi_v_x_q);     
+    
     std::string        refinement_strategy = "global";
     unsigned int       degree, cycle;    
     MPI_Comm           mpi_communicator;
@@ -183,6 +218,9 @@ namespace FemGL_mpi
     LA::MPI::Vector       residual_vector;
 
     const double K1      = 0.5;
+    const double K2      = 0.5;
+    const double K3      = 0.5;
+    
     const double alpha_0 = 2.0;
     const double beta    = 0.5;
 

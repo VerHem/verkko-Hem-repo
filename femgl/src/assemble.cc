@@ -9,9 +9,6 @@
 #include <deal.II/base/function.h>
 #include <deal.II/base/timer.h>
 
-// The following chunk out code is identical to step-40 and allows
-// switching between PETSc and Trilinos:
-
 #include <deal.II/lac/generic_linear_algebra.h>
 
 #include <deal.II/lac/vector.h>
@@ -71,6 +68,7 @@
 
 #include "femgl.h"
 #include "dirichlet.h"
+ 
 
 namespace FemGL_mpi
 {
@@ -84,7 +82,7 @@ namespace FemGL_mpi
     system_matrix         = 0;
     system_rhs            = 0;
 
-    { //block of assembly starts from here, all local objects in there will be release to same memory leak
+    { //block of assembly starts from here, all local objects in there will be release to save memory leak
      const QGauss<dim> quadrature_formula(degree + 1);
 
      FEValues<dim> fe_values(fe,
@@ -135,44 +133,19 @@ namespace FemGL_mpi
       * they are products of phi tensors or u/v tensors.
       * --------------------------------------------------------------------------------
       */
-     FullMatrix<double>              phi_u_phi_ut(3,3), phi_v_phi_vt(3,3);
-     FullMatrix<double>              old_u_old_ut(3,3), old_v_old_vt(3,3);
+     //FullMatrix<double>              phi_u_phi_ut(3,3), phi_v_phi_vt(3,3);
+     //FullMatrix<double>              old_u_old_ut(3,3), old_v_old_vt(3,3);
 
-     FullMatrix<double>              old_u_phi_ut_i_q(3,3),
-                                     old_u_phi_ut_j_q(3,3),
-                                     old_v_phi_vt_i_q(3,3),
-                                     old_v_phi_vt_j_q(3,3);
+     //FullMatrix<double>              old_u_phi_ut_i_q(3,3),
+     //                                old_u_phi_ut_j_q(3,3),
+     //                                old_v_phi_vt_i_q(3,3),
+     //                                old_v_phi_vt_j_q(3,3);
 
-     FullMatrix<double>              K1grad_matrics_sum_i_j_q(3,3),
-                                     rhs_K1grad_matrics_sum_i_q(3,3);                // matrix for storing K1 gradients before trace
-     FullMatrix<double>              phi_phit_matrics_i_j_q(3,3);
+     //FullMatrix<double>              K1grad_matrics_sum_i_j_q(3,3),
+     //FullMatrix<double>              rhs_K1grad_matrics_sum_i_q(3,3);                // matrix for storing K1 gradients before trace
+     //FullMatrix<double>              phi_phit_matrics_i_j_q(3,3);
      /*--------------------------------------------------------------------------------*/
-
-    /* --------------------------------------------------*/
-    //std::vector<Tensor<2, dim>> grad_phi_u(dofs_per_cell);
-    //std::vector<double>         div_phi_u(dofs_per_cell);
-    //std::vector<double>         phi_p(dofs_per_cell);
-    /* --------------------------------------------------*/
-
-    /*--------------------------------------------------*/
-    /* >>>>>>>>>>  old solution for r.h.s   <<<<<<<<<<< */
-    // vector to holding u^n, grad u^n on cell:
-    /*std::vector<Tensor<1, dim>> old_solution_gradients_u(n_q_points);
-    std::vector<double>         old_solution_u(n_q_points);
-
-    // vector to holding v^n, grad v^n on cell:
-    std::vector<Tensor<1, dim>> old_solution_gradients_v(n_q_points);
-    std::vector<double>         old_solution_v(n_q_points);*/
-    /* --------------------------------------------------*/    
-
-    /*std::vector<types::global_dof_index> local_dof_indices(dofs_per_cell);
-    const FEValuesExtractors::Vector     velocities(0);
-    const FEValuesExtractors::Scalar     pressure(dim);*/
-
-    // FEValuesExtractors, works for FEValues, FEFaceValues, FESubFaceValues
-    //const FEValuesExtractors::Scalar u_component(0);
-    //const FEValuesExtractors::Scalar v_component(1);
-    
+     
      // vector-flag for old_soluttion
      char flag_solution = 's';
 
@@ -184,21 +157,11 @@ namespace FemGL_mpi
 	   cell_rhs     = 0;
 
 	   fe_values.reinit(cell);
-	   //right_hand_side.vector_value_list(fe_values.get_quadrature_points(), rhs_values);
+
 	   //pcout << " now get on new cell!" << std::endl;
 	  
 	   for (unsigned int q = 0; q < n_q_points; ++q)
-	     {
-	       //pcout << " q-loop starts ! q is " << q << std::endl;
-	       /*--------------------------------------------------*/
-	       /*for (unsigned int k = 0; k < dofs_per_cell; ++k)
-		{
-		  grad_phi_u[k] = fe_values[velocities].gradient(k, q);
-		  div_phi_u[k]  = fe_values[velocities].divergence(k, q);
-		  phi_p[k]      = fe_values[pressure].value(k, q);
-		  }*/
-              /*--------------------------------------------------*/
-	      
+	     {	      
 	       /*--------------------------------------------------*/
 	       /*         u, v matrices cooking up                 */
 	       /*--------------------------------------------------*/
@@ -214,11 +177,11 @@ namespace FemGL_mpi
 	       //pcout << " vector-matrix function call ends !" << std::endl;
 	      
 	       // u.ut and v.vt
-	       old_u_old_ut   = 0.0;
-	       old_v_old_vt   = 0.0;
+	       // old_u_old_ut   = 0.0;
+	       // old_v_old_vt   = 0.0;
 
-	       old_solution_u.mTmult(old_u_old_ut, old_solution_u);
-	       old_solution_v.mTmult(old_v_old_vt, old_solution_v);
+	       // old_solution_u.mTmult(old_u_old_ut, old_solution_u);
+	       // old_solution_v.mTmult(old_v_old_vt, old_solution_v);
 	       /*--------------------------------------------------*/            
 
                //pcout << " now starts i-j loop! " << std::endl;
@@ -245,16 +208,16 @@ namespace FemGL_mpi
 		       grad_phi_matrix_container_generator(fe_values, i, q, grad_phi_u_i_q, grad_phi_v_i_q);
 		       grad_phi_matrix_container_generator(fe_values, j, q, grad_phi_u_j_q, grad_phi_v_j_q);
 		       /*--------------------------------------------------*/
-		       phi_u_phi_ut        = 0.0;
-		       phi_v_phi_vt        = 0.0;
+		       //phi_u_phi_ut        = 0.0;
+		       //phi_v_phi_vt        = 0.0;
 
-		       old_u_phi_ut_i_q    = 0.0;
-		       old_u_phi_ut_j_q    = 0.0;
-		       old_v_phi_vt_i_q    = 0.0;
-		       old_v_phi_vt_j_q    = 0.0;
+		       //old_u_phi_ut_i_q    = 0.0;
+		       //old_u_phi_ut_j_q    = 0.0;
+		       //old_v_phi_vt_i_q    = 0.0;
+		       //old_v_phi_vt_j_q    = 0.0;
 
-		       K1grad_matrics_sum_i_j_q = 0.0;
-		       phi_phit_matrics_i_j_q   = 0.0;
+		       //K1grad_matrics_sum_i_j_q = 0.0;
+		       //phi_phit_matrics_i_j_q   = 0.0;
 		       /*--------------------------------------------------*/
 
 		       /* --------------------------------------------------
@@ -262,57 +225,63 @@ namespace FemGL_mpi
 		        * --------------------------------------------------
 		        */
 		       // phi_u_phi_ut_ijq, phi_v_phi_vt_ijq matrics
-		       phi_u_i_q.mTmult(phi_u_phi_ut, phi_u_j_q);
-		       phi_v_i_q.mTmult(phi_v_phi_vt, phi_v_j_q);
+		       //phi_u_i_q.mTmult(phi_u_phi_ut, phi_u_j_q);
+		       //phi_v_i_q.mTmult(phi_v_phi_vt, phi_v_j_q);
 
 		       // old_u/v_phi_ut/vt_i/jq matrics
-		       old_solution_u.mTmult(old_u_phi_ut_i_q, phi_u_i_q);
-		       old_solution_u.mTmult(old_u_phi_ut_j_q, phi_u_j_q);
-		       old_solution_v.mTmult(old_v_phi_vt_i_q, phi_v_i_q);
-		       old_solution_v.mTmult(old_v_phi_vt_j_q, phi_v_j_q);
+		       //old_solution_u.mTmult(old_u_phi_ut_i_q, phi_u_i_q);
+		       //old_solution_u.mTmult(old_u_phi_ut_j_q, phi_u_j_q);
+		       //old_solution_v.mTmult(old_v_phi_vt_i_q, phi_v_i_q);
+		       //old_solution_v.mTmult(old_v_phi_vt_j_q, phi_v_j_q);
 
 		       // alpha terms matrics
-		       phi_phit_matrics_i_j_q.add(1.0, phi_u_phi_ut, 1.0, phi_v_phi_vt);
+		       //phi_phit_matrics_i_j_q.add(1.0, phi_u_phi_ut, 1.0, phi_v_phi_vt);
 
-		       for (unsigned int k = 0; k < dim; ++k)
+		       /*for (unsigned int k = 0; k < dim; ++k)
 			 {
 			   grad_phi_u_i_q[k].mTmult(K1grad_matrics_sum_i_j_q, grad_phi_u_j_q[k], true);
 			   grad_phi_v_i_q[k].mTmult(K1grad_matrics_sum_i_j_q, grad_phi_v_j_q[k], true);
-			 }
+			   }*/
 		      
 		       /*--------------------------------------------------*/		          
 		      
 		       cell_matrix(i,j) +=
 			(((K1
-			   * K1grad_matrics_sum_i_j_q.trace())
+			   * mat_lhs_K1(grad_phi_u_i_q, grad_phi_v_i_q, grad_phi_u_j_q, grad_phi_v_j_q))
+			  +((K2 + K3)
+			    * mat_lhs_K2K3(grad_phi_u_i_q, grad_phi_v_i_q, grad_phi_u_j_q, grad_phi_v_j_q))
 			  +(alpha_0
 			    * (reduced_t-1.0)
-			    * phi_phit_matrics_i_j_q.trace())
+			    //* phi_phit_matrics_i_j_q.trace())
+			    * mat_lhs_alpha(phi_u_i_q, phi_u_j_q, phi_v_i_q, phi_v_j_q))
 			  +(beta
-			    * ((old_u_old_ut.trace() + old_v_old_vt.trace()) * phi_phit_matrics_i_j_q.trace()
-			       + 2.0 * ((old_u_phi_ut_i_q.trace() + old_v_phi_vt_i_q.trace())
-					* (old_u_phi_ut_j_q.trace() + old_v_phi_vt_j_q.trace()))))
+			    //* ((old_u_old_ut.trace() + old_v_old_vt.trace()) * phi_phit_matrics_i_j_q.trace()
+			    //   + 2.0 * ((old_u_phi_ut_i_q.trace() + old_v_phi_vt_i_q.trace())
+			    //	* (old_u_phi_ut_j_q.trace() + old_v_phi_vt_j_q.trace())))
+			    * mat_lhs_beta2(old_solution_u, old_solution_v,
+					    phi_u_i_q, phi_u_j_q, phi_v_i_q, phi_v_j_q))
 			  ) * fe_values.JxW(q));
 		       //pcout << " now one j loop finishes! j is " << j << std::endl;		      
 		     } // cell_matrix ends here
 
-		   rhs_K1grad_matrics_sum_i_q = 0.0;
-		   for (unsigned int k = 0; k < dim; ++k)
+		   //rhs_K1grad_matrics_sum_i_q = 0.0;
+		   /*for (unsigned int k = 0; k < dim; ++k)
 		     {
 		      grad_old_u_q[k].mTmult(rhs_K1grad_matrics_sum_i_q, grad_phi_u_i_q[k], true);
 		      grad_old_v_q[k].mTmult(rhs_K1grad_matrics_sum_i_q, grad_phi_v_i_q[k], true);
-		     }
+		      }*/
 
 		   cell_rhs(i) -=
 		    (((K1
-		       * rhs_K1grad_matrics_sum_i_q.trace())
+		       //* rhs_K1grad_matrics_sum_i_q.trace()
+		       * vec_rhs_K1(grad_old_u_q, grad_old_v_q, grad_phi_u_i_q, grad_phi_v_i_q))
 		      +(alpha_0
 			* (reduced_t-1.0)
-			* (old_u_phi_ut_i_q.trace()
-			   + old_v_phi_vt_i_q.trace()))
+			* vec_rhs_alpha(phi_u_i_q, phi_v_i_q, old_solution_u, old_solution_v))
 		      +(beta
-			* (old_u_old_ut.trace() + old_v_old_vt.trace())
-			* (old_u_phi_ut_i_q.trace() + old_v_phi_vt_i_q.trace()))
+			//* (old_u_old_ut.trace() + old_v_old_vt.trace())
+			//* (old_u_phi_ut_i_q.trace() + old_v_phi_vt_i_q.trace())
+			* vec_rhs_beta2(old_solution_u, old_solution_v, phi_u_i_q, phi_v_i_q))
 		      ) * fe_values.JxW(q));                      // * dx
 	          // pcout << " now get one i-loop finished! i is " << i << std::endl;  
 		 } // i-index ends here

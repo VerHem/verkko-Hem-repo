@@ -9,9 +9,6 @@
 #include <deal.II/base/function.h>
 #include <deal.II/base/timer.h>
 
-// The following chunk out code is identical to step-40 and allows
-// switching between PETSc and Trilinos:
-
 #include <deal.II/lac/generic_linear_algebra.h>
 
 #include <deal.II/lac/vector.h>
@@ -71,6 +68,7 @@
 
 #include "femgl.h"
 #include "dirichlet.h"
+ 
 
 namespace FemGL_mpi
 {
@@ -129,13 +127,13 @@ namespace FemGL_mpi
      * they are products of phi tensors or u/v tensors.
      * --------------------------------------------------------------------------------
      */
-    FullMatrix<double>              phi_u_phi_ut(3,3), phi_v_phi_vt(3,3);
-    FullMatrix<double>              old_u_old_ut(3,3), old_v_old_vt(3,3);
+    //FullMatrix<double>              phi_u_phi_ut(3,3), phi_v_phi_vt(3,3);
+    //FullMatrix<double>              old_u_old_ut(3,3), old_v_old_vt(3,3);
 
-    FullMatrix<double>              old_u_phi_ut_i_q(3,3),
-                                    old_v_phi_vt_i_q(3,3);
+    //FullMatrix<double>              old_u_phi_ut_i_q(3,3),
+    //                                old_v_phi_vt_i_q(3,3);
 
-    FullMatrix<double>              rhs_K1grad_matrics_sum_i_q(3,3); // matrix for storing K1 gradients before trace
+    //FullMatrix<double>              rhs_K1grad_matrics_sum_i_q(3,3); // matrix for storing K1 gradients before trace
     /*--------------------------------------------------------------------------------*/
 
     char flag_solution = 'l'; // "l" means linear search
@@ -164,11 +162,11 @@ namespace FemGL_mpi
 	      grad_vector_matrix_generator(fe_values, flag_solution, q, n_q_points, grad_old_u_q, grad_old_v_q);
 
 	      // u.ut and v.vt
-	      old_u_old_ut   = 0.0;
-	      old_v_old_vt   = 0.0;
+	      //old_u_old_ut   = 0.0;
+	      //old_v_old_vt   = 0.0;
 
-	      old_solution_u.mTmult(old_u_old_ut, old_solution_u);
-	      old_solution_v.mTmult(old_v_old_vt, old_solution_v);
+	      //old_solution_u.mTmult(old_u_old_ut, old_solution_u);
+	      //old_solution_v.mTmult(old_v_old_vt, old_solution_v);
 	      /*--------------------------------------------------*/            
 	      
 	      for (unsigned int i = 0; i < dofs_per_cell; ++i)
@@ -189,8 +187,8 @@ namespace FemGL_mpi
 		  grad_phi_matrix_container_generator(fe_values, i, q, grad_phi_u_i_q, grad_phi_v_i_q);
 
 		  /*--------------------------------------------------*/
-		  old_u_phi_ut_i_q    = 0.0;
-		  old_v_phi_vt_i_q    = 0.0;
+		  //old_u_phi_ut_i_q    = 0.0;
+		  //old_v_phi_vt_i_q    = 0.0;
 		  /*--------------------------------------------------*/
 
 		  /* --------------------------------------------------
@@ -199,29 +197,32 @@ namespace FemGL_mpi
 		   */
 
 		  // old_u/v_phi_ut/vt_i/jq matrics
-		  old_solution_u.mTmult(old_u_phi_ut_i_q, phi_u_i_q);
-		  old_solution_v.mTmult(old_v_phi_vt_i_q, phi_v_i_q);
+		  // old_solution_u.mTmult(old_u_phi_ut_i_q, phi_u_i_q);
+		  // old_solution_v.mTmult(old_v_phi_vt_i_q, phi_v_i_q);
 
 		  // alpha terms matrics
 		  //phi_phit_matrics_i_j_q.add(1.0, phi_u_phi_ut, 1.0, phi_v_phi_vt);
 		  
-		  rhs_K1grad_matrics_sum_i_q = 0.0;
-		  for (unsigned int k = 0; k < dim; ++k)
+		  // rhs_K1grad_matrics_sum_i_q = 0.0;
+		  /*for (unsigned int k = 0; k < dim; ++k)
 		    {
 		      grad_old_u_q[k].mTmult(rhs_K1grad_matrics_sum_i_q, grad_phi_u_i_q[k], true);
 		      grad_old_v_q[k].mTmult(rhs_K1grad_matrics_sum_i_q, grad_phi_v_i_q[k], true);
-		    }
+		      }*/
 
 		  cell_rhs(i) -=
 		    (((K1
-		       * rhs_K1grad_matrics_sum_i_q.trace())
+		       //* rhs_K1grad_matrics_sum_i_q.trace()
+		       * vec_rhs_K1(grad_old_u_q, grad_old_v_q, grad_phi_u_i_q, grad_phi_v_i_q))
 		      +(alpha_0
 			* (reduced_t-1.0)
-			* (old_u_phi_ut_i_q.trace()
-			   + old_v_phi_vt_i_q.trace()))
+			//* (old_u_phi_ut_i_q.trace()
+			//   + old_v_phi_vt_i_q.trace())
+			* vec_rhs_alpha(phi_u_i_q, phi_v_i_q, old_solution_u, old_solution_v))
 		      +(beta
-			* (old_u_old_ut.trace() + old_v_old_vt.trace())
-			* (old_u_phi_ut_i_q.trace() + old_v_phi_vt_i_q.trace()))
+			//* (old_u_old_ut.trace() + old_v_old_vt.trace())
+			//* (old_u_phi_ut_i_q.trace() + old_v_phi_vt_i_q.trace())
+			* vec_rhs_beta2(old_solution_u, old_solution_v, phi_u_i_q, phi_v_i_q))
 		      ) * fe_values.JxW(q));                      // * dx
 
 		} // i-index ends here
