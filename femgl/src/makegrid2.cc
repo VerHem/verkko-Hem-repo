@@ -71,6 +71,7 @@
 
 #include "femgl.h"
 #include "dirichlet.h"
+ 
 
 namespace FemGL_mpi
 {
@@ -119,7 +120,7 @@ namespace FemGL_mpi
 				  left,
 				  right);
 
-	triangulation.refine_global(5); //5 will give you 30M DoF, 4 give you 5M
+	triangulation.refine_global(3); //5 will give you 22M DoF, 4 give you 5M
 
 	
 	for (const auto &cell : triangulation.cell_iterators())
