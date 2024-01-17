@@ -153,7 +153,9 @@ namespace FemGL_mpi
 
     double vec_rhs_K1(std::vector<FullMatrix<double>> &grad_old_u_q, std::vector<FullMatrix<double>> &grad_old_v_q,
 		      std::vector<FullMatrix<double>> &grad_phi_u_i_q, std::vector<FullMatrix<double>> &grad_phi_v_i_q);
-    
+
+    double vec_rhs_K2K3(std::vector<FullMatrix<double>> &grad_phi_u_i_q, std::vector<FullMatrix<double>> &grad_phi_v_i_q,
+			std::vector<FullMatrix<double>> &grad_old_u_q, std::vector<FullMatrix<double>> &grad_old_v_q);
     
     /*------------------------------------------------------------------------------------
      * declearations of cell-functions of K_i terms, alpha term and beta_i term, end here.

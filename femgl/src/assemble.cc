@@ -275,6 +275,8 @@ namespace FemGL_mpi
 		    (((K1
 		       //* rhs_K1grad_matrics_sum_i_q.trace()
 		       * vec_rhs_K1(grad_old_u_q, grad_old_v_q, grad_phi_u_i_q, grad_phi_v_i_q))
+		      +((K2 + K3)
+			* vec_rhs_K2K3(grad_phi_u_i_q, grad_phi_v_i_q, grad_old_u_q, grad_old_v_q))
 		      +(alpha_0
 			* (reduced_t-1.0)
 			* vec_rhs_alpha(phi_u_i_q, phi_v_i_q, old_solution_u, old_solution_v))
