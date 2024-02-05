@@ -254,7 +254,9 @@ namespace FemGL_mpi
 			    * (reduced_t-1.0)
 			    //* phi_phit_matrics_i_j_q.trace())
 			    * mat_lhs_alpha(phi_u_i_q, phi_u_j_q, phi_v_i_q, phi_v_j_q))
-			  +(beta
+			  +(beta1
+			    * vec_rhs_beta1(old_solution_u, old_solution_v, phi_u_i_q, phi_v_i_q))
+			  +(beta2
 			    //* ((old_u_old_ut.trace() + old_v_old_vt.trace()) * phi_phit_matrics_i_j_q.trace()
 			    //   + 2.0 * ((old_u_phi_ut_i_q.trace() + old_v_phi_vt_i_q.trace())
 			    //	* (old_u_phi_ut_j_q.trace() + old_v_phi_vt_j_q.trace())))
@@ -280,7 +282,9 @@ namespace FemGL_mpi
 		      +(alpha_0
 			* (reduced_t-1.0)
 			* vec_rhs_alpha(phi_u_i_q, phi_v_i_q, old_solution_u, old_solution_v))
-		      +(beta
+		      +(beta1
+			* vec_rhs_beta1(old_solution_u, old_solution_v, phi_u_i_q, phi_v_i_q))
+		      +(beta2
 			//* (old_u_old_ut.trace() + old_v_old_vt.trace())
 			//* (old_u_phi_ut_i_q.trace() + old_v_phi_vt_i_q.trace())
 			* vec_rhs_beta2(old_solution_u, old_solution_v, phi_u_i_q, phi_v_i_q))

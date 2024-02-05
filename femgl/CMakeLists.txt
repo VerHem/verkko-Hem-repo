@@ -4,6 +4,7 @@ include_directories(${CMAKE_SOURCE_DIR}/femgl/include)
 #include_directories(include)
 
 add_library(femgl STATIC
+# main source codes of femgl class   
   ${CMAKE_SOURCE_DIR}/femgl/src/femgl.cc
   ${CMAKE_SOURCE_DIR}/femgl/src/makegrid2.cc
   ${CMAKE_SOURCE_DIR}/femgl/src/setup.cc
@@ -16,12 +17,16 @@ add_library(femgl STATIC
   ${CMAKE_SOURCE_DIR}/femgl/src/s_vector2matrix.cc
   ${CMAKE_SOURCE_DIR}/femgl/src/phi_vector2matrix.cc
   ${CMAKE_SOURCE_DIR}/femgl/src/run.cc
+# Matrices calculation functions for assemble_system(): cell-matrix-LHS  
   ${CMAKE_SOURCE_DIR}/femgl/src/cell_mat_vec/cell_mat_lhs_alpha.cc
   ${CMAKE_SOURCE_DIR}/femgl/src/cell_mat_vec/cell_mat_lhs_beta1.cc  
   ${CMAKE_SOURCE_DIR}/femgl/src/cell_mat_vec/cell_mat_lhs_beta2.cc
+  ${CMAKE_SOURCE_DIR}/femgl/src/cell_mat_vec/cell_mat_lhs_beta3.cc  
   ${CMAKE_SOURCE_DIR}/femgl/src/cell_mat_vec/cell_mat_lhs_K1.cc
-  ${CMAKE_SOURCE_DIR}/femgl/src/cell_mat_vec/cell_mat_lhs_K2K3.cc  
+  ${CMAKE_SOURCE_DIR}/femgl/src/cell_mat_vec/cell_mat_lhs_K2K3.cc
+# Vectors calculation functions for assemble_system(): cell-vector-RHS    
   ${CMAKE_SOURCE_DIR}/femgl/src/cell_mat_vec/cell_vec_rhs_alpha.cc
+  ${CMAKE_SOURCE_DIR}/femgl/src/cell_mat_vec/cell_vec_rhs_beta1.cc  
   ${CMAKE_SOURCE_DIR}/femgl/src/cell_mat_vec/cell_vec_rhs_beta2.cc
   ${CMAKE_SOURCE_DIR}/femgl/src/cell_mat_vec/cell_vec_rhs_K1.cc
   ${CMAKE_SOURCE_DIR}/femgl/src/cell_mat_vec/cell_vec_rhs_K2K3.cc

@@ -132,11 +132,19 @@ namespace FemGL_mpi
     
     double mat_lhs_alpha(FullMatrix<double> &phi_u_i_q, FullMatrix<double> &phi_u_j_q,
 		         FullMatrix<double> &phi_v_i_q, FullMatrix<double> &phi_v_j_q);
+    
+    double mat_lhs_beta1(FullMatrix<double> &old_solution_u, FullMatrix<double> &old_solution_v,
+	                 FullMatrix<double> &phi_u_i_q,FullMatrix<double> &phi_u_j_q,
+		         FullMatrix<double> &phi_v_i_q,FullMatrix<double> &phi_v_j_q);
 
     double mat_lhs_beta2(FullMatrix<double> &old_solution_u, FullMatrix<double> &old_solution_v,
 			 FullMatrix<double> &phi_u_i_q, FullMatrix<double> &phi_u_j_q,
 		         FullMatrix<double> &phi_v_i_q, FullMatrix<double> &phi_v_j_q);
 
+    double FemGL<dim>::mat_lhs_beta3(FullMatrix<double> &old_solution_u, FullMatrix<double> &old_solution_v,
+                                     FullMatrix<double> &phi_u_i_q,FullMatrix<double> &phi_u_j_q,
+                                     FullMatrix<double> &phi_v_i_q,FullMatrix<double> &phi_v_j_q);
+    
     double mat_lhs_K1(std::vector<FullMatrix<double>> &grad_phi_u_i_q, std::vector<FullMatrix<double>> &grad_phi_v_i_q,
 		      std::vector<FullMatrix<double>> &grad_phi_u_j_q, std::vector<FullMatrix<double>> &grad_phi_v_j_q);
 
@@ -147,6 +155,9 @@ namespace FemGL_mpi
     
     double vec_rhs_alpha(FullMatrix<double> &phi_u_i_q, FullMatrix<double> &phi_v_i_q,
 			 FullMatrix<double> &old_solution_u, FullMatrix<double> &old_solution_v);
+    
+    double vec_rhs_beta1(FullMatrix<double> &old_solution_u, FullMatrix<double> &old_solution_v,
+			 FullMatrix<double> &phi_u_i_q, FullMatrix<double> &phi_v_i_q);    
 
     double vec_rhs_beta2(FullMatrix<double> &old_solution_u, FullMatrix<double> &old_solution_v,
 		         FullMatrix<double> &phi_u_i_q, FullMatrix<double> &phi_v_i_q);
@@ -224,7 +235,8 @@ namespace FemGL_mpi
     const double K3      = 0.5;
     
     const double alpha_0 = 2.0;
-    const double beta    = 0.5;
+    const double beta1    = 0.5;
+    const double beta2    = 0.5;    
 
     double reduced_t;
 
