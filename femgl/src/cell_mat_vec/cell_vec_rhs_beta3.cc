@@ -74,19 +74,26 @@ namespace FemGL_mpi
   using namespace dealii;
 
   template <int dim>
-  double FemGL<dim>::vec_rhs_beta1(FullMatrix<double> &old_solution_u, FullMatrix<double> &old_solution_v,
+  double FemGL<dim>::vec_rhs_beta3(FullMatrix<double> &old_solution_u, FullMatrix<double> &old_solution_v,
 				   FullMatrix<double> &phi_u_i_q, FullMatrix<double> &phi_v_i_q)
   {
     //block of assembly starts from here, all local objects in there will be release to save memory leak
 
-    FullMatrix<double>    old_u_old_ut(3,3), old_v_old_vt(3,3),
-                          old_u_old_vt(3,3);
+    FullMatrix<double>    old_u_old_vt(3,3),
+                          old_ut_old_u(3,3), old_ut_old_v(3,3),
+                          old_vt_old_v(3,3);
 
-    FullMatrix<double>              old_u_phi_ut_i_q(3,3),
-                                    old_v_phi_vt_i_q(3,3),
+    FullMatrix<double>             old_ut_phi_u_i_q(3,3),
+                                   old_ut_phi_v_i_q(3,3),
+                                   old_vt_phi_u_i_q(3,3),
+                                   old_vt_phi_v_i_q(3,3),      
                                     /* ************** */
-                                    old_u_phi_vt_i_q(3,3),
-                                    old_v_phi_ut_i_q(3,3);      
+                                   old_v_phi_ut_i_q(3,3),
+                                    /* ************** */
+                                   phi_ut_i_q_old_v(3.3),
+                                   phi_vt_i_q_old_u(3.3);
+
+    FullMatrix<double>   poly_I = 0.0;
           
     /*-------------------------------------------------------------*/
     /* phi^u, phi^v matrices have been cooked up in other fuctions */
@@ -98,38 +105,67 @@ namespace FemGL_mpi
      * -------------------------------------------------------------
      */
     
-    old_u_old_ut   = 0.0;
-    old_v_old_vt   = 0.0;
     old_u_old_vt   = 0.0;
-
-    old_u_phi_ut_i_q    = 0.0;
-    old_v_phi_vt_i_q    = 0.0;
     /* *********************/
-    old_u_phi_vt_i_q    = 0.0;
+    old_ut_old_u    = 0.0;
+    old_ut_old_v    = 0.0;
+    old_vt_old_v    = 0.0;    
+    /* *********************/
+
+    
+    old_ut_phi_u_i_q    = 0.0;
+    old_ut_phi_v_i_q    = 0.0;
+    old_vt_phi_u_i_q    = 0.0;
+    old_vt_phi_v_i_q    = 0.0;    
+    /* *********************/    
     old_v_phi_ut_i_q    = 0.0;
+    /* *********************/        
+    phi_ut_i_q_old_v    = 0.0;
+    phi_vt_i_q_old_u    = 0.0;    
     
     /* -------------------------------------------------------------
      * conduct matrices multiplacations: matrices multiplication
      * -------------------------------------------------------------
      */
    
-    old_solution_u.mTmult(old_u_old_ut, old_solution_u);
-    old_solution_v.mTmult(old_v_old_vt, old_solution_v);
     old_solution_u.mTmult(old_u_old_vt, old_solution_v);
+    /* *********************/            
+    old_solution_u.Tmmult(old_ut_old_u, old_solution_u);
+    old_solution_u.Tmmult(old_ut_old_v, old_solution_v);
+    old_solution_v.Tmmult(old_vt_old_v, old_solution_v);            
     
     //phi_phit_matrics_i_j_q.add(1.0, phi_u_phi_ut, 1.0, phi_v_phi_vt);
 
-    old_solution_u.mTmult(old_u_phi_ut_i_q, phi_u_i_q);
-    old_solution_v.mTmult(old_v_phi_vt_i_q, phi_v_i_q);
+    old_solution_u.Tmmult(old_ut_phi_u_i_q, phi_u_i_q);
+    old_solution_u.Tmmult(old_ut_phi_v_i_q, phi_v_i_q);    
+    old_solution_v.Tmmult(old_vt_phi_u_i_q, phi_u_i_q);
+    old_solution_v.Tmmult(old_vt_phi_v_i_q, phi_v_i_q);    
     /* ********************* */
-    old_solution_u.mTmult(old_u_phi_vt_i_q, phi_v_i_q);
     old_solution_v.mTmult(old_v_phi_ut_i_q, phi_u_i_q);
-   
+    /* ********************* */    
+    phi_u_i_q.Tmmult(phi_ut_i_q_old_v, old_solution_v);
+    phi_v_i_q.Tmmult(phi_vt_i_q_old_u, old_solution_u);
+
+
+    /* ********  construct the matrices summation ******** */
+
+    old_ut_old_u.mmult(poly_I,old_ut_phi_u_i_q, true);
+    old_u_old_vt.mmult(poly_I,old_v_phi_ut_i_q, true);
+    old_ut_old_v.mmult(poly_I,phi_ut_i_q_old_v, true);
+
+    // -old_ut_old_v
+    FullMatrix<double> n_old_ut_old_v{old_ut_old_v};
+    n_old_ut_old_v *= -1.0;
+    n_old_ut_old_v.mmult(poly_I,old_vt_phi_u_i_q, true);
+    n_old_ut_old_v.mmult(poly_I,phi_vt_i_q_old_u, true);
+
+    old_ut_old_v.mmult(poly_I, old_ut_phi_v_i_q, true);
+    old_ut_old_u.mmult(poly_I, old_vt_phi_v_i_q, true);
+    old_vt_old_v.mmult(poly_I, old_vt_phi_v_i_q, true);        
+
+    /* **  matrices summation construction ends here ***** */
     
-    return  ((old_u_old_ut.trace() - old_v_old_vt.trace())
-	      * (old_u_phi_ut_i_q.trace() - old_v_phi_vt_i_q.trace())
-	     + 2.0 * old_u_old_vt.trace()
-	           * (old_u_phi_vt_i_q.trace() + old_v_phi_ut_i_q.trace()));
+    return  poly_I.trace();
   }
 
   template class FemGL<3>;
