@@ -154,7 +154,8 @@ namespace FemGL_mpi
     old_ut_old_v.mmult(poly_I, phi_ut_i_q_old_v, true);
 
     // -old_ut_old_v
-    FullMatrix<double> n_old_ut_old_v{old_ut_old_v};
+    /*FullMatrix<double> n_old_ut_old_v{old_ut_old_v};*/
+    FullMatrix<double> n_old_ut_old_v = old_ut_old_v;    
     n_old_ut_old_v *= -1.0;
     n_old_ut_old_v.mmult(poly_I, old_vt_phi_u_i_q, true);
     n_old_ut_old_v.mmult(poly_I, phi_vt_i_q_old_u, true);
