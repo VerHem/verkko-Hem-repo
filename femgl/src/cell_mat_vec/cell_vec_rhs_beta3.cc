@@ -149,15 +149,15 @@ namespace FemGL_mpi
 
     /* ********  construct the matrices summation ******** */
 
-    old_ut_old_u.mmult(poly_I,old_ut_phi_u_i_q, true);
-    old_u_old_vt.mmult(poly_I,old_v_phi_ut_i_q, true);
-    old_ut_old_v.mmult(poly_I,phi_ut_i_q_old_v, true);
+    old_ut_old_u.mmult(poly_I, old_ut_phi_u_i_q, true);
+    old_u_old_vt.mmult(poly_I, old_v_phi_ut_i_q, true);
+    old_ut_old_v.mmult(poly_I, phi_ut_i_q_old_v, true);
 
     // -old_ut_old_v
     FullMatrix<double> n_old_ut_old_v{old_ut_old_v};
     n_old_ut_old_v *= -1.0;
-    n_old_ut_old_v.mmult(poly_I,old_vt_phi_u_i_q, true);
-    n_old_ut_old_v.mmult(poly_I,phi_vt_i_q_old_u, true);
+    n_old_ut_old_v.mmult(poly_I, old_vt_phi_u_i_q, true);
+    n_old_ut_old_v.mmult(poly_I, phi_vt_i_q_old_u, true);
 
     old_ut_old_v.mmult(poly_I, old_ut_phi_v_i_q, true);
     old_ut_old_u.mmult(poly_I, old_vt_phi_v_i_q, true);
