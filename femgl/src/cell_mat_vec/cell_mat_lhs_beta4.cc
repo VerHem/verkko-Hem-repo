@@ -104,11 +104,14 @@ namespace FemGL_mpi
                                     phi_v_j_q_v0t(3,3),
                                     /* ************** */      
                                     u0_phi_ut_j_q(3,3),
+                                    u0_phi_vt_j_q(3,3),
+                                    v0_phi_ut_j_q(3,3),
                                     v0_phi_vt_j_q(3,3);      
 
 
 
-    FullMatrix<double>              ms1(3,3), ms2(3,3), ms3(3,3), ms4(3,3),
+    FullMatrix<double>              ms1(3,3), ms2(3,3),
+                                    ms3(3,3), ms4(3,3),
                                     ms5(3,3), ms6(3,3);
     
     // Matrices for saving trace polynomils NO. I, II, II and IV
@@ -133,10 +136,10 @@ namespace FemGL_mpi
     //phi_phit_matrics_i_j_q   = 0.0;
     
     u0_u0t   = 0.0;
-    old_v_old_vt   = 0.0;
     u0_v0t   = 0.0;
-    old_vt_old_v   = 0.0;
-    old_vt_old_u   = 0.0;    
+    v0_v0t   = 0.0;    
+    v0_u0t   = 0.0;
+
 
     phi_u_i_q_u0t = 0.0;
     phi_u_i_q_v0t = 0.0;
@@ -147,6 +150,12 @@ namespace FemGL_mpi
     phi_u_j_q_v0t = 0.0;
     phi_v_j_q_u0t = 0.0;
     phi_v_j_q_v0t = 0.0;
+
+    u0_phi_ut_j_q = 0.0;
+    u0_phi_vt_j_q = 0.0;
+    v0_phi_ut_j_q = 0.0;
+    v0_phi_vt_j_q = 0.0;     
+    
     
     /* -------------------------------------------------------------
      * conduct matrices multiplacations: matrices multiplication
@@ -157,26 +166,13 @@ namespace FemGL_mpi
     phi_v_i_q.mTmult(phi_v_phi_vt, phi_v_j_q);
     phi_u_i_q.mTmult(phi_u_phi_vt, phi_v_j_q);
     phi_v_i_q.mTmult(phi_v_phi_ut, phi_u_j_q);
-
-    /*phi_u_i_q.Tmmult(phi_ut_phi_u, phi_u_j_q);
-    phi_v_i_q.Tmmult(phi_vt_phi_v, phi_v_j_q);
-    phi_u_i_q.Tmmult(phi_ut_phi_v, phi_v_j_q);
-    phi_v_i_q.Tmmult(phi_vt_phi_u, phi_u_j_q);*/
-
-
     
+    /* ********************* */
     old_solution_u.mTmult(u0_u0t, old_solution_u);
     old_solution_u.mTmult(u0_v0t, old_solution_v);
-    
-    
-
-    old_solution_v.mTmult(old_v_old_vt, old_solution_v);
-
-    old_solution_v.mTmult(old_v_old_ut, old_solution_u);    
-
-    old_solution_v.Tmmult(old_vt_old_v, old_solution_v);
-    old_solution_v.Tmmult(old_vt_old_u, old_solution_u);        
-    
+    old_solution_v.mTmult(v0_v0t, old_solution_v);
+    old_solution_v.mTmult(v0_u0t, old_solution_u);        
+        
     //phi_phit_matrics_i_j_q.add(1.0, phi_u_phi_ut, 1.0, phi_v_phi_vt);
 
 
@@ -192,18 +188,13 @@ namespace FemGL_mpi
     phi_v_j_q.mTmult(phi_v_j_q_v0t, old_solution_v);
 
     old_solution_u.mTmult(u0_phi_ut_j_q, phi_u_j_q);
-    old_solution_u.mTmult(u0_phi_vt_j_q, phi_v_j_q);        
-    /* ********************* */
+    old_solution_u.mTmult(u0_phi_vt_j_q, phi_v_j_q);
+    old_solution_v.mTmult(v0_phi_ut_j_q, phi_u_j_q);
+    old_solution_v.mTmult(v0_phi_vt_j_q, phi_v_j_q);                
     
     
-    phi_v_j_q.Tmmult(phi_v_j_q_old_ut, old_solution_u);                
-
-    /* ********************* */
-    phi_u_j_q.Tmmult(phi_ut_j_q_old_v, old_solution_v);
-    phi_v_j_q.Tmmult(phi_vt_j_q_old_v, old_solution_v);
-
     /* --------------------------------------------- */
-    /*         build ms1, ms2, ms3, ms4              */
+    /*     build ms1, ms2, ms3, ms4, ms5, ms6        */
     /* --------------------------------------------- */
 
     ms1 = 0.0;
@@ -221,11 +212,19 @@ namespace FemGL_mpi
     ms4 = 0.0;
     ms4.add(1.,phi_v_j_q_u0t);
     ms4.add(-1.,phi_u_j_q_v0t);    
+
+    ms5 = 0.0;
+    ms5.add(1.,phi_v_phi_ut);
+    ms5.add(-1.,phi_u_phi_vt);    
+
+    ms6 = 0.0;
+    ms6.add(1.,phi_u_phi_ut);
+    ms6.add(1.,phi_v_phi_vt);    
     
 
     
     /* --------------------------------------------- */
-    /*         build poly_I, II, III and IV          */
+    /*              build poly_I, II, III            */
     /* --------------------------------------------- */
 
     poly_I = 0.0;
@@ -234,83 +233,34 @@ namespace FemGL_mpi
     ms3.mmult(poly_I, ms4, true);    
 
     /* ------------------------- */
-    
-
-
-
-
-
-
-
-
 
     poly_II = 0.0;
 
-    // -old_v_phi_vt_i_q
-    FullMatrix<double> n_old_v_phi_vt_i_q(IdentityMatrix(3));
-    n_old_v_phi_vt_i_q.copy_from(old_v_phi_vt_i_q);
-    n_old_v_phi_vt_i_q *= -1.0; 
-    n_old_v_phi_vt_i_q.mmult(poly_II, old_u_phi_ut_j_q, true);
-    
-    old_u_phi_vt_i_q.mmult(poly_II, old_v_phi_ut_j_q, true);
-    old_u_phi_vt_i_q.mmult(poly_II, old_u_phi_vt_j_q, true);
-    old_v_phi_vt_i_q.mmult(poly_II, old_v_phi_vt_j_q, true);
+    ms1.mmult(poly_II, u0_phi_ut_j_q, true);
+    ms5.mmult(poly_II, u0_v0t, true);
+    ms6.mmult(poly_II, u0_u0t, true);
+
+    FullMatrix<double> n_ms3 = ms3;
+    n_ms3 *= -1.0;
+    n_ms3.mmult(poly_II, u0_phi_vt_j_q, true);            
 
     /* ------------------------- */
 
     poly_III = 0.0;
 
-    old_u_phi_ut_i_q.mmult(poly_III, phi_u_j_q_old_ut, true);
-    old_u_old_vt.mmult(poly_III, phi_u_phi_vt, true);
-    old_u_old_vt.mmult(poly_III, phi_v_phi_ut, true);    
+    ms3.mmult(poly_III, v0_phi_ut_j_q, true);
 
-    n_old_v_phi_vt_i_q.mmult(poly_III, phi_u_j_q_old_ut, true);
+    FullMatrix<double> n_ms5 = ms5;
+    n_ms5 *= -1.0;
+    n_ms5.mmult(poly_III, v0_u0t, true);        
 
-    old_u_old_ut.mmult(poly_III, phi_u_phi_ut, true);
-
-    // -old_u_old_ut
-    FullMatrix<double> n_old_u_old_ut(IdentityMatrix(3));
-    n_old_u_old_ut.copy_from(old_u_old_ut);
-    n_old_u_old_ut *= -1.0; 
-    n_old_u_old_ut.mmult(poly_III, phi_v_phi_vt, true);
-
-    old_v_phi_ut_i_q.mmult(poly_III, phi_v_j_q_old_ut, true);
-    old_u_phi_vt_i_q.mmult(poly_III, phi_v_j_q_old_ut, true);
-    
-    /* ------------------------- */
-
-    poly_IV = 0.0;
-
-    old_vt_old_v.mmult(poly_IV, phi_ut_phi_u, true);
-    old_v_old_ut.mmult(poly_IV, phi_u_phi_vt, true);
-    old_v_old_ut.mmult(poly_IV, phi_v_phi_ut, true);
-    old_vt_old_u.mmult(poly_IV, phi_vt_phi_u, true);
-
-    // -old_vt_phi_u_i_q
-    FullMatrix<double> n_old_vt_phi_u_i_q(IdentityMatrix(3));
-    n_old_vt_phi_u_i_q.copy_from(old_vt_phi_u_i_q);
-    n_old_vt_phi_u_i_q *= -1.0; 
-    n_old_vt_phi_u_i_q.mmult(poly_IV, phi_ut_j_q_old_v, true);
-
-    old_vt_phi_v_i_q.mmult(poly_IV, phi_vt_j_q_old_v, true);
-    
-    // -old_vt_old_u
-    FullMatrix<double> n_old_vt_old_u(IdentityMatrix(3));
-    n_old_vt_old_u.copy_from(old_vt_old_u);
-    n_old_vt_old_u *= -1.0; 
-    n_old_vt_old_u.mmult(poly_IV, phi_ut_phi_v, true);
-
-    old_vt_old_v.mmult(poly_IV, phi_vt_phi_v, true);
-
-
-
-
+    ms6.mmult(poly_III, v0_v0t, true);
+    ms1.mmult(poly_III, v0_phi_vt_j_q, true);        
 
 
 
     
-    
-    return  (poly_I.trace() + poly_II.trace() + poly_III.trace() + poly_IV.trace());
+    return  (poly_I.trace() + poly_II.trace() + poly_III.trace());
   }
 
   template class FemGL<3>;
