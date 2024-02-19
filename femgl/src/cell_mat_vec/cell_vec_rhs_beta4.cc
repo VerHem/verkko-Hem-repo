@@ -139,8 +139,8 @@ namespace FemGL_mpi
     old_solution_v.Tmmult(v0t_phi_u_i_q, phi_u_i_q);
     old_solution_v.Tmmult(v0t_phi_v_i_q, phi_v_i_q);    
     /* ********************* */
-    phi_u_i_q.Tmmult(phi_u_i_q_v0t, old_solution_v);
-    phi_v_i_q.Tmmult(phi_v_i_q_v0t, old_solution_v);
+    phi_u_i_q.mTmult(phi_u_i_q_v0t, old_solution_v);
+    phi_v_i_q.mTmult(phi_v_i_q_v0t, old_solution_v);
 
     /**********************************************/
     /*            construct ms1, ms2,ms3          */
