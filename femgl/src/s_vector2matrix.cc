@@ -5,9 +5,6 @@
 #include <deal.II/base/function.h>
 #include <deal.II/base/timer.h>
 
-// The following chunk out code is identical to step-40 and allows
-// switching between PETSc and Trilinos:
-
 #include <deal.II/lac/generic_linear_algebra.h>
 
 #include <deal.II/lac/vector.h>
@@ -76,6 +73,8 @@ namespace FemGL_mpi
    * old_solution_matrix_generator
    * phi_matrix_generator
    * grad_phi_matrix_container_generator
+   *
+   * Homo-Robin BC old_solution face matrix_generator
    * --------------------------------------------------------------------------------
    */
   template <int dim>
@@ -192,5 +191,68 @@ namespace FemGL_mpi
 
   }
 
+  template <int dim>
+  void FemGL<dim>::vector_face_matrix_generator(const FEFaceValues<dim> &fe_face_values,
+					        const char &vector_flag,
+					        const unsigned int   q, const unsigned int n_q_points,
+					        FullMatrix<double>   &u_face_matrix_at_q,
+					        FullMatrix<double>   &v_face_matrix_at_q)
+  {
+    { // vector-matrix generator block starts from here, memory will be released after run
+      //LA::MPI::Vector vector_solution(locally_relevant_dofs, mpi_communicator);
+      LA::MPI::Vector *ptr_vector_solution = &local_solution;
+    switch (vector_flag)
+      {
+      case 's':
+	{
+	  //LA::MPI::Vector &vector_solution = local_solution;
+	  ptr_vector_solution = &local_solution;
+	  break;
+	}
+	//ptr_vector_solution = &local_solution; break;
+      case 'd':
+	{
+	  //LA::MPI::Vector &vector_solution = locally_relevant_newton_solution;
+	  ptr_vector_solution = &locally_relevant_newton_solution;
+	  break;
+	}
+      case 'l':
+	{
+          //LA::MPI::Vector &vector_solution = locally_relevant_damped_vector;
+	  ptr_vector_solution = &locally_relevant_damped_vector;
+	  break;	
+	}
+      }
+
+    std::vector<double>                  vector_solution_uxx(n_q_points),
+                                         vector_solution_vxx(n_q_points);
+
+    for (unsigned int comp_index = 0; comp_index <= 8; ++comp_index)
+      {
+
+	if (
+	    /* the 3rd column commponents for normal vector z*/
+            (comp_index == 2) && (comp_index == 5) && (comp_index == 8)
+           )
+	  {
+	   u_face_matrix_at_q.set(comp_index/3u, comp_index%3u, 0.);
+	   v_face_matrix_at_q.set(comp_index/3u, comp_index%3u, 0.);
+	  }
+	else
+	  {
+	   fe_face_values[components_u[comp_index]].get_function_values(*ptr_vector_solution, vector_solution_uxx);
+	   fe_face_values[components_v[comp_index]].get_function_values(*ptr_vector_solution, vector_solution_vxx);
+
+	   u_face_matrix_at_q.set(comp_index/3u, comp_index%3u, vector_solution_uxx[q]);
+	   v_face_matrix_at_q.set(comp_index/3u, comp_index%3u, vector_solution_vxx[q]);
+	  }
+
+      }
+    
+    } // vector-matrix generator block ends at here, release memory
+
+  }
+
+  
   template class FemGL<3>;  
 } //namespace FemGL_mpi ends here  

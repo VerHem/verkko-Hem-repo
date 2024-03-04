@@ -79,14 +79,14 @@ namespace FemGL_mpi
   {
     //block of assembly starts from here, all local objects in there will be release to save memory leak
 
-    FullMatrix<double>    old_u_old_ut(3,3), old_v_old_vt(3,3),
-                          old_u_old_vt(3,3);
+    FullMatrix<double>    u0_u0t(3,3), /*s*/ v0_v0t(3,3), /*^V*/
+                          u0_v0t(3,3); /***/
 
-    FullMatrix<double>              old_u_phi_ut_i_q(3,3),
-                                    old_v_phi_vt_i_q(3,3),
+    FullMatrix<double>              u0_phi_ut_i_q(3,3), /*o*/
+                                    v0_phi_vt_i_q(3,3), /*h*/
                                     /* ************** */
-                                    old_u_phi_vt_i_q(3,3),
-                                    old_v_phi_ut_i_q(3,3);      
+                                    u0_phi_vt_i_q(3,3), /*?*/
+                                    v0_phi_ut_i_q(3,3); /*^*/     
           
     /*-------------------------------------------------------------*/
     /* phi^u, phi^v matrices have been cooked up in other fuctions */
@@ -98,38 +98,38 @@ namespace FemGL_mpi
      * -------------------------------------------------------------
      */
     
-    old_u_old_ut   = 0.0;
-    old_v_old_vt   = 0.0;
-    old_u_old_vt   = 0.0;
+    u0_u0t   = 0.0;
+    v0_v0t   = 0.0;
+    u0_v0t   = 0.0;
 
-    old_u_phi_ut_i_q    = 0.0;
-    old_v_phi_vt_i_q    = 0.0;
+    u0_phi_ut_i_q    = 0.0;
+    v0_phi_vt_i_q    = 0.0;
     /* *********************/
-    old_u_phi_vt_i_q    = 0.0;
-    old_v_phi_ut_i_q    = 0.0;
+    u0_phi_vt_i_q    = 0.0;
+    v0_phi_ut_i_q    = 0.0;
     
     /* -------------------------------------------------------------
      * conduct matrices multiplacations: matrices multiplication
      * -------------------------------------------------------------
      */
    
-    old_solution_u.mTmult(old_u_old_ut, old_solution_u);
-    old_solution_v.mTmult(old_v_old_vt, old_solution_v);
-    old_solution_u.mTmult(old_u_old_vt, old_solution_v);
+    old_solution_u.mTmult(u0_u0t, old_solution_u);
+    old_solution_v.mTmult(v0_v0t, old_solution_v);
+    old_solution_u.mTmult(u0_v0t, old_solution_v);
     
     //phi_phit_matrics_i_j_q.add(1.0, phi_u_phi_ut, 1.0, phi_v_phi_vt);
 
-    old_solution_u.mTmult(old_u_phi_ut_i_q, phi_u_i_q);
-    old_solution_v.mTmult(old_v_phi_vt_i_q, phi_v_i_q);
+    old_solution_u.mTmult(u0_phi_ut_i_q, phi_u_i_q);
+    old_solution_v.mTmult(v0_phi_vt_i_q, phi_v_i_q);
     /* ********************* */
-    old_solution_u.mTmult(old_u_phi_vt_i_q, phi_v_i_q);
-    old_solution_v.mTmult(old_v_phi_ut_i_q, phi_u_i_q);
+    old_solution_u.mTmult(u0_phi_vt_i_q, phi_v_i_q);
+    old_solution_v.mTmult(v0_phi_ut_i_q, phi_u_i_q);
    
     
-    return  ((old_u_old_ut.trace() - old_v_old_vt.trace())
-	      * (old_u_phi_ut_i_q.trace() - old_v_phi_vt_i_q.trace())
-	     + 2.0 * old_u_old_vt.trace()
-	           * (old_u_phi_vt_i_q.trace() + old_v_phi_ut_i_q.trace()));
+    return  (((u0_u0t.trace()) - (v0_v0t.trace()))
+	     * ((u0_phi_ut_i_q.trace()) - (v0_phi_vt_i_q.trace()))
+	    + 2.0 * (u0_v0t.trace())
+	          * ((u0_phi_vt_i_q.trace()) + (v0_phi_ut_i_q.trace())));
   }
 
   template class FemGL<3>;

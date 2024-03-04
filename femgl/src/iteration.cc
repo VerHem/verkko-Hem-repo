@@ -9,9 +9,6 @@
 #include <deal.II/base/function.h>
 #include <deal.II/base/timer.h>
 
-// The following chunk out code is identical to step-40 and allows
-// switching between PETSc and Trilinos:
-
 #include <deal.II/lac/generic_linear_algebra.h>
 
 #include <deal.II/lac/vector.h>
@@ -89,9 +86,9 @@ namespace FemGL_mpi
 
      {// line search loop
 
-      for (unsigned int i = 0; i < 10; ++i)
+      for (unsigned int i = 0; i < 100; ++i)
         {
-	 const double alpha = std::pow(0.5, static_cast<double>(i));
+	 const double alpha = std::pow(0.83, static_cast<double>(i));
          distributed_newton_update = locally_relevant_newton_solution;
          distributed_solution      = local_solution;
 

@@ -68,84 +68,39 @@
 
 #include "femgl.h"
 #include "dirichlet.h"
- 
 
 namespace FemGL_mpi
 {
   using namespace dealii;
 
-
   template <int dim>
-  void FemGL<dim>::run()
+  double FemGL<dim>::vec_face_rhs_K1(FullMatrix<double> &phi_uf_i_q, FullMatrix<double> &phi_vf_i_q,
+				     FullMatrix<double> &old_f_solution_u, FullMatrix<double> &old_f_solution_v)
   {
-    pcout << "Running using Trilinos." << std::endl;
+    //block of assembly starts from here, all local objects in there will be release to save memory leak
+    /* --------------------------------------------------------------------------------
+     * matrics for free energy terms: gradient terms, alpha-term, beta-term,
+     * they are products of phi tensors or u/v tensors.
+     * --------------------------------------------------------------------------------
+     */
+    FullMatrix<double>  uf0_phi_uft_i_q(3,3),
+                        vf0_phi_vft_i_q(3,3);
 
-    std::string ref_str = "adaptive";
-    const unsigned int n_cycles    = 3;
-    const unsigned int n_iteration = 60;    
-    for (cycle = 0; cycle <= n_cycles; ++cycle)
-      {
-        pcout << "Cycle " << cycle << ':' << std::endl;
-
-        if (cycle == 0)
-	  {
-	   make_grid();
-           setup_system();	
-	  }
-        else
-	  refine_grid(ref_str);
-	
-        for (unsigned int iteration_loop = 0; iteration_loop <= n_iteration; ++iteration_loop)
-	  {
-	     pcout << "cycle : " << cycle << ", "
-                   << "iteration_loop: " << iteration_loop	       
-		   << std::endl;
-
-             assemble_system();
-	     pcout << "assembly is done !" << std::endl;
-             solve();
-	     pcout << " AMG solve is done !" << std::endl;	     
-	     newton_iteration();
-	     pcout << " newton iteration is done !" << std::endl;	     	     
-
-             if (Utilities::MPI::n_mpi_processes(mpi_communicator) <= 1280)
-              {
-               TimerOutput::Scope t(computing_timer, "output");
-	       output_results(iteration_loop);
-              }
-
-             computing_timer.print_summary();
-             computing_timer.reset();
-
-             pcout << std::endl;
-
-	     if ((system_rhs.l2_norm() < 1e-1) && (cycle == 0))
-	       break;
-	     else if ((system_rhs.l2_norm() < 1e-2) && (cycle == 1))
-	       break;
-	     else if ((system_rhs.l2_norm() < 5e-3) && (cycle == 2))
-	       break;
-	     else if ((system_rhs.l2_norm() < 1e-3) && (cycle == 3))
-	       break;
-	     /*else if ((system_rhs.l2_norm() < 5e-6) && (cycle == 4))
-	       break;	     
-	     else if ((system_rhs.l2_norm() < 5e-6) && (cycle == 5))
-	       break;
-	     else if ((system_rhs.l2_norm() < 5e-6) && (cycle == 6))
-	       break;
-	     else if ((system_rhs.l2_norm() < 5e-6) && (cycle == 7))
-	       break;
-	     else if ((system_rhs.l2_norm() < 5e-7) && (cycle == 8))
-	       break;	     	     	     
-	     */
-	  }
-
-      }
-     computing_timer.print_summary();	
+    /* --------------------------------------------------
+     * conduct matrices multiplacations
+     * --------------------------------------------------
+     */
+    uf0_phi_uft_i_q    = 0.0;
+    vf0_phi_vft_i_q    = 0.0;
+    
+    // phi_u_phi_ut_ijq, phi_v_phi_vt_ijq matrics
+    old_f_solution_u.mTmult(uf0_phi_uft_i_q, phi_uf_i_q);
+    old_f_solution_v.mTmult(vf0_phi_vft_i_q, phi_vf_i_q);
+		      
+    return  (uf0_phi_uft_i_q.trace() + vf0_phi_vft_i_q.trace());
   }
 
   template class FemGL<3>;
-  //template class FemGL<2>;      
 
-} // namespace FemGL_mpi
+} // namespace FemGL_mpi ends at here
 

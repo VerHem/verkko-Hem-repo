@@ -83,41 +83,39 @@ namespace FemGL_mpi
                           /* default DoF indices pattern of multiplication 
                            * between phis is phi_phit_matrics_i_j_q(3,3);
                            */
-    FullMatrix<double>    phi_u_phi_ut(3,3), phi_v_phi_vt(3,3),
-                          phi_u_phi_vt(3,3), phi_v_phi_ut(3,3);
+    FullMatrix<double>    phi_u_phi_ut(3,3) /*?3*/, phi_v_phi_vt(3,3), /*?4*/
+                          phi_u_phi_vt(3,3) /*?1*/, phi_v_phi_ut(3,3); /*?2*/
 
-    FullMatrix<double>    u0_u0t(3,3), v0_v0t(3,3),
-                          u0_v0t(3,3), v0_u0t(3,3),
+    FullMatrix<double>    u0_u0t(3,3) /*s+*/, v0_v0t(3,3), /*h/*/
+                          u0_v0t(3,3) /*ox*/, v0_u0t(3,3); /*^v+*/
 
-      
-                          v0t_v0(3,3), /*old_vt_old_u(3,3),*/
-                          v0t_u0(3,3);
 
     FullMatrix<double>              phi_u_i_q_u0t(3,3), /*o*/
                                     phi_u_i_q_v0t(3,3), /*^*/
-                                    phi_v_i_q_v0t(3,3),
-                                    phi_v_i_q_u0t(3,3),
+                                    phi_v_i_q_v0t(3,3), /*^v*/
+                                    phi_v_i_q_u0t(3,3), /*x*/
                                     /* ************** */
-                                    phi_u_j_q_u0t(3,3),
-                                    phi_u_j_q_v0t(3,3),      
-                                    phi_v_j_q_u0t(3,3), /**/
-                                    phi_v_j_q_v0t(3,3),
+                                    phi_u_j_q_u0t(3,3), /*S*/
+                                    phi_u_j_q_v0t(3,3), /*h*/     
+                                    phi_v_j_q_u0t(3,3), /* * */
+                                    phi_v_j_q_v0t(3,3), /*o.*/
                                     /* ************** */      
-                                    u0_phi_ut_j_q(3,3),
-                                    u0_phi_vt_j_q(3,3),
-                                    v0_phi_ut_j_q(3,3),
-                                    v0_phi_vt_j_q(3,3);      
+                                    u0_phi_ut_j_q(3,3), /*s.*/
+                                    u0_phi_vt_j_q(3,3), /*^v.*/
+                                    v0_phi_ut_j_q(3,3), /*o++*/
+                                    v0_phi_vt_j_q(3,3); /*-^|*/     
 
 
 
     FullMatrix<double>              ms1(3,3), ms2(3,3),
                                     ms3(3,3), ms4(3,3),
-                                    ms5(3,3), ms6(3,3);
+                                    ms5(3,3), ms6(3,3),
+                                    mm1(3,3), mm2(3,3);
     
     // Matrices for saving trace polynomils NO. I, II, II and IV
     // see note for understanding details
-    FullMatrix<double>              poly_I, poly_II,
-                                    poly_III;
+    FullMatrix<double>              poly_I(3,3), poly_II(3,3),
+                                    poly_III(3,3);
 
           
     /*-------------------------------------------------------------*/
@@ -173,8 +171,6 @@ namespace FemGL_mpi
     old_solution_v.mTmult(v0_v0t, old_solution_v);
     old_solution_v.mTmult(v0_u0t, old_solution_u);        
         
-    //phi_phit_matrics_i_j_q.add(1.0, phi_u_phi_ut, 1.0, phi_v_phi_vt);
-
 
     /* ********************* */
     phi_u_i_q.mTmult(phi_u_i_q_u0t, old_solution_u);
@@ -228,6 +224,7 @@ namespace FemGL_mpi
     /* --------------------------------------------- */
 
     poly_I = 0.0;
+    mm1    = 0.0;
 
     ms1.mmult(poly_I, ms2, true);
     ms3.mmult(poly_I, ms4, true);    
@@ -240,20 +237,19 @@ namespace FemGL_mpi
     ms5.mmult(poly_II, u0_v0t, true);
     ms6.mmult(poly_II, u0_u0t, true);
 
-    FullMatrix<double> n_ms3 = ms3;
-    n_ms3 *= -1.0;
-    n_ms3.mmult(poly_II, u0_phi_vt_j_q, true);            
+    ms3.mmult(mm1, u0_phi_vt_j_q);
+    poly_II.add(-1.0, mm1);
 
     /* ------------------------- */
 
     poly_III = 0.0;
+    mm2      = 0.0;
 
     ms3.mmult(poly_III, v0_phi_ut_j_q, true);
 
-    FullMatrix<double> n_ms5 = ms5;
-    n_ms5 *= -1.0;
-    n_ms5.mmult(poly_III, v0_u0t, true);        
-
+    ms5.mmult(mm2, v0_u0t);
+    poly_III.add(-1.0, mm2);
+    
     ms6.mmult(poly_III, v0_v0t, true);
     ms1.mmult(poly_III, v0_phi_vt_j_q, true);        
 

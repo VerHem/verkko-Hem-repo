@@ -79,22 +79,22 @@ namespace FemGL_mpi
   {
     //block of assembly starts from here, all local objects in there will be release to save memory leak
 
-    FullMatrix<double>    u0_u0t(3,3), u0_v0t(3,3),
-                          u0t_u0(3,3), u0t_v0(3,3),
-                          v0t_v0(3,3);
+    FullMatrix<double>    u0_u0t(3,3) /*h.*/, u0_v0t(3,3), /*h*/
+                          u0t_u0(3,3) /*o*/, u0t_v0(3,3) /* * */,
+                          v0t_v0(3,3); /*^*/
 
-    FullMatrix<double>             u0t_phi_u_i_q(3,3),
-                                   u0t_phi_v_i_q(3,3),
-                                   v0t_phi_u_i_q(3,3),
-                                   v0t_phi_v_i_q(3,3),      
+    FullMatrix<double>             u0t_phi_u_i_q(3,3), /*s*/
+                                   u0t_phi_v_i_q(3,3), /*^.*/
+                                   v0t_phi_u_i_q(3,3), /*s.*/
+                                   v0t_phi_v_i_q(3,3), /*ox*/     
                                   /* ************** */
-                                   phi_u_i_q_v0t(3.3),
-                                   phi_v_i_q_v0t(3.3);
+                                   phi_u_i_q_v0t(3.3), /*?1*/
+                                   phi_v_i_q_v0t(3.3); /*?2*/
 
     FullMatrix<double>   ms1(3,3), ms2(3,3), ms3(3,3),
                          mm1(3,3);
                                    
-    FullMatrix<double>   poly_I = 0.0;
+    FullMatrix<double>   poly_I(3,3);
           
     /*-------------------------------------------------------------*/
     /* phi^u, phi^v matrices have been cooked up in other fuctions */
@@ -132,7 +132,6 @@ namespace FemGL_mpi
     old_solution_u.Tmmult(u0t_v0, old_solution_v);
     old_solution_v.Tmmult(v0t_v0, old_solution_v);                
     
-    //phi_phit_matrics_i_j_q.add(1.0, phi_u_phi_ut, 1.0, phi_v_phi_vt);
 
     old_solution_u.Tmmult(u0t_phi_u_i_q, phi_u_i_q);
     old_solution_u.Tmmult(u0t_phi_v_i_q, phi_v_i_q);    
@@ -162,13 +161,15 @@ namespace FemGL_mpi
     
     /* ********  construct the matrices summation ******** */
 
+    poly_I = 0.0;
+
     ms1.mmult(poly_I, ms2, true);
 
     u0t_v0.mmult(poly_I, ms3, true);
 
     u0_u0t.mmult(poly_I, phi_v_i_q_v0t, true);
 
-    poly_I.add(-1.0, ms1);
+    poly_I.add(-1.0, mm1); // here is the bug
 
     
     /* **  matrices summation construction ends here ***** */

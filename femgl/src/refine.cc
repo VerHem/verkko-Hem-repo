@@ -9,9 +9,6 @@
 #include <deal.II/base/function.h>
 #include <deal.II/base/timer.h>
 
-// The following chunk out code is identical to step-40 and allows
-// switching between PETSc and Trilinos:
-
 #include <deal.II/lac/generic_linear_algebra.h>
 
 #include <deal.II/lac/vector.h>
@@ -104,13 +101,13 @@ namespace FemGL_mpi
         {
          Vector<float> estimated_error_per_cell(triangulation.n_active_cells());
          KellyErrorEstimator<dim>::estimate(dof_handler,
-				         QGauss<dim - 1>(fe.degree + 1),
-					 std::map<types::boundary_id, const Function<dim> *>(),
-					 local_solution,
-					 estimated_error_per_cell);
+				            QGauss<dim - 1>(fe.degree + 1),
+					    std::map<types::boundary_id, const Function<dim> *>(),
+					    local_solution,
+					    estimated_error_per_cell);
 
          parallel::distributed::GridRefinement::refine_and_coarsen_fixed_number(triangulation,
-									     estimated_error_per_cell, 0.3, 0.0);
+					  				        estimated_error_per_cell, 0.3, 0.0);
         }
 
         triangulation.prepare_coarsening_and_refinement();

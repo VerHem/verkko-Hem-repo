@@ -74,10 +74,10 @@ namespace FemGL_mpi
   using namespace dealii;
 
   template <int dim>
-  double FemGL<dim>::mat_lhs_K2K3(std::vector<FullMatrix<double>> &grad_phi_u_i_q,
-				  std::vector<FullMatrix<double>> &grad_phi_v_i_q,
-				  std::vector<FullMatrix<double>> &grad_phi_u_j_q,
-				  std::vector<FullMatrix<double>> &grad_phi_v_j_q)
+  double FemGL<dim>::mat_lhs_K2K3(std::vector<FullMatrix<double>> grad_phi_u_i_q, /* here is bug, reference &grad_phi_u_i_q can't be directly put in std::vector*/
+				  std::vector<FullMatrix<double>> grad_phi_v_i_q,
+				  std::vector<FullMatrix<double>> grad_phi_u_j_q,
+				  std::vector<FullMatrix<double>> grad_phi_v_j_q)
   {
     //block of assembly starts from here, all local objects in there will be release to save memory leak
     /* --------------------------------------------------------------------------------
@@ -87,7 +87,7 @@ namespace FemGL_mpi
      */
 
     /* declear a FullMatrix<> to use extract_submatrix_from() funtion to hold part_x_phi_u/v_x */
-    FullMatrix<double> mat_partial_x_phi_x(3,3);
+    Vector<double> vec_partial_x_phi_x(3);
 
     /* container of all grad_phi_u/v_i/j_q */
     std::vector<std::vector<FullMatrix<double>>> container_grad_phi{grad_phi_u_i_q, grad_phi_u_j_q, grad_phi_v_i_q, grad_phi_v_j_q};
@@ -117,33 +117,38 @@ namespace FemGL_mpi
     std::vector<unsigned int> row_index_set{0,1,2};
     for (unsigned int w = 0; w < 4; ++w)
       {
-        mat_partial_x_phi_x = 0.0;
 
+	container_px_phi_x[w] = 0.0;
 	/* the following loop extracts partial_x_phi^u/v_x into xth column of mat_p_x_phi_x */
 	for (unsigned int z = 0; z < 3; ++z)
 	  {
-	    std::vector<unsigned int> column_index_set{z};
-  	    mat_partial_x_phi_x.extract_submatrix_from(container_grad_phi[w][z],
+	    	    
+	    //std::vector<unsigned int> column_index_set{z};
+
+	    /* This is a bug ! 
+             * Doc of extract_submatrix_from() says
+             * "The number of elements in row_index_set and column_index_set 
+             * shall be equal to the number of rows and columns in the current object"
+             * I have 3x3 in current object, however, the sets have 3x1
+             */
+  	    /*mat_partial_x_phi_x.extract_submatrix_from(container_grad_phi[w][z],
 				                       row_index_set,
-				                       column_index_set);
+				                       column_index_set);*/
+            vec_partial_x_phi_x = 0.0;	    
+            for (auto m : row_index_set) 
+	      { vec_partial_x_phi_x(m) = container_grad_phi[w][z](m,z); }
+
+	    container_px_phi_x[w] += vec_partial_x_phi_x;
 
 	  }
 
 	/* FullMatrix<>::add_col() A(1...n,i) += s*A(1...n,j) + t*A(1...n,k). Multiple addition of columns of this. */
-	/* This operation adds up all p_x_phi_x in to the 0th col of mat_p_x_phi_x matrix.                          */
-	mat_partial_x_phi_x.add_col(0 /*i=0th col*/,
-				    1 /*s*/, 1 /* j=1st col */,
-				    1 /*t*/, 2 /* k=2nd col*/);
 
-	/* FullMatrix::begin() returns iterator starting at the first entry of row r. */
-	container_px_phi_x[w][0] = *mat_partial_x_phi_x.begin(0);
-	container_px_phi_x[w][1] = *mat_partial_x_phi_x.begin(1);
-	container_px_phi_x[w][2] = *mat_partial_x_phi_x.begin(2);	
       }
 
         
     /* p_x_phi_u^mu_x dot p_x_phi_u^mu_j + p_x_phi_v^mu_x dot p_x_phi_v^mu_j */
-    return  container_px_phi_x[0] * container_px_phi_x[1] + container_px_phi_x[2] * container_px_phi_x[3];
+    return  ((container_px_phi_x[0] * container_px_phi_x[1]) + (container_px_phi_x[2] * container_px_phi_x[3]));
   }
 
   template class FemGL<3>;

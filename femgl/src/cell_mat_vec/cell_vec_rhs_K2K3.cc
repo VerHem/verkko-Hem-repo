@@ -74,10 +74,10 @@ namespace FemGL_mpi
   using namespace dealii;
 
   template <int dim>
-  double FemGL<dim>::vec_rhs_K2K3(std::vector<FullMatrix<double>> &grad_phi_u_i_q,
-				  std::vector<FullMatrix<double>> &grad_phi_v_i_q,
-				  std::vector<FullMatrix<double>> &grad_old_u_q,
-				  std::vector<FullMatrix<double>> &grad_old_v_q)
+  double FemGL<dim>::vec_rhs_K2K3(std::vector<FullMatrix<double>> grad_phi_u_i_q,
+				  std::vector<FullMatrix<double>> grad_phi_v_i_q,
+				  std::vector<FullMatrix<double>> grad_old_u_q,
+				  std::vector<FullMatrix<double>> grad_old_v_q)
   {
     //block of assembly starts from here, all local objects in there will be release to save memory leak
     /* --------------------------------------------------------------------------------
@@ -86,12 +86,11 @@ namespace FemGL_mpi
      * --------------------------------------------------------------------------------
      */
 
-    /* declear a FullMatrix<> to use extract_submatrix_from() funtion to hold part_x_phi_u/v_x */
-    FullMatrix<double> mat_partial_x_phi_x(3,3),
-                       mat_partial_x_s_x(3,3);
+    /* declear a Vector to extract part_x_phi_u/v_x */
+    Vector<double> vec_partial_x_XX_x(3);
 
     /* container of all grad_phi_u/v_i_q and grad_old_u/v_q */
-    std::vector<std::vector<FullMatrix<double>>> container_grad{grad_phi_u_i_q, grad_phi_v_i_q, grad_old_u_q, grad_old_v_q};
+    std::vector<std::vector<FullMatrix<double>>> container_grad{grad_old_u_q, grad_phi_u_i_q, grad_old_v_q, grad_phi_v_i_q};
     
     /*deal.ii::Vector<> doesn't need to be initialized in the way,which FullMatrix<> does i.e., '=0.0'.*/ 
     /*dealii::Vector<> v(3) will do the job, in which a 3-components Vector is defines as 0-vector.    */ 
@@ -99,11 +98,11 @@ namespace FemGL_mpi
     Vector<double>  partial_x_phi_u_x_i(3);  //Vector of part_x_phi_u^mu_x_i, with i is DoF index, x is spatial-prbital index and they contract
     Vector<double>  partial_x_phi_v_x_i(3);  //Vector of part_x_phi_u^mu_x_i, with i is DoF index, x is spatial-prbital index and they contract
 
-    Vector<double>  partial_x_old_u_x(3);  //Vector of part_x_u^mu_x, with mu is spin-index, x is spatial-prbital index and they contract
-    Vector<double>  partial_x_old_v_x(3);  //Vector of part_x_u^mu_x, with mu is spin-index, x is spatial-prbital index and they contract
+    Vector<double>  partial_x_u0_x(3);  //Vector of part_x_u^mu_x, with mu is spin-index, x is spatial-prbital index and they contract
+    Vector<double>  partial_x_v0_x(3);  //Vector of part_x_u^mu_x, with mu is spin-index, x is spatial-prbital index and they contract
 
     /* container of all partial_x_phi_u/v_i_q and grad_old_u/v_q */
-    std::vector<Vector<double>> container_px_x{partial_x_phi_u_x_i, partial_x_phi_v_x_i, partial_x_old_u_x, partial_x_old_v_x};
+    std::vector<Vector<double>> container_px_x{partial_x_u0_x, partial_x_phi_u_x_i, partial_x_v0_x, partial_x_phi_v_x_i};
     
     /*---------------------------------------------------------------------------------------------*/
     /* grad_phi^u_i_q, grad_phi^v_j_q matrices have beeen cooked up in other functions             */
@@ -114,54 +113,28 @@ namespace FemGL_mpi
      * --------------------------------------------------
      */
 
-    /* >>> construct part_x_phi_u^mu_x_i, part_x_phi_v^mu_x_i vectors <<< */
-    /* >>>   construct part_x_pld_u^mu_x, part_x_old_v^mu_x vectors <<<   */    
-
     std::vector<unsigned int> row_index_set{0,1,2};
-    for (unsigned int w = 0; w < 2; ++w)
+    for (unsigned int w = 0; w < 4; ++w)
       {
-        mat_partial_x_phi_x = 0.0;
-	mat_partial_x_s_x   = 0.0;
-
-	/* the following loop extracts partial_x_phi^u/v_x into xth column of mat_p_x_phi_x   */
-	/* z is the index of FullMatrix elements in grad_xxx, it corresponds to spatial index */
+        container_px_x[w] = 0.0;
+	
 	for (unsigned int z = 0; z < 3; ++z)
 	  {
-	    std::vector<unsigned int> column_index_set{z};
-  	    mat_partial_x_phi_x.extract_submatrix_from(container_grad[w][z],
-				                       row_index_set,
-				                       column_index_set);
+            // the old implemtation is bug, here is new one:
+            vec_partial_x_XX_x = 0.0;
+	    for (auto m : row_index_set)
+	      { vec_partial_x_XX_x(m) = container_grad[w][z](m,z); }
 
-  	    mat_partial_x_s_x.extract_submatrix_from(container_grad[w+2][z],
-				                       row_index_set,
-				                       column_index_set);
+	    container_px_x[w] += vec_partial_x_XX_x;
+
 	    
 	  }
-
-	/* FullMatrix<>::add_col() A(1...n,i) += s*A(1...n,j) + t*A(1...n,k). Multiple addition of columns of this. */
-	/* This operation adds up all p_x_phi_x in to the 0th col of mat_p_x_phi_x matrix.                          */
-	mat_partial_x_phi_x.add_col(0 /*i=0th col*/,
-				    1 /*s*/, 1 /* j=1st col */,
-				    1 /*t*/, 2 /* k=2nd col*/);
-
-	mat_partial_x_s_x.add_col(0 /*i=0th col*/,
-				    1 /*s*/, 1 /* j=1st col */,
-				    1 /*t*/, 2 /* k=2nd col*/);
-	
-	/* FullMatrix::begin() returns iterator starting at the first entry of row r. */
-	container_px_x[w][0] = *mat_partial_x_phi_x.begin(0);
-	container_px_x[w][1] = *mat_partial_x_phi_x.begin(1);
-	container_px_x[w][2] = *mat_partial_x_phi_x.begin(2);
-
-	container_px_x[w+2][0] = *mat_partial_x_s_x.begin(0);
-	container_px_x[w+2][1] = *mat_partial_x_s_x.begin(1);
-	container_px_x[w+2][2] = *mat_partial_x_s_x.begin(2);	
 	
       }
 
         
     /* p_x_phi_u^mu_x dot p_x_old_u^mu_x + p_x_phi_v^mu_x dot p_x_old_v^mu_x */
-    return  (container_px_x[0] * container_px_x[2]) + (container_px_x[1] * container_px_x[3]);
+    return  ((container_px_x[0] * container_px_x[1]) + (container_px_x[2] * container_px_x[3]));
   }
 
   template class FemGL<3>;

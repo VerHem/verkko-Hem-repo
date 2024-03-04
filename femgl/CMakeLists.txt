@@ -1,15 +1,20 @@
 # femgl/CMakeLists.txt
 
-include_directories(${CMAKE_SOURCE_DIR}/femgl/include)
+include_directories(${CMAKE_SOURCE_DIR}/femgl/inc)
 #include_directories(include)
 
 add_library(femgl STATIC
 # main source codes of femgl class   
   ${CMAKE_SOURCE_DIR}/femgl/src/femgl.cc
-  ${CMAKE_SOURCE_DIR}/femgl/src/makegrid2.cc
+#  ${CMAKE_SOURCE_DIR}/femgl/src/makegrid2.cc
+  ${CMAKE_SOURCE_DIR}/femgl/src/makegrid3.cc  
   ${CMAKE_SOURCE_DIR}/femgl/src/setup.cc
-  ${CMAKE_SOURCE_DIR}/femgl/src/assemble.cc
-  ${CMAKE_SOURCE_DIR}/femgl/src/residual.cc
+#  ${CMAKE_SOURCE_DIR}/femgl/src/assemble.cc
+#  ${CMAKE_SOURCE_DIR}/femgl/src/assemble_2.cc
+  ${CMAKE_SOURCE_DIR}/femgl/src/assemble_3.cc  
+#  ${CMAKE_SOURCE_DIR}/femgl/src/residual.cc
+#  ${CMAKE_SOURCE_DIR}/femgl/src/residual_2.cc
+  ${CMAKE_SOURCE_DIR}/femgl/src/residual_3.cc  
   ${CMAKE_SOURCE_DIR}/femgl/src/solve.cc
   ${CMAKE_SOURCE_DIR}/femgl/src/iteration.cc
   ${CMAKE_SOURCE_DIR}/femgl/src/refine.cc
@@ -21,14 +26,21 @@ add_library(femgl STATIC
   ${CMAKE_SOURCE_DIR}/femgl/src/cell_mat_vec/cell_mat_lhs_alpha.cc
   ${CMAKE_SOURCE_DIR}/femgl/src/cell_mat_vec/cell_mat_lhs_beta1.cc  
   ${CMAKE_SOURCE_DIR}/femgl/src/cell_mat_vec/cell_mat_lhs_beta2.cc
-  ${CMAKE_SOURCE_DIR}/femgl/src/cell_mat_vec/cell_mat_lhs_beta3.cc  
+  ${CMAKE_SOURCE_DIR}/femgl/src/cell_mat_vec/cell_mat_lhs_beta3.cc
+  ${CMAKE_SOURCE_DIR}/femgl/src/cell_mat_vec/cell_mat_lhs_beta4.cc
+  ${CMAKE_SOURCE_DIR}/femgl/src/cell_mat_vec/cell_mat_lhs_beta5.cc    
   ${CMAKE_SOURCE_DIR}/femgl/src/cell_mat_vec/cell_mat_lhs_K1.cc
+  ${CMAKE_SOURCE_DIR}/femgl/src/cell_mat_vec/cell_mat_face_lhs_K1.cc  
   ${CMAKE_SOURCE_DIR}/femgl/src/cell_mat_vec/cell_mat_lhs_K2K3.cc
 # Vectors calculation functions for assemble_system(): cell-vector-RHS    
   ${CMAKE_SOURCE_DIR}/femgl/src/cell_mat_vec/cell_vec_rhs_alpha.cc
   ${CMAKE_SOURCE_DIR}/femgl/src/cell_mat_vec/cell_vec_rhs_beta1.cc  
   ${CMAKE_SOURCE_DIR}/femgl/src/cell_mat_vec/cell_vec_rhs_beta2.cc
+  ${CMAKE_SOURCE_DIR}/femgl/src/cell_mat_vec/cell_vec_rhs_beta3.cc  
+  ${CMAKE_SOURCE_DIR}/femgl/src/cell_mat_vec/cell_vec_rhs_beta4.cc
+  ${CMAKE_SOURCE_DIR}/femgl/src/cell_mat_vec/cell_vec_rhs_beta5.cc  
   ${CMAKE_SOURCE_DIR}/femgl/src/cell_mat_vec/cell_vec_rhs_K1.cc
+  ${CMAKE_SOURCE_DIR}/femgl/src/cell_mat_vec/cell_vec_face_rhs_K1.cc  
   ${CMAKE_SOURCE_DIR}/femgl/src/cell_mat_vec/cell_vec_rhs_K2K3.cc
   )
 

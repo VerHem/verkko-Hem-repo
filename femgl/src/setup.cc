@@ -9,9 +9,6 @@
 #include <deal.II/base/function.h>
 #include <deal.II/base/timer.h>
 
-// The following chunk out code is identical to step-40 and allows
-// switching between PETSc and Trilinos:
-
 #include <deal.II/lac/generic_linear_algebra.h>
 
 #include <deal.II/lac/vector.h>
@@ -135,7 +132,7 @@ namespace FemGL_mpi
         /*---------------------------------------*/
         std::random_device rd{};         // rd will be used to obtain a seed for the random number engine
         std::mt19937       gen{rd()};    // Standard mersenne_twister_engine seeded with rd()
-        std::normal_distribution<double> gaussian_distr{3.0, 1.0}; // gaussian distribution with mean 10. STD 6.0
+        std::normal_distribution<double> gaussian_distr{2.0, 0.2}; // gaussian distribution, 1st arg is mean. 2nd arg is STD
 
         local_solution.reinit(locally_relevant_dofs,
     			     mpi_communicator,

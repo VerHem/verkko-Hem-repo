@@ -9,9 +9,6 @@
 #include <deal.II/base/function.h>
 #include <deal.II/base/timer.h>
 
-// The following chunk out code is identical to step-40 and allows
-// switching between PETSc and Trilinos:
-
 #include <deal.II/lac/generic_linear_algebra.h>
 
 #include <deal.II/lac/vector.h>
@@ -96,9 +93,11 @@ namespace FemGL_mpi
 
       TrilinosWrappers::PreconditionAMG::AdditionalData additional_data;
       additional_data.constant_modes        = constant_modes;
-      additional_data.elliptic              = true;
-      additional_data.n_cycles              = 1;
-      additional_data.w_cycle               = false;
+      additional_data.elliptic              = true;  /* elliptic actully faster than non-elliptic the sence to acchive same accuracy. 
+                                                         In a 64cores run, ellipic used 30mins to achive 0.04, while non-eeliptic used
+                                                         60mins to achive 0.09 */ 
+      additional_data.n_cycles              = 4;
+      additional_data.w_cycle               = true;
       additional_data.output_details        = false;
       additional_data.smoother_sweeps       = 2;
       additional_data.aggregation_threshold = 1e-2;
@@ -111,7 +110,7 @@ namespace FemGL_mpi
       // With that, we can finally set up the linear solver and solve the system:
       pcout << " system_rhs.l2_norm() is " << system_rhs.l2_norm() << std::endl;
       SolverControl solver_control(10*system_matrix.m(),
-                                   1e-1 * system_rhs.l2_norm());
+                                   4e-1 * system_rhs.l2_norm());
 
       //SolverMinRes<LA::MPI::Vector> solver(solver_control);
       SolverFGMRES<LA::MPI::Vector> solver(solver_control);

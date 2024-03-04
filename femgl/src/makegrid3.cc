@@ -68,6 +68,7 @@
 
 #include "femgl.h"
 #include "dirichlet.h"
+ 
 
 namespace FemGL_mpi
 {
@@ -111,40 +112,48 @@ namespace FemGL_mpi
       }
     else if (dim==3)
       {
-	const double half_length = 10.0/*10.0*/, inner_radius = 2.0, z_extension =10.0/*10.0*/;
-	GridGenerator::hyper_cube_with_cylindrical_hole(triangulation,
-							inner_radius, half_length, z_extension);
+	const double left = -10.0, right = 10.0;
+	GridGenerator::hyper_cube(triangulation,
+				  left,
+				  right);
 
-	triangulation.refine_global(2/*3*/); //5 will give you 30M DoF, 4 give you 5M
-	// Dirichlet pillars centers
-	const Point<dim> p1(0., 0., 0.);
+	triangulation.refine_global(3); // The refine_global() number is somehow important.
+	                                // If one puts just 3, DoF will be about 30K.
+	                                // When this small mount DoF are distribited on say 64 cpu processes,
+	                                // LAPCK rises up waring:
+	                                // "dorgqr WARNING : performing QR on a MxN matrix where M<N".
+	                                // To suppress this warning, one should put 4 as global refine number,
+	                                // looks like this will make DoF disstribution smoother and beheave better.
 
+	
 	for (const auto &cell : triangulation.cell_iterators())
 	  for (const auto &face : cell->face_iterators())
 	    {
 	      const auto center = face->center();
 	      if (
-		  (std::fabs(center(0) - (-half_length)) < 1e-12)
-		                   ||
-		  (std::fabs(center(0) - (half_length)) < 1e-12)
-		                   ||
-		  (std::fabs(center(1) - (-half_length)) < 1e-12)
-		                   ||
-		  (std::fabs(center(1) - (half_length)) < 1e-12)
-		                   ||
-		  (std::fabs(center(2) - 0.0) < 1e-12)
-		                   ||
-		  (std::fabs(center(2) - (z_extension)) < 1e-12)
-		  )
+		  (std::fabs(center(0) - left) < 1e-12 * right)
+		  ||
+		  (std::fabs(center(0) - right) < 1e-12 * right)
+		 )
 		face->set_boundary_id(1);
 
-	      if (std::fabs(std::sqrt(center(0) * center(0)
-				      + center(1) * center(1))
-			    - inner_radius) <=0.15)
-		face->set_boundary_id(0);
+	      if (
+		  (std::fabs(center(1) - left) < 1e-12 * right)
+		  ||
+		  (std::fabs(center(1) - right) < 1e-12 * right)
+		 )
+	        face->set_boundary_id(1); // homogenous Neumann BC
+
+	      if (
+		  (std::fabs(center(2) - left) < 1e-12 * right)
+		  ||
+		  (std::fabs(center(2) - right) < 1e-12 * right)		  
+		 )
+	        face->set_boundary_id(2); // homogenous Robin BC along z diraction
+	      
 	    }
 
-      }
+      } // dim==3 block
   }
 
   template class FemGL<3>;

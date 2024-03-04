@@ -168,20 +168,20 @@ namespace FemGL_mpi
 		    (((K1
 		       * vec_rhs_K1(grad_old_u_q, grad_old_v_q, grad_phi_u_i_q, grad_phi_v_i_q))
 		      +((K2 + K3)
-			* vec_rhs_K2K3(grad_phi_u_i_q, grad_phi_v_i_q, grad_old_u_q, grad_old_v_q))
+			* 0.0)
 		      +(alpha_0
 			* (reduced_t-1.0)
 			* vec_rhs_alpha(phi_u_i_q, phi_v_i_q, old_solution_u, old_solution_v))
 		      +2.0*((beta1
-			     * vec_rhs_beta1(old_solution_u, old_solution_v, phi_u_i_q, phi_v_i_q))
+			     * 0.0)
 		            +(beta2
 			      * vec_rhs_beta2(old_solution_u, old_solution_v, phi_u_i_q, phi_v_i_q))
 		            +(beta3
-			      * vec_rhs_beta3(old_solution_u, old_solution_v, phi_u_i_q, phi_v_i_q))
+			      * 0.0)
 		            +(beta4
-			      * vec_rhs_beta4(old_solution_u, old_solution_v, phi_u_i_q, phi_v_i_q))
+			      * 0.0)
 		            +(beta5
-			      * vec_rhs_beta5(old_solution_u, old_solution_v, phi_u_i_q, phi_v_i_q)))
+			      * 0.0))
 
 		      
 		      ) * fe_values.JxW(q));                      // * dx

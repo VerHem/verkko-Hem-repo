@@ -5,9 +5,6 @@
 #include <deal.II/base/function.h>
 #include <deal.II/base/timer.h>
 
-// The following chunk out code is identical to step-40 and allows
-// switching between PETSc and Trilinos:
-
 #include <deal.II/lac/generic_linear_algebra.h>
 
 #include <deal.II/lac/vector.h>
@@ -77,6 +74,8 @@ namespace FemGL_mpi
    * old_solution_matrix_generator
    * phi_matrix_generator
    * grad_phi_matrix_container_generator
+   * 
+   * Homo-Robin BC face phi_matrix generator
    * --------------------------------------------------------------------------------
    */
   template <int dim>
@@ -115,6 +114,31 @@ namespace FemGL_mpi
       }
 
   }
+
+  template <int dim>
+  void FemGL<dim>::phi_matrix_face_generator(const FEFaceValues<dim> &fe_face_values,
+ 				             const unsigned int  x, const unsigned int q,
+					     FullMatrix<double>  &phi_u_face_at_x_q,
+					     FullMatrix<double>  &phi_v_face_at_x_q)
+  {
+    for (unsigned int comp_index = 0; comp_index <= 8; ++comp_index)
+      {
+        if (
+	    /* the 3rd column commponents for normal vector z*/
+	    (comp_index == 2) && (comp_index == 5) && (comp_index == 8) 
+	   )
+	  {
+           phi_u_face_at_x_q.set(comp_index/3u, comp_index%3u, 0.);
+	   phi_v_face_at_x_q.set(comp_index/3u, comp_index%3u, 0.);
+	  }
+	else
+	  {
+           phi_u_face_at_x_q.set(comp_index/3u, comp_index%3u, fe_face_values[components_u[comp_index]].value(x, q));
+	   phi_v_face_at_x_q.set(comp_index/3u, comp_index%3u, fe_face_values[components_v[comp_index]].value(x, q));
+	  }
+      }
+  }
+ 
 
   template class FemGL<3>;  
 } //namespace FemGL_mpi ends here  

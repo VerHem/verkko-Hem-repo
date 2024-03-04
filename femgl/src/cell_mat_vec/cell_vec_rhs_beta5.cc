@@ -96,7 +96,7 @@ namespace FemGL_mpi
     FullMatrix<double>   ms1(3,3), ms2(3,3),
                          mm1(3,3), mm2(3,3);
                                    
-    FullMatrix<double>   poly_I = 0.0;
+    FullMatrix<double>   poly_I(3,3);
           
     /*-------------------------------------------------------------*/
     /* phi^u, phi^v matrices have been cooked up in other fuctions */
@@ -135,7 +135,6 @@ namespace FemGL_mpi
     old_solution_u.Tmmult(u0t_v0, old_solution_v);
     old_solution_v.Tmmult(v0t_v0, old_solution_v);                
     
-    //phi_phit_matrics_i_j_q.add(1.0, phi_u_phi_ut, 1.0, phi_v_phi_vt);
 
     old_solution_v.mTmult(v0_phi_ut_i_q, phi_u_i_q);    
 
@@ -168,6 +167,8 @@ namespace FemGL_mpi
     
     /* ********  construct the matrices summation ******** */
 
+    poly_I = 0.0;
+    
     u0t_u0.mmult(poly_I, ms1, true);
 
     u0t_v0.mmult(poly_I, ms2, true);

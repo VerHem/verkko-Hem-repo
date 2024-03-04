@@ -85,7 +85,6 @@ namespace FemGL_mpi
                            */
     FullMatrix<double>    phi_u_phi_ut(3,3) /*x*/, phi_v_phi_vt(3,3) /* oxx */,
                           phi_u_phi_vt(3,3) /***/, phi_v_phi_ut(3,3) /*ox*/,
-                          /* ************** */      
                           phi_ut_phi_v(3,3) /*^|*/, phi_vt_phi_u(3,3) /*o+*/;
 
     FullMatrix<double>    u0_u0t(3,3) /*o*/, v0_v0t(3,3) /*^*/,
@@ -127,8 +126,8 @@ namespace FemGL_mpi
     
     // Matrices for saving trace polynomils NO. I, II, II and IV
     // see note for understanding details
-    FullMatrix<double>              poly_I, poly_II,
-                                    poly_III;
+    FullMatrix<double>              poly_I(3,3), poly_II(3,3);
+                                    //poly_III(IdentityMatrix(3));
 
           
     /*-------------------------------------------------------------*/
@@ -144,7 +143,9 @@ namespace FemGL_mpi
     phi_v_phi_vt        = 0.0;
     phi_u_phi_vt        = 0.0;
     phi_v_phi_ut        = 0.0;
-    //phi_phit_matrics_i_j_q   = 0.0;
+    phi_ut_phi_v        = 0.0; // this was missing, WTF
+    phi_vt_phi_u        = 0.0; // this was missing, WTF
+
     
     u0_u0t   = 0.0;
     u0_v0t   = 0.0;
@@ -188,15 +189,17 @@ namespace FemGL_mpi
     phi_v_i_q.mTmult(phi_v_phi_vt, phi_v_j_q);
     phi_u_i_q.mTmult(phi_u_phi_vt, phi_v_j_q);
     phi_v_i_q.mTmult(phi_v_phi_ut, phi_u_j_q);
+
+    phi_u_i_q.Tmmult(phi_ut_phi_v, phi_v_j_q); // this was missing, WTF?
+    phi_v_i_q.Tmmult(phi_vt_phi_u, phi_u_j_q); // this was missing, WTF?
     
     /* ********************* */
     old_solution_u.mTmult(u0_u0t, old_solution_u);
     old_solution_u.mTmult(u0_v0t, old_solution_v);
     old_solution_v.mTmult(v0_v0t, old_solution_v);
     old_solution_u.Tmmult(u0t_v0, old_solution_v);        
-        
-    //phi_phit_matrics_i_j_q.add(1.0, phi_u_phi_ut, 1.0, phi_v_phi_vt);
 
+    
     /* ********************* */
     phi_u_j_q.mTmult(phi_u_j_q_u0t, old_solution_u);
     phi_u_j_q.mTmult(phi_u_j_q_v0t, old_solution_v);
@@ -269,10 +272,10 @@ namespace FemGL_mpi
     ms9.add(1.,phi_ut_phi_v);
 
     mm1 = 0.0; // ?7 * ^v9
-    v0t_phi_v_i_q.mmult(mm1, v0t_phi_v_j_q, true);
+    v0t_phi_v_i_q.mmult(mm1, v0t_phi_v_j_q);
 
     mm2 = 0.0; // ?3 * ^v5
-    u0t_phi_u_i_q.mmult(mm2, phi_vt_j_q_v0, true);
+    u0t_phi_u_i_q.mmult(mm2, phi_vt_j_q_v0);
 
     
     /* --------------------------------------------- */
