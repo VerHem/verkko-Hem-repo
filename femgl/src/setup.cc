@@ -47,6 +47,8 @@
 #include <deal.II/fe/fe_values.h>
 #include <deal.II/fe/fe_q.h>
 #include <deal.II/fe/fe_system.h>
+#include <deal.II/fe/component_mask.h>
+
 #include <deal.II/numerics/vector_tools.h>
 #include <deal.II/numerics/data_out.h>
 #include <deal.II/numerics/error_estimator.h>
@@ -77,6 +79,13 @@ namespace FemGL_mpi
   template <int dim>
   void FemGL<dim>::setup_system()
   {
+    /* Initialize the component mask object by a bool vector
+     * This is necessary for setting up AffineConstraints objects
+     * in the interpolate_boundary_values() call.
+     * According to AdGR BCs, 2, 5, 8, 11, 14, 17 components are zero-Dirichlet when normal vector is z
+     */
+    ComponentMask comp_mask_z(Dirichlet_z_marking_list);
+    
     {
       TimerOutput::Scope t(computing_timer, "setup");
       dof_handler.distribute_dofs(fe);
@@ -93,9 +102,10 @@ namespace FemGL_mpi
       constraints_newton_update.reinit(locally_relevant_dofs);
       DoFTools::make_hanging_node_constraints(dof_handler, constraints_newton_update);
       VectorTools::interpolate_boundary_values(dof_handler,
-                                               0,
+                                               2, // 0 for all Dirichlet, 2 for diffuse, which 6 components are Dirichlet 
                                                DirichletBCs_newton_update<dim>(),
-                                               constraints_newton_update);
+                                               constraints_newton_update,
+					       comp_mask_z);
                                                //fe.component_mask(velocities));
       constraints_newton_update.close();
     }
@@ -105,9 +115,10 @@ namespace FemGL_mpi
 
       DoFTools::make_hanging_node_constraints(dof_handler, constraints_solution);
       VectorTools::interpolate_boundary_values(dof_handler,
-                                               0,
+                                               2,  // 0 for all Dirichlet, 2 for diffuse, which 6 components are Dirichlet 
                                                BoundaryValues<dim>(),
-                                               constraints_solution);
+                                               constraints_solution,
+					       comp_mask_z);
                                                //fe.component_mask(velocities));
       constraints_solution.close();
     }

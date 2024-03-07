@@ -47,6 +47,8 @@
 #include <deal.II/fe/fe_values.h>
 #include <deal.II/fe/fe_q.h>
 #include <deal.II/fe/fe_system.h>
+#include <deal.II/fe/component_mask.h>
+
 #include <deal.II/numerics/vector_tools.h>
 #include <deal.II/numerics/data_out.h>
 #include <deal.II/numerics/error_estimator.h>
@@ -122,7 +124,7 @@ namespace FemGL_mpi
          pcout << "setup_system() call is done !" << std::endl;
       
          TrilinosWrappers::MPI::Vector distributed_solution_tmp(locally_owned_dofs,
-							     mpi_communicator);
+							        mpi_communicator);
          solution_transfer.interpolate(distributed_solution_tmp);
          constraints_solution.distribute(distributed_solution_tmp);
          local_solution = distributed_solution_tmp;

@@ -47,6 +47,8 @@
 #include <deal.II/fe/fe_values.h>
 #include <deal.II/fe/fe_q.h>
 #include <deal.II/fe/fe_system.h>
+#include <deal.II/fe/component_mask.h>
+
 #include <deal.II/numerics/vector_tools.h>
 #include <deal.II/numerics/data_out.h>
 #include <deal.II/numerics/error_estimator.h>
@@ -100,6 +102,8 @@ namespace FemGL_mpi
 
 	 // assign un-ghosted solution to ghosted solution
 	 locally_relevant_damped_vector = distributed_solution;
+
+         //local_solution = distributed_solution;	 
 
 	 compute_residual(/*locally_relevant_damped_vector*/);
 	 double current_residual = residual_vector.l2_norm();

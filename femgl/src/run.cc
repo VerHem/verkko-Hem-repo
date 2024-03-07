@@ -47,6 +47,8 @@
 #include <deal.II/fe/fe_values.h>
 #include <deal.II/fe/fe_q.h>
 #include <deal.II/fe/fe_system.h>
+#include <deal.II/fe/component_mask.h>
+
 #include <deal.II/numerics/vector_tools.h>
 #include <deal.II/numerics/data_out.h>
 #include <deal.II/numerics/error_estimator.h>
@@ -119,19 +121,19 @@ namespace FemGL_mpi
 
              pcout << std::endl;
 
-	     if ((system_rhs.l2_norm() < 1e-1) && (cycle == 0))
+	     if ((residual_vector.l2_norm() < 27.0) && (cycle == 0))
 	       break;
-	     else if ((system_rhs.l2_norm() < 1e-2) && (cycle == 1))
+	     else if ((residual_vector.l2_norm() < 11.0) && (cycle == 1))
 	       break;
-	     else if ((system_rhs.l2_norm() < 5e-3) && (cycle == 2))
+	     else if ((residual_vector.l2_norm() < 5.0) && (cycle == 2))
 	       break;
-	     else if ((system_rhs.l2_norm() < 1e-3) && (cycle == 3))
+	     else if ((residual_vector.l2_norm() < 1.0) && (cycle == 3))
 	       break;
-	     /*else if ((system_rhs.l2_norm() < 5e-6) && (cycle == 4))
+	     else if ((residual_vector.l2_norm() < 0.1) && (cycle == 4))
 	       break;	     
-	     else if ((system_rhs.l2_norm() < 5e-6) && (cycle == 5))
+	     else if ((residual_vector.l2_norm() < 5e-2) && (cycle == 5))
 	       break;
-	     else if ((system_rhs.l2_norm() < 5e-6) && (cycle == 6))
+	     /*else if ((system_rhs.l2_norm() < 5e-6) && (cycle == 6))
 	       break;
 	     else if ((system_rhs.l2_norm() < 5e-6) && (cycle == 7))
 	       break;

@@ -46,6 +46,8 @@
 #include <deal.II/fe/fe_values.h>
 #include <deal.II/fe/fe_q.h>
 #include <deal.II/fe/fe_system.h>
+#include <deal.II/fe/component_mask.h>
+
 #include <deal.II/numerics/vector_tools.h>
 #include <deal.II/numerics/data_out.h>
 #include <deal.II/numerics/error_estimator.h>
@@ -83,7 +85,7 @@ namespace FemGL_mpi
                       Triangulation<dim>::smoothing_on_coarsening))
     , dof_handler(triangulation)
     , components_u(9, FEValuesExtractors::Scalar())
-    , components_v(9, FEValuesExtractors::Scalar())      
+    , components_v(9, FEValuesExtractors::Scalar())
     , reduced_t(0.0)
     , pcout(std::cout,
             (Utilities::MPI::this_mpi_process(mpi_communicator) == 0))
@@ -102,6 +104,14 @@ namespace FemGL_mpi
 	components_u[comp_index] = extractor_u; components_v[comp_index] = extractor_v;
       }
     /*--------------------------------------------------*/
+
+    /* Initialize the component mask object by a bool vector 
+     * This is necessary for setting up AffineConstraints objects
+     * in the interpolate_boundary_values() call.
+     * According to AdGR BCs, 2, 5, 8, 11, 14, 17 components are zero-Dirichlet when normal vector is z
+     */
+
+    // comp_mask_z(Dirichlet_z_marking_list);
   }
 
   template class FemGL<3>;

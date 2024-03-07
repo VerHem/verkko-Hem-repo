@@ -47,6 +47,8 @@
 #include <deal.II/fe/fe_values.h>
 #include <deal.II/fe/fe_q.h>
 #include <deal.II/fe/fe_system.h>
+#include <deal.II/fe/component_mask.h>
+
 #include <deal.II/numerics/vector_tools.h>
 #include <deal.II/numerics/data_out.h>
 #include <deal.II/numerics/error_estimator.h>
@@ -110,7 +112,7 @@ namespace FemGL_mpi
       // With that, we can finally set up the linear solver and solve the system:
       pcout << " system_rhs.l2_norm() is " << system_rhs.l2_norm() << std::endl;
       SolverControl solver_control(10*system_matrix.m(),
-                                   4e-1 * system_rhs.l2_norm());
+                                   9e-2 * system_rhs.l2_norm());
 
       //SolverMinRes<LA::MPI::Vector> solver(solver_control);
       SolverFGMRES<LA::MPI::Vector> solver(solver_control);

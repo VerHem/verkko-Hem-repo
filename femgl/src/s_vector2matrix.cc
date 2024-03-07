@@ -43,6 +43,8 @@
 #include <deal.II/fe/fe_values.h>
 #include <deal.II/fe/fe_q.h>
 #include <deal.II/fe/fe_system.h>
+#include <deal.II/fe/component_mask.h>
+
 #include <deal.II/numerics/vector_tools.h>
 #include <deal.II/numerics/data_out.h>
 #include <deal.II/numerics/error_estimator.h>
@@ -124,17 +126,6 @@ namespace FemGL_mpi
 	v_matrix_at_q.set(comp_index/3u, comp_index%3u, vector_solution_vxx[q]);
 
       }
-    /*fe_values[v33_component].get_function_gradients(old_solution, old_solution_gradients_v33);
-      fe_values[v33_component].get_function_values(old_solution, old_solution_v33);*/
-    /*--------------------------------------------------*/
-    // old_u_matrix_at_q.set(0,0,old_solution_u_container[0][q]);
-    // old_v_matrix_at_q.set(2,2,old_solution_v_container[8][q]);
-    // /*--------------------------------------------------*/
-    /* for (unsigned int k = 0; k < dim; ++k)
-      {
-      grad_old_u[k].set(0,0,old_solution_gradients_u11[q][k]);
-      grad_old_v[k].set(2,2,old_solution_gradients_v33[q][k]);
-      }*/
     
     } // vector-matrix generator block ends at here, release memory
 
@@ -229,7 +220,7 @@ namespace FemGL_mpi
 
     for (unsigned int comp_index = 0; comp_index <= 8; ++comp_index)
       {
-
+	
 	if (
 	    /* the 3rd column commponents for normal vector z*/
             (comp_index == 2) && (comp_index == 5) && (comp_index == 8)

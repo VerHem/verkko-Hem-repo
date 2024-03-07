@@ -1,5 +1,5 @@
 include_directories(
-  ${CMAKE_SOURCE_DIR}/femgl/include
+  ${CMAKE_SOURCE_DIR}/femgl/inc
   )
 
 add_executable(FEmGL
