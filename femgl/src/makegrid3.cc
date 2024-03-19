@@ -114,12 +114,14 @@ namespace FemGL_mpi
       }
     else if (dim==3)
       {
-	const double left = -10.0, right = 10.0;
-	GridGenerator::hyper_cube(triangulation,
-				  left,
-				  right);
+	const double D = 6., l = 15., Ex = 8.;
+        const Point<dim> p1(-l, 0., 0.);
+        const Point<dim> p2(l, Ex, D);	
 
-	triangulation.refine_global(3); // The refine_global() number is somehow important.
+        GridGenerator::hyper_rectangle(triangulation,
+		  	               p1, p2); 		
+	
+	triangulation.refine_global(4); // The refine_global() number is somehow important.
 	                                // If one puts just 3, DoF will be about 30K.
 	                                // When this small mount DoF are distribited on say 64 cpu processes,
 	                                // LAPCK rises up waring:
@@ -133,25 +135,25 @@ namespace FemGL_mpi
 	    {
 	      const auto center = face->center();
 	      if (
-		  (std::fabs(center(0) - left) < 1e-12 * right)
+		  (std::fabs(center(0) - (-l)) < 1e-12 * l)
 		  ||
-		  (std::fabs(center(0) - right) < 1e-12 * right)
+		  (std::fabs(center(0) - l) < 1e-12 * l)
 		 )
-		face->set_boundary_id(1);
+		face->set_boundary_id(2); // diffuse BC i.e., homogenuous Robin + Direchlet along x direction 
 
 	      if (
-		  (std::fabs(center(1) - left) < 1e-12 * right)
+		  (std::fabs(center(1) - 0.0) < 1e-12 * Ex)
 		  ||
-		  (std::fabs(center(1) - right) < 1e-12 * right)
+		  (std::fabs(center(1) - Ex) < 1e-12 * Ex)
 		 )
-	        face->set_boundary_id(1); // homogenous Neumann BC
+	        face->set_boundary_id(1); // homogenous BC i.e., homogenuous Neumann along y direction 
 
 	      if (
-		  (std::fabs(center(2) - left) < 1e-12 * right)
+		  (std::fabs(center(2) - 0.0) < 1e-12 * D)
 		  ||
-		  (std::fabs(center(2) - right) < 1e-12 * right)		  
+		  (std::fabs(center(2) - D) < 1e-12 * D)		  
 		 )
-	        face->set_boundary_id(2); // homogenous Robin BC + Dirichlet along z diraction
+	        face->set_boundary_id(4); // diffuse BC i.e., homogenuous Robin + Direchlet along z direction 
 	      
 	    }
 
