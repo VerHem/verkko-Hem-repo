@@ -250,7 +250,11 @@ namespace FemGL_mpi
 	   /*****************************************************/	   
            for (const auto &face : cell->face_iterators())
 	    {
-	      if ((face->at_boundary()) && ((face->boundary_id()) == 2))
+	      if ((face->at_boundary())
+		  && (((face->boundary_id()) == 2)     // x-normal surface
+		      || ((face->boundary_id()) == 3)  // y-normal surface
+		      || ((face->boundary_id()) == 4)) // z-normal surface
+		  && (bt < 1e10)) 
 	       {
                	 fe_face_values.reinit(cell, face);
 
@@ -259,7 +263,8 @@ namespace FemGL_mpi
 		   old_f_solution_u = 0.0;
 		   old_f_solution_v = 0.0;
 		   
-                   vector_face_matrix_generator(fe_face_values, flag_solution, q_face, n_face_q_points, old_f_solution_u, old_f_solution_v);
+                   vector_face_matrix_generator(fe_face_values, flag_solution, q_face, n_face_q_points,
+						old_f_solution_u, old_f_solution_v, face->boundary_id());
 		 
                  for (unsigned int i = 0; i < dofs_per_cell; ++i)
 		   {
@@ -273,8 +278,10 @@ namespace FemGL_mpi
                             phi_uf_i_q = 0.0; phi_vf_i_q = 0.0;
 			    phi_uf_j_q = 0.0; phi_vf_j_q = 0.0;			
 
-			    phi_matrix_face_generator(fe_face_values, i, q_face, phi_uf_i_q, phi_vf_i_q);
-        		    phi_matrix_face_generator(fe_face_values, j, q_face, phi_uf_j_q, phi_vf_j_q);			   
+			    phi_matrix_face_generator(fe_face_values, i, q_face,
+						      phi_uf_i_q, phi_vf_i_q, face->boundary_id());
+        		    phi_matrix_face_generator(fe_face_values, j, q_face,
+						      phi_uf_j_q, phi_vf_j_q, face->boundary_id());			   
 
 			    // this "-" may deal with normal vector issue 
                             cell_matrix(i, j) -= // this "-" comes from Stocks theorem 

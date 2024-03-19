@@ -121,14 +121,34 @@ namespace FemGL_mpi
   void FemGL<dim>::phi_matrix_face_generator(const FEFaceValues<dim> &fe_face_values,
  				             const unsigned int  x, const unsigned int q,
 					     FullMatrix<double>  &phi_u_face_at_x_q,
-					     FullMatrix<double>  &phi_v_face_at_x_q)
+					     FullMatrix<double>  &phi_v_face_at_x_q,
+					     types::boundary_id b_id )
   {
     for (unsigned int comp_index = 0; comp_index <= 8; ++comp_index)
       {
         if (
-	    /* the 3rd column commponents for normal vector z*/
-	    (comp_index == 2) && (comp_index == 5) && (comp_index == 8) 
+	     /* the 1st column commponents for normal vector x*/
+	     ((comp_index == 0) || (comp_index == 3) || (comp_index == 6))
+	     && (b_id == 2)
 	   )
+	  {
+           phi_u_face_at_x_q.set(comp_index/3u, comp_index%3u, 0.);
+	   phi_v_face_at_x_q.set(comp_index/3u, comp_index%3u, 0.);
+	  }	
+        else if (
+	         /* the 2nd column commponents for normal vector y*/
+	         ((comp_index == 1) || (comp_index == 4) || (comp_index == 7))
+	         && (b_id == 3)
+	        )
+	  {
+           phi_u_face_at_x_q.set(comp_index/3u, comp_index%3u, 0.);
+	   phi_v_face_at_x_q.set(comp_index/3u, comp_index%3u, 0.);
+	  }	
+        else if (
+	         /* the 3rd column commponents for normal vector z*/
+	         ((comp_index == 2) || (comp_index == 5) || (comp_index == 8))
+	         && (b_id == 4)
+	        )
 	  {
            phi_u_face_at_x_q.set(comp_index/3u, comp_index%3u, 0.);
 	   phi_v_face_at_x_q.set(comp_index/3u, comp_index%3u, 0.);

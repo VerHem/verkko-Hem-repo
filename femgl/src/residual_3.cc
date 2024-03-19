@@ -204,7 +204,11 @@ namespace FemGL_mpi
 	   /*****************************************************/	   
            for (const auto &face : cell->face_iterators())
 	    {
-	      if ((face->at_boundary()) && ((face->boundary_id()) == 2))
+	      if ((face->at_boundary())
+		  && (((face->boundary_id()) == 2)
+		      || ((face->boundary_id()) == 3)
+		      || ((face->boundary_id()) == 4))
+		  && (bt < 1e10))
 	       {
                	 fe_face_values.reinit(cell, face);
 
@@ -213,7 +217,8 @@ namespace FemGL_mpi
 		   old_f_solution_u = 0.0;
 		   old_f_solution_v = 0.0;
 		   
-                   vector_face_matrix_generator(fe_face_values, flag_solution, q_face, n_face_q_points, old_f_solution_u, old_f_solution_v);
+                   vector_face_matrix_generator(fe_face_values, flag_solution, q_face, n_face_q_points,
+						old_f_solution_u, old_f_solution_v, face->boundary_id());
 		 
                  for (unsigned int i = 0; i < dofs_per_cell; ++i)
 		   {
@@ -221,7 +226,8 @@ namespace FemGL_mpi
 		    //   {		    
                     phi_uf_i_q = 0.0; phi_vf_i_q = 0.0;
 
- 		    phi_matrix_face_generator(fe_face_values, i, q_face, phi_uf_i_q, phi_vf_i_q);
+ 		    phi_matrix_face_generator(fe_face_values, i, q_face,
+					      phi_uf_i_q, phi_vf_i_q, face->boundary_id());
 
 		    /* Homogenous Robin BC RHS contribution */
 		    cell_rhs(i) -= // "-" from -<phi, R(u,v)>

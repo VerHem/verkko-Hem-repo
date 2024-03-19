@@ -187,7 +187,8 @@ namespace FemGL_mpi
 					        const char &vector_flag,
 					        const unsigned int   q, const unsigned int n_q_points,
 					        FullMatrix<double>   &u_face_matrix_at_q,
-					        FullMatrix<double>   &v_face_matrix_at_q)
+					        FullMatrix<double>   &v_face_matrix_at_q,
+						types::boundary_id b_id)
   {
     { // vector-matrix generator block starts from here, memory will be released after run
       //LA::MPI::Vector vector_solution(locally_relevant_dofs, mpi_communicator);
@@ -221,10 +222,29 @@ namespace FemGL_mpi
     for (unsigned int comp_index = 0; comp_index <= 8; ++comp_index)
       {
 	
-	if (
-	    /* the 3rd column commponents for normal vector z*/
-            (comp_index == 2) && (comp_index == 5) && (comp_index == 8)
+        if (
+	    /* the 3rd column commponents for normal vector x*/
+            ((comp_index == 0) || (comp_index == 3) || (comp_index == 6))
+	    && (b_id == 2)
            )
+	  {
+	   u_face_matrix_at_q.set(comp_index/3u, comp_index%3u, 0.);
+	   v_face_matrix_at_q.set(comp_index/3u, comp_index%3u, 0.);
+	  }
+	else if (
+	         /* the 3rd column commponents for normal vector y*/
+                 ((comp_index == 1) || (comp_index == 4) || (comp_index == 7))
+		 && (b_id == 3)
+                )
+	  {
+	   u_face_matrix_at_q.set(comp_index/3u, comp_index%3u, 0.);
+	   v_face_matrix_at_q.set(comp_index/3u, comp_index%3u, 0.);
+	  }	
+	else if (
+	         /* the 3rd column commponents for normal vector z*/
+                 ((comp_index == 2) || (comp_index == 5) || (comp_index == 8))
+		 && (b_id == 4)
+                )
 	  {
 	   u_face_matrix_at_q.set(comp_index/3u, comp_index%3u, 0.);
 	   v_face_matrix_at_q.set(comp_index/3u, comp_index%3u, 0.);
