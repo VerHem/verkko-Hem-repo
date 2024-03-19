@@ -1,25 +1,12 @@
-/* ------------------------------------------------------------------------------------------
- * 
- * This is source code of finite element solver of complex valued scalar GL equation 
- * i.e., s-wave SC/SF GL equation.
- * It is developed on the top of deal.II 9.3.3 finite element C++ library. 
- * 
- * License of this code is GNU Lesser General Public License, which been 
- * published by Free Software Fundation, either version 2.1 and later version.
- * You are free to use, modify and redistribute this program.
- *
- * ------------------------------------------------------------------------------------------
- *
- * author: Quang. Zhang (timohyva@github), 
- * QUEST-DMC project, University of Sussex;
- * Helsinki Institute of Physics, University of Helsinki;
- * 27. Kesäkuu. 2023.
+/*
  *
  */
+
 #include <random> // c++ std radom bumber library, for gaussian random initiation
 
 #include <deal.II/base/quadrature_lib.h>
 #include <deal.II/base/function.h>
+#include <deal.II/base/parameter_handler.h>     
 #include <deal.II/base/timer.h>
 
 #include <deal.II/lac/generic_linear_algebra.h>
@@ -60,6 +47,8 @@
 #include <deal.II/fe/fe_values.h>
 #include <deal.II/fe/fe_q.h>
 #include <deal.II/fe/fe_system.h>
+#include <deal.II/fe/component_mask.h>
+
 #include <deal.II/numerics/vector_tools.h>
 #include <deal.II/numerics/data_out.h>
 #include <deal.II/numerics/error_estimator.h>
@@ -73,57 +62,62 @@
 #include <deal.II/base/parameter_handler.h>
 #include <deal.II/base/quadrature_lib.h>
 #include <deal.II/base/function.h>
-#include <deal.II/base/parameter_handler.h>
 #include <deal.II/base/timer.h>
 
 #include <cmath>
 #include <fstream>
 #include <iostream>
 
-#include "femgl.h"
-#include "dirichlet.h"
 #include "confreader.h"
 
-int main(int argc, char *argv[])
+namespace FemGL_mpi
 {
-  try
+  using namespace dealii;
+
+  /* ------------------------------------------------
+   * configuration file reader for reading parameters 
+   * from configuration file
+   * ------------------------------------------------
+   */
+
+  // ParameterReader constructor
+  confreader::confreader(ParameterHandler &configuration)
+    : prm(configuration)
+  {}
+
+  // read_parameters function
+  void confreader::read_parameters(const std::string &configuration_file)
+  {
+    declare_parameters();
+
+    prm.parse_input(configuration_file);
+  }
+  
+  // phrase declarations()
+  void confreader::declare_parameters()
+  {
+    prm.enter_subsection("physical parameters");
     {
-      using namespace dealii;
-      using namespace FemGL_mpi;
+      prm.declare_entry("t_reduced", "0.0", Patterns::Double(0), "reduced temperature");
 
-      Utilities::MPI::MPI_InitFinalize mpi_initialization(argc, argv, 1);
+      prm.declare_entry("b1_diffuse", "1.0e10", Patterns::Double(0), "u component diffuse parameter");
 
-      //FemGL<2> GLsolver(2);
-      //FemGL<3> GLsolver(2);
-      FemGL<3> GLsolver(1);
-      GLsolver.run();
+      prm.declare_entry("b2_diffuse", "1.0e10", Patterns::Double(0), "v component diffuse parameter");      
     }
-  catch (std::exception &exc)
+    prm.leave_subsection();
+
+    prm.enter_subsection("switches");
     {
-      std::cerr << std::endl
-                << std::endl
-                << "----------------------------------------------------"
-                << std::endl;
-      std::cerr << "Exception on processing: " << std::endl
-                << exc.what() << std::endl
-                << "Aborting!" << std::endl
-                << "----------------------------------------------------"
-                << std::endl;
+      prm.declare_entry("flip_normal", "false", Patterns::Bool(), "flipping Robin face normal to inforward");
 
-      return 1;
     }
-  catch (...)
-    {
-      std::cerr << std::endl
-                << std::endl
-                << "----------------------------------------------------"
-                << std::endl;
-      std::cerr << "Unknown exception!" << std::endl
-                << "Aborting!" << std::endl
-                << "----------------------------------------------------"
-                << std::endl;
-      return 1;
-    }
+    prm.leave_subsection();
+  }
+  
+  /* ----------------------------------------------
+   * ConfigurationReader defination ends at here
+   * ----------------------------------------------
+   */
+  
+} // namespace FemGL_mpi
 
-  return 0;
-}
