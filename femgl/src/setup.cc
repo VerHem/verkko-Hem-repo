@@ -82,8 +82,12 @@ namespace FemGL_mpi
     /* Initialize the component mask object by a bool vector
      * This is necessary for setting up AffineConstraints objects
      * in the interpolate_boundary_values() call.
+     * According to AdGR BCs, 0, 3, 6, 9, 12, 15 components are zero-Dirichlet when normal vector is x
+     * According to AdGR BCs, 1, 4, 7, 10, 13, 16 components are zero-Dirichlet when normal vector is y
      * According to AdGR BCs, 2, 5, 8, 11, 14, 17 components are zero-Dirichlet when normal vector is z
      */
+    ComponentMask comp_mask_x(Dirichlet_x_marking_list);
+    ComponentMask comp_mask_y(Dirichlet_y_marking_list);
     ComponentMask comp_mask_z(Dirichlet_z_marking_list);
     
     {
@@ -101,8 +105,23 @@ namespace FemGL_mpi
     {
       constraints_newton_update.reinit(locally_relevant_dofs);
       DoFTools::make_hanging_node_constraints(dof_handler, constraints_newton_update);
+
       VectorTools::interpolate_boundary_values(dof_handler,
-                                               2, // 0 for all Dirichlet, 2 for diffuse, which 6 components are Dirichlet 
+                                               2, // 0 for all Dirichlet, 2 for diffuse, which 6 components are Dirichlet along x 
+                                               DirichletBCs_newton_update<dim>(),
+                                               constraints_newton_update,
+					       comp_mask_x);
+
+      
+      VectorTools::interpolate_boundary_values(dof_handler,
+                                               3, // 0 for all Dirichlet, 2 for diffuse, which 6 components are Dirichlet along y
+                                               DirichletBCs_newton_update<dim>(),
+                                               constraints_newton_update,
+					       comp_mask_y);
+
+      
+      VectorTools::interpolate_boundary_values(dof_handler,
+                                               4, // 0 for all Dirichlet, 2 for diffuse, which 6 components are Dirichlet along z
                                                DirichletBCs_newton_update<dim>(),
                                                constraints_newton_update,
 					       comp_mask_z);
@@ -114,8 +133,21 @@ namespace FemGL_mpi
       constraints_solution.reinit(locally_relevant_dofs);
 
       DoFTools::make_hanging_node_constraints(dof_handler, constraints_solution);
+
       VectorTools::interpolate_boundary_values(dof_handler,
-                                               2,  // 0 for all Dirichlet, 2 for diffuse, which 6 components are Dirichlet 
+                                               2,  // 0 for all Dirichlet, 2 for diffuse, which 6 components are Dirichlet along x
+                                               BoundaryValues<dim>(),
+                                               constraints_solution,
+					       comp_mask_x);
+      
+      VectorTools::interpolate_boundary_values(dof_handler,
+                                               3,  // 0 for all Dirichlet, 2 for diffuse, which 6 components are Dirichlet along y
+                                               BoundaryValues<dim>(),
+                                               constraints_solution,
+					       comp_mask_y);
+      
+      VectorTools::interpolate_boundary_values(dof_handler,
+                                               4,  // 0 for all Dirichlet, 2 for diffuse, which 6 components are Dirichlet along z
                                                BoundaryValues<dim>(),
                                                constraints_solution,
 					       comp_mask_z);
@@ -139,23 +171,44 @@ namespace FemGL_mpi
     {
      if (cycle == 0)
        {
+
         /*  set up initial local_solution Vector */
         /*---------------------------------------*/
         std::random_device rd{};         // rd will be used to obtain a seed for the random number engine
         std::mt19937       gen{rd()};    // Standard mersenne_twister_engine seeded with rd()
         std::normal_distribution<double> gaussian_distr{2.0, 0.2}; // gaussian distribution, 1st arg is mean. 2nd arg is STD
+        std::normal_distribution<double> gaussian_distr2{0.0, 0.1}; // gaussian distribution, 1st arg is mean. 2nd arg is STD	
 
         local_solution.reinit(locally_relevant_dofs,
-    			     mpi_communicator,
-    			     false);
+    			      mpi_communicator,
+    			      false);
         LA::MPI::Vector distrubuted_tmp_solution(locally_owned_dofs,
-                                                mpi_communicator);
+                                                 mpi_communicator);
 
+	/* components access for iniitializing a A-phase */
+        // ComponentMask u11_comp_mask = fe.component_mask(components_u[0]);
+        // ComponentMask v12_comp_mask = fe.component_mask(components_v[1]);
+
+        // IndexSet u11_component_dofs_list = DoFTools::extract_dofs(dof_handler, u11_comp_mask);
+        // IndexSet v12_component_dofs_list = DoFTools::extract_dofs(dof_handler, v12_comp_mask);		
+	 
         for (auto it = distrubuted_tmp_solution.begin(); it != distrubuted_tmp_solution.end(); ++it)
          {
-	  *it = gaussian_distr(gen);
+	  //*it = 0.0;
+	  //*it = gaussian_distr2(gen);
+	  *it = gaussian_distr(gen);	   
          }
 
+	// for (auto u11_comp_dof : u11_component_dofs_list)
+	//   {
+        //    distrubuted_tmp_solution[u11_comp_dof] = gaussian_distr(gen);
+	//   }
+
+	// for (auto v12_comp_dof : v12_component_dofs_list)
+	//   {
+        //    distrubuted_tmp_solution[v12_comp_dof] = gaussian_distr(gen);
+	//   }	
+	
         // AffineConstriant::distribute call
         constraints_solution.distribute(distrubuted_tmp_solution);
 

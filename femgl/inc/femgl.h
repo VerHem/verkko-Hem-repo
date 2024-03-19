@@ -225,7 +225,8 @@ namespace FemGL_mpi
 					const char &vector_flag,
 					const unsigned int   q, const unsigned int n_q_points,
 					FullMatrix<double>   &u_face_matrix_at_q,
-					FullMatrix<double>   &v_face_matrix_at_q);
+					FullMatrix<double>   &v_face_matrix_at_q,
+					types::boundary_id b_id);
 
     // matrices constraction function for last step u, v tensors
     void   grad_vector_matrix_generator(const FEValues<dim>  &fe_values,
@@ -243,7 +244,8 @@ namespace FemGL_mpi
     void   phi_matrix_face_generator(const FEFaceValues<dim> &fe_face_values,
    				     const unsigned int  x, const unsigned int q,
 				     FullMatrix<double>  &phi_u_face_at_x_q,
-				     FullMatrix<double>  &phi_v_face_at_x_q);
+				     FullMatrix<double>  &phi_v_face_at_x_q,
+				     types::boundary_id b_id);
    
 
     // matrices construction function for gradient of shape function, grad_k_phi_u/v at local dof x and Gaussian q
@@ -274,7 +276,14 @@ namespace FemGL_mpi
      * during setup() stage to built AffineConstraint object.
      * This object will be innitliized during femgl() constructor call by a list of bool.
      */
-    //ComponentMask comp_mask_z;
+    //ComponentMask comp_mask_x; ComponentMask comp_mask_y; ComponentMask comp_mask_z;
+
+    const std::vector< bool > Dirichlet_x_marking_list{true, false, false, true, false, false, true, false, false,
+					 	       true, false, false, true, false, false, true, false, false};
+
+    const std::vector< bool > Dirichlet_y_marking_list{false, true, false, false, true, false, false, true, false,
+					 	       false, true, false, false, true, false, false, true, false};
+    
     const std::vector< bool > Dirichlet_z_marking_list{false, false, true, false, false, true, false, false, true,
 					 	       false, false, true, false, false, true, false, false, true};
     
@@ -306,7 +315,7 @@ namespace FemGL_mpi
     const double beta4    = 0.0213139; // 0.0213139   
     const double beta5    = -0.0213139; // -0.0213139
 
-    const double bt       = 2.0; // 1e10 specular 
+    const double bt       = 1e10; // 1e10 specular, 2.0 diffuse
     
     double reduced_t;
 
