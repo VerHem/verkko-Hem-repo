@@ -112,7 +112,7 @@ namespace FemGL_mpi
       // With that, we can finally set up the linear solver and solve the system:
       pcout << " system_rhs.l2_norm() is " << system_rhs.l2_norm() << std::endl;
       SolverControl solver_control(10*system_matrix.m(),
-                                   9e-2 * system_rhs.l2_norm());
+                                   7e-1 * system_rhs.l2_norm());
 
       //SolverMinRes<LA::MPI::Vector> solver(solver_control);
       SolverFGMRES<LA::MPI::Vector> solver(solver_control);

@@ -83,7 +83,7 @@ namespace FemGL_mpi
     pcout << "Running using Trilinos." << std::endl;
 
     std::string ref_str = "adaptive";
-    const unsigned int n_cycles    = 3;
+    const unsigned int n_cycles    = 7;
     const unsigned int n_iteration = 60;    
     for (cycle = 0; cycle <= n_cycles; ++cycle)
       {
@@ -121,21 +121,23 @@ namespace FemGL_mpi
 
              pcout << std::endl;
 
-	     if ((residual_vector.l2_norm() < 27.0) && (cycle == 0))
+	     if ((residual_vector.l2_norm() < 30.0) && (cycle == 0))
 	       break;
-	     else if ((residual_vector.l2_norm() < 11.0) && (cycle == 1))
+	     else if ((residual_vector.l2_norm() < 2.0) && (cycle == 1))
 	       break;
-	     else if ((residual_vector.l2_norm() < 5.0) && (cycle == 2))
+	     else if ((residual_vector.l2_norm() < 0.1) && (cycle == 2)) // 5.0 is good for only z-normal,  
 	       break;
-	     else if ((residual_vector.l2_norm() < 1.0) && (cycle == 3))
+	     else if ((residual_vector.l2_norm() < 2e-3) && (cycle == 3))
 	       break;
-	     else if ((residual_vector.l2_norm() < 0.1) && (cycle == 4))
-	       break;	     
-	     else if ((residual_vector.l2_norm() < 5e-2) && (cycle == 5))
+	     else if ((residual_vector.l2_norm() < 1e-4) && (cycle == 4))
 	       break;
-	     /*else if ((system_rhs.l2_norm() < 5e-6) && (cycle == 6))
+	     else if ((residual_vector.l2_norm() < 1e-5) && (cycle == 5))
+	       break;	     	     
+	     else if ((residual_vector.l2_norm() < 1e-6) && (cycle == 6))
 	       break;
-	     else if ((system_rhs.l2_norm() < 5e-6) && (cycle == 7))
+	     else if ((residual_vector.l2_norm() < 1e-7) && (cycle == 7))
+	       break;
+	     /*else if ((system_rhs.l2_norm() < 5e-6) && (cycle == 7))
 	       break;
 	     else if ((system_rhs.l2_norm() < 5e-7) && (cycle == 8))
 	       break;	     	     	     

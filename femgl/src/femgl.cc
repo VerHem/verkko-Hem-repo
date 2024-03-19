@@ -86,7 +86,7 @@ namespace FemGL_mpi
     , dof_handler(triangulation)
     , components_u(9, FEValuesExtractors::Scalar())
     , components_v(9, FEValuesExtractors::Scalar())
-    , reduced_t(0.0)
+    , reduced_t(0.0) // t = 0.3 Tc
     , pcout(std::cout,
             (Utilities::MPI::this_mpi_process(mpi_communicator) == 0))
     , computing_timer(mpi_communicator,
