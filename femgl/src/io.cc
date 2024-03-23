@@ -7,10 +7,8 @@
 
 #include <deal.II/base/quadrature_lib.h>
 #include <deal.II/base/function.h>
+#include <deal.II/base/parameter_handler.h>
 #include <deal.II/base/timer.h>
-
-// The following chunk out code is identical to step-40 and allows
-// switching between PETSc and Trilinos:
 
 #include <deal.II/lac/generic_linear_algebra.h>
 
@@ -71,6 +69,7 @@
 
 #include "femgl.h"
 #include "dirichlet.h"
+#include "confreader.h"
  
 
 namespace FemGL_mpi
