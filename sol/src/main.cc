@@ -20,6 +20,7 @@
 
 #include <deal.II/base/quadrature_lib.h>
 #include <deal.II/base/function.h>
+#include <deal.II/base/parameter_handler.h>
 #include <deal.II/base/timer.h>
 
 #include <deal.II/lac/generic_linear_algebra.h>
@@ -93,9 +94,13 @@ int main(int argc, char *argv[])
 
       Utilities::MPI::MPI_InitFinalize mpi_initialization(argc, argv, 1);
 
+      ParameterHandler prmHandler;
+      confreader prmReader(prmHandler);
+      prmReader.read_parameters("configuration.prm");
+      
       //FemGL<2> GLsolver(2);
       //FemGL<3> GLsolver(2);
-      FemGL<3> GLsolver(1);
+      FemGL<3> GLsolver(1, prmHandler);
       GLsolver.run();
     }
   catch (std::exception &exc)

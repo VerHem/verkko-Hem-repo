@@ -6,6 +6,7 @@
 
 #include <deal.II/base/quadrature_lib.h>
 #include <deal.II/base/function.h>
+#include <deal.II/base/parameter_handler.h> 
 #include <deal.II/base/timer.h>
 
 #include <deal.II/lac/generic_linear_algebra.h>
@@ -69,13 +70,15 @@
 
 #include "femgl.h"
 #include "dirichlet.h"
+#include "confreader.h"
 
 namespace FemGL_mpi
 {
   using namespace dealii;
 
   template <int dim>
-  FemGL<dim>::FemGL(unsigned int Q_degree)
+  FemGL<dim>::FemGL(unsigned int Q_degree,
+		    ParameterHandler &prmHandler)
     : degree(Q_degree)
     , mpi_communicator(MPI_COMM_WORLD)
     , fe(FE_Q<dim>(Q_degree), 18)
@@ -84,9 +87,10 @@ namespace FemGL_mpi
                       Triangulation<dim>::smoothing_on_refinement |
                       Triangulation<dim>::smoothing_on_coarsening))
     , dof_handler(triangulation)
+    , conf(prmHandler)  
     , components_u(9, FEValuesExtractors::Scalar())
     , components_v(9, FEValuesExtractors::Scalar())
-    , reduced_t(0.0) // t = 0.3 Tc
+  //, reduced_t(0.0) // t = 0.3 Tc
     , pcout(std::cout,
             (Utilities::MPI::this_mpi_process(mpi_communicator) == 0))
     , computing_timer(mpi_communicator,
@@ -104,6 +108,19 @@ namespace FemGL_mpi
 	components_u[comp_index] = extractor_u; components_v[comp_index] = extractor_v;
       }
     /*--------------------------------------------------*/
+
+    /*--------------------------------------------------*/
+    /*        configuration parameters reading          */
+    /*--------------------------------------------------*/
+    
+    /* physical parameters */
+    conf.enter_subsection("physical parameters");
+
+    reduced_t = conf.get_double("t_reduced");
+
+    bt        = conf.get_double("AdGR diffuse length");
+    
+    conf.leave_subsection();
 
     /* Initialize the component mask object by a bool vector 
      * This is necessary for setting up AffineConstraints objects

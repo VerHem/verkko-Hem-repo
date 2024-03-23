@@ -7,6 +7,7 @@
 
 #include <deal.II/base/quadrature_lib.h>
 #include <deal.II/base/function.h>
+#include <deal.II/base/parameter_handler.h>
 #include <deal.II/base/timer.h>
 
 #include <deal.II/lac/generic_linear_algebra.h>
@@ -82,6 +83,18 @@ namespace FemGL_mpi
     TimerOutput::Scope t(computing_timer, "newton_iteration");
 
     { // newton iteraion block with line search, all local objects will be released to save momory leak
+
+     /* ------------------------------------- */
+     /*  loading line search step Paramters   */
+     /* ------------------------------------- */      
+     conf.enter_subsection("control parameters");
+     const double line_search_step = conf.get_double("primary step length of dampped newton iteration");     
+     conf.leave_subsection();
+     /* ------------------------------------- */
+     /*  line search step Paramters ends here */
+     /* ------------------------------------- */      
+
+      
      LA::MPI::Vector distributed_solution(locally_owned_dofs, mpi_communicator);
      LA::MPI::Vector distributed_newton_update(locally_owned_dofs, mpi_communicator);          
      double previous_residual = system_rhs.l2_norm();
@@ -90,7 +103,7 @@ namespace FemGL_mpi
 
       for (unsigned int i = 0; i < 100; ++i)
         {
-	 const double alpha = std::pow(0.83, static_cast<double>(i));
+	 const double alpha = std::pow(line_search_step, static_cast<double>(i));
          distributed_newton_update = locally_relevant_newton_solution;
          distributed_solution      = local_solution;
 

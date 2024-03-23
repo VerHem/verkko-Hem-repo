@@ -7,6 +7,7 @@
 
 #include <deal.II/base/quadrature_lib.h>
 #include <deal.II/base/function.h>
+#include <deal.II/base/parameter_handler.h> 
 #include <deal.II/base/timer.h>
 
 #include <deal.II/lac/generic_linear_algebra.h>
@@ -101,6 +102,17 @@ namespace FemGL_mpi
     else if (refinement_strategy == "adaptive")
       {
         {
+         /*---------------------------------------*/ 
+         /* loading refinements control paramters */
+         /*---------------------------------------*/
+         conf.enter_subsection("control parameters");
+         const double refine_ratio  = conf.get_double("adaptive refinment ratio");
+         const double coarsen_ratio = conf.get_double("adaptive coarsen ratio");	 
+	 conf.leave_subsection();
+         /*---------------------------------------*/
+	 /*    paramters loading ends at here     */
+         /*---------------------------------------*/
+	  
          Vector<float> estimated_error_per_cell(triangulation.n_active_cells());
          KellyErrorEstimator<dim>::estimate(dof_handler,
 				            QGauss<dim - 1>(fe.degree + 1),
@@ -109,7 +121,9 @@ namespace FemGL_mpi
 					    estimated_error_per_cell);
 
          parallel::distributed::GridRefinement::refine_and_coarsen_fixed_number(triangulation,
-					  				        estimated_error_per_cell, 0.3, 0.0);
+					  				        estimated_error_per_cell,
+										refine_ratio, /*0.3*/
+										coarsen_ratio /*0.0*/);
         }
 
         triangulation.prepare_coarsening_and_refinement();

@@ -7,6 +7,7 @@
 
 #include <deal.II/base/quadrature_lib.h>
 #include <deal.II/base/function.h>
+#include <deal.II/base/parameter_handler.h>
 #include <deal.II/base/timer.h>
 
 #include <deal.II/lac/generic_linear_algebra.h>
@@ -114,6 +115,17 @@ namespace FemGL_mpi
       }
     else if (dim==3)
       {
+
+         /*---------------------------------------*/ 
+         /* loading refinements control paramters */
+         /*---------------------------------------*/
+         conf.enter_subsection("control parameters");
+         const double number_global_refine  = conf.get_integer("Number of initial global refinments");
+	 conf.leave_subsection();
+         /*---------------------------------------*/
+	 /*    paramters loading ends at here     */
+         /*---------------------------------------*/
+	
 	const double D = 6., l = 15., Ex = 8.;
         const Point<dim> p1(-l, 0., 0.);
         const Point<dim> p2(l, Ex, D);	
@@ -121,13 +133,13 @@ namespace FemGL_mpi
         GridGenerator::hyper_rectangle(triangulation,
 		  	               p1, p2); 		
 	
-	triangulation.refine_global(4); // The refine_global() number is somehow important.
-	                                // If one puts just 3, DoF will be about 30K.
-	                                // When this small mount DoF are distribited on say 64 cpu processes,
-	                                // LAPCK rises up waring:
-	                                // "dorgqr WARNING : performing QR on a MxN matrix where M<N".
-	                                // To suppress this warning, one should put 4 as global refine number,
-	                                // looks like this will make DoF disstribution smoother and beheave better.
+	triangulation.refine_global(number_global_refine /*4*/); // The refine_global() number is somehow important.
+	                                                         // If one puts just 3, DoF will be about 30K.
+	                                                         // When this small mount DoF are distribited on say 64 cpu processes,
+	                                                         // LAPCK rises up waring:
+	                                                         // "dorgqr WARNING : performing QR on a MxN matrix where M<N".
+	                                                         // To suppress this warning, one should put 4 as global refine number,
+	                                                         // looks like this will make DoF disstribution smoother and beheave better.
 
 	
 	for (const auto &cell : triangulation.cell_iterators())

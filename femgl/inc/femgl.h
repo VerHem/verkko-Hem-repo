@@ -41,6 +41,7 @@ namespace LA
 
 #include <deal.II/base/quadrature_lib.h>
 #include <deal.II/base/function.h>
+#include <deal.II/base/parameter_handler.h> 
 #include <deal.II/base/timer.h>
 
 #include <deal.II/lac/generic_linear_algebra.h>
@@ -110,7 +111,7 @@ namespace FemGL_mpi
   class FemGL
   {
   public:
-    FemGL(unsigned int Q_degree);
+    FemGL(unsigned int Q_degree, ParameterHandler &);
 
     void run();
 
@@ -255,13 +256,14 @@ namespace FemGL_mpi
                                                std::vector<FullMatrix<double>> &container_grad_phi_v_x_q);
     
     
-    std::string        refinement_strategy = "global";
+    //std::string        refinement_strategy = "global";
     unsigned int       degree, cycle;    
     MPI_Comm           mpi_communicator;
     
     FESystem<dim>                             fe;
     parallel::distributed::Triangulation<dim> triangulation;
     DoFHandler<dim>                           dof_handler;
+    ParameterHandler                          &conf;
 
     /* container for FEValuesExtractors::scalar
      * FEValuesExtractors, works for FEValues, FEFaceValues, FESubFaceValues
@@ -315,8 +317,10 @@ namespace FemGL_mpi
     const double beta4    = 0.0213139; // 0.0213139   
     const double beta5    = -0.0213139; // -0.0213139
 
-    const double bt       = 1e10; // 1e10 specular, 2.0 diffuse
-    
+    // AdGR diffuse parameter
+    double bt; // 1e10 specular, 2.0 diffuse
+
+    // reduced tmeprature t=T/T_c
     double reduced_t;
 
     ConditionalOStream pcout;

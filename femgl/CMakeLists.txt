@@ -1,7 +1,9 @@
 # femgl/CMakeLists.txt
 
-include_directories(${CMAKE_SOURCE_DIR}/femgl/inc)
-#include_directories(include)
+include_directories(
+  ${CMAKE_SOURCE_DIR}/femgl/inc
+  ${CMAKE_SOURCE_DIR}/confreader/inc
+  )
 
 add_library(femgl STATIC
 # main source codes of femgl class   
@@ -45,3 +47,5 @@ add_library(femgl STATIC
   )
 
 deal_ii_setup_target(femgl)
+target_link_libraries(femgl conf)
+  
