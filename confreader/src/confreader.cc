@@ -92,28 +92,7 @@ namespace FemGL_mpi
 
     prm.parse_input(configuration_file);
   }
-  
-  // phrase declarations()
-  void confreader::declare_parameters()
-  {
-    prm.enter_subsection("physical parameters");
-    {
-      prm.declare_entry("t_reduced", "0.0", Patterns::Double(0), "reduced temperature");
-
-      prm.declare_entry("b1_diffuse", "1.0e10", Patterns::Double(0), "u component diffuse parameter");
-
-      prm.declare_entry("b2_diffuse", "1.0e10", Patterns::Double(0), "v component diffuse parameter");      
-    }
-    prm.leave_subsection();
-
-    prm.enter_subsection("switches");
-    {
-      prm.declare_entry("flip_normal", "false", Patterns::Bool(), "flipping Robin face normal to inforward");
-
-    }
-    prm.leave_subsection();
-  }
-  
+    
   /* ----------------------------------------------
    * ConfigurationReader defination ends at here
    * ----------------------------------------------
