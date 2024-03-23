@@ -7,6 +7,7 @@
 
 #include <deal.II/base/quadrature_lib.h>
 #include <deal.II/base/function.h>
+#include <deal.II/base/parameter_handler.h>
 #include <deal.II/base/timer.h>
 
 #include <deal.II/lac/generic_linear_algebra.h>
@@ -70,7 +71,7 @@
 
 #include "femgl.h"
 #include "dirichlet.h"
- 
+#include "confreader.h"  
 
 namespace FemGL_mpi
 {
@@ -83,11 +84,27 @@ namespace FemGL_mpi
     pcout << "Running using Trilinos." << std::endl;
 
     std::string ref_str = "adaptive";
-    const unsigned int n_cycles    = 7;
-    const unsigned int n_iteration = 60;    
+
+    /*---------------------------------------*/
+    /* loading refinements control paramters */
+    /*---------------------------------------*/    
+    conf.enter_subsection("control parameters"); 
+    const unsigned int n_cycles                = conf.get_integer("Number of adaptive refinements");
+    const unsigned int n_iteration             = conf.get_integer("Number of interations");
+    const double       Cycle0_refine_threshold = conf.get_double("threshold of Cycle 0 refinement");    
+    const double       refine_threshold        = conf.get_double("threshold of refinement");
+    const double       converge_acc            = conf.get_double("converge accuracy");    
+    conf.leave_subsection();
+    /*---------------------------------------*/
+    /*    paramters loading ends at here     */
+    /*---------------------------------------*/    
+
+    
     for (cycle = 0; cycle <= n_cycles; ++cycle)
       {
-        pcout << "Cycle " << cycle << ':' << std::endl;
+        pcout << "\n"
+	      << "Refinement Cycle is " << cycle
+	      << std::endl;
 
         if (cycle == 0)
 	  {
@@ -96,21 +113,22 @@ namespace FemGL_mpi
 	  }
         else
 	  refine_grid(ref_str);
-	
+
+	double residual_last_iter = 0.0; // residual_vector.norm() in last time interation
         for (unsigned int iteration_loop = 0; iteration_loop <= n_iteration; ++iteration_loop)
 	  {
-	     pcout << "cycle : " << cycle << ", "
+	     pcout << "Refinement cycle : " << cycle << ", "
                    << "iteration_loop: " << iteration_loop	       
 		   << std::endl;
 
              assemble_system();
 	     pcout << "assembly is done !" << std::endl;
              solve();
-	     pcout << " AMG solve is done !" << std::endl;	     
+	     pcout << " AMG preconditioned solving is done !" << std::endl;	     
 	     newton_iteration();
 	     pcout << " newton iteration is done !" << std::endl;	     	     
 
-             if (Utilities::MPI::n_mpi_processes(mpi_communicator) <= 1280)
+             if (Utilities::MPI::n_mpi_processes(mpi_communicator) <= 12800)
               {
                TimerOutput::Scope t(computing_timer, "output");
 	       output_results(iteration_loop);
@@ -121,30 +139,37 @@ namespace FemGL_mpi
 
              pcout << std::endl;
 
-	     if ((residual_vector.l2_norm() < 30.0) && (cycle == 0))
+	     const double residual_l2_norm = residual_vector.l2_norm();
+	     if (/* Cycle 0 stuck-refine condtion */
+		 (std::fabs(residual_l2_norm - residual_last_iter) < Cycle0_refine_threshold)
+		 && (residual_l2_norm > converge_acc)
+		 && (cycle == 0)
+		)
 	       break;
-	     else if ((residual_vector.l2_norm() < 2.0) && (cycle == 1))
+	     else if (/* Cycle < n_cycles stuck-refine condtion */
+		      (std::fabs(residual_l2_norm - residual_last_iter) < refine_threshold)
+		      && (residual_l2_norm > converge_acc)
+		      && (cycle < n_cycles)
+		     )
 	       break;
-	     else if ((residual_vector.l2_norm() < 0.1) && (cycle == 2)) // 5.0 is good for only z-normal,  
+	     else if (/* this part is for final converge checking */
+                      (residual_l2_norm <= converge_acc)
+                     )
 	       break;
-	     else if ((residual_vector.l2_norm() < 2e-3) && (cycle == 3))
-	       break;
-	     else if ((residual_vector.l2_norm() < 1e-4) && (cycle == 4))
-	       break;
-	     else if ((residual_vector.l2_norm() < 1e-5) && (cycle == 5))
-	       break;	     	     
-	     else if ((residual_vector.l2_norm() < 1e-6) && (cycle == 6))
-	       break;
-	     else if ((residual_vector.l2_norm() < 1e-7) && (cycle == 7))
-	       break;
-	     /*else if ((system_rhs.l2_norm() < 5e-6) && (cycle == 7))
-	       break;
-	     else if ((system_rhs.l2_norm() < 5e-7) && (cycle == 8))
-	       break;	     	     	     
-	     */
-	  }
+	     else
+	       residual_last_iter = residual_l2_norm; /* if iteration isn't stuck or grid has been 
+                                                         maximum refined, this statement will run.
+                                                         This push ieteration either to stuck & refine,
+                                                         or in to final converge.
+                                                       */
 
-      }
+	  } // iteration loop ends at here
+	
+	// Stop Cycle loop if required acccuracy is achieved
+	if (residual_vector.l2_norm() <= converge_acc)
+	  break;
+
+      } // Cycle loop end here
      computing_timer.print_summary();	
   }
 

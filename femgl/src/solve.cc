@@ -7,6 +7,7 @@
 
 #include <deal.II/base/quadrature_lib.h>
 #include <deal.II/base/function.h>
+#include <deal.II/base/parameter_handler.h>
 #include <deal.II/base/timer.h>
 
 #include <deal.II/lac/generic_linear_algebra.h>
@@ -82,6 +83,21 @@ namespace FemGL_mpi
     TimerOutput::Scope t(computing_timer, "solve");
 
     { //linear solver block, will be released after it finishes to save memory leak
+
+     /* ------------------------------------- */
+     /*  loading AMG precondtioner paramters  */
+     /*  and SolverContral Paramters          */
+     /* ------------------------------------- */      
+     conf.enter_subsection("control parameters");
+     const unsigned int no_n_cycles = conf.get_integer("Number of n-cycle in AdditionalData");
+     const double tol               = conf.get_double("tolrence of linear SolverControl");     
+     conf.leave_subsection();
+     /* ------------------------------------- */
+     /*  AMG precondtioner paramters          */
+     /*  and SolverContral Paramters end here */
+     /* ------------------------------------- */      
+
+     
      LA::MPI::PreconditionAMG preconditioner;
      LA::MPI::Vector distributed_newton_update(locally_owned_dofs, mpi_communicator);
      {
@@ -98,7 +114,7 @@ namespace FemGL_mpi
       additional_data.elliptic              = true;  /* elliptic actully faster than non-elliptic the sence to acchive same accuracy. 
                                                          In a 64cores run, ellipic used 30mins to achive 0.04, while non-eeliptic used
                                                          60mins to achive 0.09 */ 
-      additional_data.n_cycles              = 4;
+      additional_data.n_cycles              = no_n_cycles; /*4*/
       additional_data.w_cycle               = true;
       additional_data.output_details        = false;
       additional_data.smoother_sweeps       = 2;
@@ -112,7 +128,7 @@ namespace FemGL_mpi
       // With that, we can finally set up the linear solver and solve the system:
       pcout << " system_rhs.l2_norm() is " << system_rhs.l2_norm() << std::endl;
       SolverControl solver_control(10*system_matrix.m(),
-                                   7e-1 * system_rhs.l2_norm());
+                          /*7e-1*/ tol * system_rhs.l2_norm());
 
       //SolverMinRes<LA::MPI::Vector> solver(solver_control);
       SolverFGMRES<LA::MPI::Vector> solver(solver_control);
