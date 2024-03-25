@@ -17,7 +17,9 @@ ENDIF()
 deal_ii_initialize_cached_variables()
 project(FEmGL VERSION 0.1)
 
+add_subdirectory(matep)
 add_subdirectory(confreader)
 add_subdirectory(femgl)
 add_subdirectory(sol)
+
 

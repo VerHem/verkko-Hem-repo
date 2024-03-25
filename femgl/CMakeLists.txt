@@ -3,6 +3,7 @@
 include_directories(
   ${CMAKE_SOURCE_DIR}/femgl/inc
   ${CMAKE_SOURCE_DIR}/confreader/inc
+  ${CMAKE_SOURCE_DIR}/matep/inc  
   )
 
 add_library(femgl STATIC
@@ -47,5 +48,5 @@ add_library(femgl STATIC
   )
 
 deal_ii_setup_target(femgl)
-target_link_libraries(femgl conf)
+target_link_libraries(femgl conf matep)
   
