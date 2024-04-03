@@ -71,6 +71,8 @@
 
 #include "femgl.h"
 #include "dirichlet.h"
+#include "confreader.h"
+#include "matep.h"
  
 
 namespace FemGL_mpi
@@ -88,7 +90,8 @@ namespace FemGL_mpi
      /*  loading line search step Paramters   */
      /* ------------------------------------- */      
      conf.enter_subsection("control parameters");
-     const double line_search_step = conf.get_double("primary step length of dampped newton iteration");     
+     const double line_search_step = conf.get_double("primary step length of dampped newton iteration");
+     const bool dampped_newton     = conf.get_bool("Using dampped Newton iteration");          
      conf.leave_subsection();
      /* ------------------------------------- */
      /*  line search step Paramters ends here */
@@ -99,51 +102,90 @@ namespace FemGL_mpi
      LA::MPI::Vector distributed_newton_update(locally_owned_dofs, mpi_communicator);          
      double previous_residual = system_rhs.l2_norm();
 
-     {// line search loop
-
-      for (unsigned int i = 0; i < 100; ++i)
-        {
-	 const double alpha = std::pow(line_search_step, static_cast<double>(i));
+     if (dampped_newton == false)
+       {// full-newton iteration block
          distributed_newton_update = locally_relevant_newton_solution;
          distributed_solution      = local_solution;
 
 	 // damped iteration:
-	 distributed_solution.add(alpha, distributed_newton_update);
+	 distributed_solution.add(1.0, distributed_newton_update);
 
 	 // AffineConstraint::distribute call
          constraints_solution.distribute(distributed_solution);	
 
 	 // assign un-ghosted solution to ghosted solution
+	 // Don't be confused by the name with "dampped", there is NO dampped
 	 locally_relevant_damped_vector = distributed_solution;
-
-         //local_solution = distributed_solution;	 
 
 	 compute_residual(/*locally_relevant_damped_vector*/);
 	 double current_residual = residual_vector.l2_norm();
 
-	 pcout << " step length alpha is: "  << alpha
+	 pcout << " we are in full newton-iteration "
 	       << ", residual is: "          << current_residual
 	       << ", previous_residual is: " << previous_residual
 	       << std::endl;
+	 
 	 if (current_residual < previous_residual)
 	   {
 	     pcout << " ohh! current_residual < previous_residual, we get better solution ! "
 	           << std::endl;
-  	     break;
            }
 	 else
 	   {
-             pcout << " haa! current_residual >= previous_residual, more line search ! "
+             pcout << " Humm ! current_residual >= previous_residual, maybe you need a better guess ! This is full-newton"
 	           << std::endl;
 	   }
-       } // for loop ends at here
 
-     } // line search block 
+       } // full-newton iteration block ends here
+     else
+       {// line search loop, dampped newton iteration
 
+        for (unsigned int i = 0; i < 100; ++i)
+         {
+ 	  const double alpha = std::pow(line_search_step, static_cast<double>(i));
+          distributed_newton_update = locally_relevant_newton_solution;
+          distributed_solution      = local_solution;
+
+	  // damped iteration:
+	  distributed_solution.add(alpha, distributed_newton_update);
+
+	  // AffineConstraint::distribute call
+          constraints_solution.distribute(distributed_solution);	
+
+	  // assign un-ghosted solution to ghosted solution
+	  locally_relevant_damped_vector = distributed_solution;
+
+          //local_solution = distributed_solution;	 
+
+	  compute_residual(/*locally_relevant_damped_vector*/);
+	  double current_residual = residual_vector.l2_norm();
+
+	  pcout << " step length alpha is: "  << alpha
+	        << ", residual is: "          << current_residual
+	        << ", previous_residual is: " << previous_residual
+	        << std::endl;
+	  if (current_residual < previous_residual)
+	    {
+	     pcout << " ohh! current_residual < previous_residual, we get better solution ! "
+	           << std::endl;
+  	     break;
+            }
+	  else
+	    {
+             pcout << " haa! current_residual >= previous_residual, more line search ! "
+	           << std::endl;
+	    }
+	  
+          } // for loop ends at here
+
+        } // line search block 
+    
      local_solution = distributed_solution;
-    } // newton iteraion block with line search ends from here, all local objects will be released to save momory leak
+     
+    } // Newton iteraion block ends at here, both full-newton and dammped newton are possible
+      // all local objects will be released to save momory leak
 
-  }
+  } //femgl memeber newton_iteration() block ends at here
 
   template class FemGL<3>;  
 } // namespace FemGL_mpi
