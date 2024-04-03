@@ -88,9 +88,14 @@ namespace FemGL_mpi
      *****************************************************/
     prm.enter_subsection("physical parameters");
     {
-      prm.declare_entry("t_reduced", "0.0", Patterns::Double(0), "reduced temperature");
+      prm.declare_entry("pressure in bar", "0.0", Patterns::Double(0),
+			"pressure in bar");
+      
+      prm.declare_entry("t_reduced", "0.0", Patterns::Double(0),
+			"reduced temperature");
 
-      prm.declare_entry("AdGR diffuse length", "1.0e10", Patterns::Double(0), "AdGR diffuse parameter");
+      prm.declare_entry("AdGR diffuse length", "1.0e10", Patterns::Double(0),
+			"AdGR diffuse parameter");
     }
     prm.leave_subsection();
 
@@ -101,30 +106,50 @@ namespace FemGL_mpi
     prm.enter_subsection("control parameters");
     {
       /* grid control paramters */
-      prm.declare_entry("Number of adaptive refinements", "5", Patterns::Integer(0), "default value is 5, this is needed in run()");
+      prm.declare_entry("cube half side length", "20", Patterns::Double(0),
+			"This is only for cube geomrtry, full side length is doubled, default value is 20 xi_0_GL");
 
-      prm.declare_entry("Number of interations", "40", Patterns::Integer(0), "number of iterations run in one Cycle");
+      prm.declare_entry("B-phase ball radius ratio", "0.5", Patterns::Double(0),
+			"This is for BinA configuration, real value is ratio * half_side_length, default value is 0.5");     
+      
+      prm.declare_entry("Number of adaptive refinements", "5", Patterns::Integer(0),
+			"default value is 5, this is needed in run()");
 
-      prm.declare_entry("threshold of Cycle 0 refinement", "1.0e0", Patterns::Double(0), "Refine grid when the difference of residual.norm() smaller than this value in Cycle 0");            
+      prm.declare_entry("Number of interations", "40", Patterns::Integer(0),
+			"number of iterations run in one Cycle");
 
-      prm.declare_entry("threshold of refinement", "1.0e-3", Patterns::Double(0), "Refine grid when the difference of residual.norm() smaller than this value");      
+      prm.declare_entry("threshold of Cycle 0 refinement", "1.0e0", Patterns::Double(0),
+			"Refine grid when the difference of residual.norm() smaller than this value in Cycle 0");            
 
-      prm.declare_entry("converge accuracy", "5.0e-6", Patterns::Double(0), "terminate current Cycle if residual.norm() smaller than this value");      
+      prm.declare_entry("threshold of refinement", "1.0e-3", Patterns::Double(0),
+			"Refine grid when the difference of residual.norm() smaller than this value");      
+
+      prm.declare_entry("converge accuracy", "5.0e-6", Patterns::Double(0),
+			"terminate current Cycle if residual.norm() smaller than this value");      
       
       
-      prm.declare_entry("adaptive refinment ratio", "0.3", Patterns::Double(0), "refiment parameter for refine_and_coarsen_fixed_number() call");
+      prm.declare_entry("adaptive refinment ratio", "0.3", Patterns::Double(0),
+			"refiment parameter for refine_and_coarsen_fixed_number() call");
 
-      prm.declare_entry("adaptive coarsen ratio", "0.0", Patterns::Double(0), "coarsen parameter for refine_and_coarsen_fixed_number() call");
+      prm.declare_entry("adaptive coarsen ratio", "0.0", Patterns::Double(0),
+			"coarsen parameter for refine_and_coarsen_fixed_number() call");
 
-      prm.declare_entry("Number of initial global refinments", "4", Patterns::Integer(0), "default value is 4, which is used in makegrid() call");
+      prm.declare_entry("Number of initial global refinments", "4", Patterns::Integer(0),
+			"default value is 4, which is used in makegrid() call");
 
       
       /* iteration and linear solver control parameters */
-      prm.declare_entry("Number of n-cycle in AdditionalData", "4", Patterns::Integer(0), "AMG precondtioner control parameter in solve() call");
+      prm.declare_entry("Number of n-cycle in AdditionalData", "4", Patterns::Integer(0),
+			"AMG precondtioner control parameter in solve() call");
 
-      prm.declare_entry("tolrence of linear SolverControl", "7.0e-1", Patterns::Double(0), "default value is 7.0e-1 * system_rhs.norm()");
+      prm.declare_entry("tolrence of linear SolverControl", "7.0e-1", Patterns::Double(0),
+			"default value is 7.0e-1 * system_rhs.norm()");
 
-      prm.declare_entry("primary step length of dampped newton iteration", "0.83", Patterns::Double(0), "0.83 seems work well, not drop too fast");
+      prm.declare_entry("Using dampped Newton iteration", "true", Patterns::Bool(),
+			"dampped newton iteration is default, false will give you standard newton iteration");      
+
+      prm.declare_entry("primary step length of dampped newton iteration", "0.83", Patterns::Double(0),
+			"0.83 seems work well, not drop too fast");
                    
     }
     prm.leave_subsection();
