@@ -9,26 +9,21 @@
  *
  */ 
 
-#ifndef MATEP_HPP
-#define MATEP_HPP
+#ifndef MATEP_H
+#define MATEP_H
 
-//#include <string>
 #include <iostream>
 #include <cstddef>
 #include <cmath>
 #include <vector>
 
+namespace FemGL_mpi
+{
+ using real_t = double;
 
-using real_t = float; // or double
-
-class Matep {
-public:
-        Matep():
-	  Switch("OFF") {};                                                  // default constructor
-  /*Matep(const std::string &tempScale):
-    Switch("OFF"), temperature_scale(tempScale) {};*/                    // constructor with temperature scale option  
-        Matep(const std::string &S):
-	  Switch(S) {};                                                      // metap with fudge exponent switch
+ class Matep {
+ public:
+        Matep() = default;                                                  // default constructor
 
   // ************************************************************************** //
   // >>>>>>>>>>>        interfaces of dimensional qualities        <<<<<<<<<<<< //
@@ -47,27 +42,27 @@ public:
   // >>>>  interfaces of dimensionless coeficients; SC-correction parts: <<<<< //
   // ************************************************************************* //
   
-        real_t alpha_td(real_t p, real_t T);
-        real_t beta1_td(real_t p, real_t T);
-        real_t beta2_td(real_t p, real_t T);
-        real_t beta3_td(real_t p, real_t T);
-        real_t beta4_td(real_t p, real_t T);
-        real_t beta5_td(real_t p, real_t T);
+        real_t alpha_td(real_t t);
+        real_t beta1_td(real_t p, real_t t);
+        real_t beta2_td(real_t p, real_t t);
+        real_t beta3_td(real_t p, real_t t);
+        real_t beta4_td(real_t p, real_t t);
+        real_t beta5_td(real_t p, real_t t);
 
   // >>>>>>>>>    interfaces for beta_A, beta_B, gaps and tAB_RWS    <<<<<<<<< //
   
-        real_t beta_A_td(real_t p, real_t T);
-        real_t beta_B_td(real_t p, real_t T);
-        real_t gap_A_td(real_t p, real_t T);
-        real_t gap_B_td(real_t p, real_t T);
-        real_t gap_td(real_t p, real_t T);      // gap for given p,T, and showing message
+        real_t beta_A_td(real_t p, real_t t);
+        real_t beta_B_td(real_t p, real_t t);
+        real_t gap_A_td(real_t p, real_t t);
+        real_t gap_B_td(real_t p, real_t t);
+        real_t gap_td(real_t p, real_t t);      // gap for given p,T, and showing message
 
         real_t tAB_RWS(real_t p);               
 
   // >>>>>>> interfaces for f_{A}, f_{B}, in unit of (1/3)(Kb Tc)^2 N(0) <<<<< //
   
-        real_t f_A_td(real_t p, real_t T);
-        real_t f_B_td(real_t p, real_t T);
+        real_t f_A_td(real_t p, real_t t);
+        real_t f_B_td(real_t p, real_t t);
         
 
   // >>>>>>>>>>>>>>> menmber funcition Levi_Civita symbol <<<<<<<<<<<<<<<<<<<< //
@@ -76,22 +71,15 @@ public:
          	       int be, /*beta*/
 		       int ga /*gamma*/);
   
-private:
+  private:
         // SI unit
         static constexpr real_t Kelvin =1.0f, J = 1.0f, s = 1.0f, m = 1.0f, kg = 1.0f
                          	,pi = 3.14159265358979323846264338328f, p_pcp = 21.22f;
-
-        // temperature switch Greywall or PLTS2000
-        std::string temperature_scale;
         
-        // fudge Switch, "ON" or "OFF"
-        std::string Switch /*= "OFF"*/; 
-
         // physical constants for he3
         static const real_t u, m3, nm, hbar, kb
                             ,zeta3, c_betai;
- 
-       
+        
         // SC-data sheets arries, All associate to SCCO class
         static const real_t c1_arr[18]; 
         static const real_t c2_arr[18];
@@ -105,15 +93,11 @@ private:
         static const real_t VF_arr[18];
         static const real_t XI0_arr[18];
 
-        // coefficients vector for fudge polynomial
-        static const std::vector<real_t> coef4;
-        // static const std::vector<real_t> coef6;
-
         // linear interpolation function:
         real_t lininterp(const real_t *cX_arr, real_t p);
 
-        // fudge expotent calculator
-        real_t exp_q(real_t p);
-};
+ }; // matep class declaration ends at here
+
+} // FemGL_mpi namespace ends at here  
 
 #endif

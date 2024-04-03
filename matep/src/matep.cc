@@ -14,19 +14,22 @@
 #include <cmath>
 #include <vector>
 
-#include "matep.hpp"
+#include "matep.h"
 
 
+namespace FemGL_mpi
+{
+  
 //********************************************************************
 //***          static physical constants of he3 members            ***
 //********************************************************************
-const real_t Matep::kb = 1.380649*(std::pow(10.0f, -23))*J*1.0f;
-const real_t Matep::u = 1.66053906660f*(std::pow(10.0f,-27))*kg;
-const real_t Matep::m3 = 3.016293f*u;
-const real_t Matep::nm = (std::pow(10.0f, -9))*m;
-const real_t Matep::hbar = 1.054571817f*(std::pow(10.0f,-34))*J*s;
-const real_t Matep::zeta3 = std::riemann_zeta(3.0f);
-const real_t Matep::c_betai = (7.0f*zeta3)/(80.0f*pi*pi);
+const real_t Matep::kb      = 1.380649*(1.0e-23)*J*1.0f;
+const real_t Matep::u       = 1.66053906660f*(1.0e-27)*kg;
+const real_t Matep::m3      = 3.016293f*u;
+const real_t Matep::nm      = (1.0e-9)*m;
+const real_t Matep::hbar    = 1.054571817f*(1.0e-34)*J*s;
+const real_t Matep::zeta3   = 1.2020569031595942f;
+const real_t Matep::c_betai = (7.0f*zeta3)/(80.0f*pi*pi); // 0.010657
 
 
 // *******************************************************************
@@ -44,30 +47,19 @@ const real_t Matep::Ms_arr[18] = {2.80, 3.05, 3.27, 3.48, 3.68, 3.86, 4.03, 4.20
 const real_t Matep::VF_arr[18] = {59.03, 55.41, 52.36, 49.77, 47.56, 45.66, 44.00, 42.51, 41.17, 39.92, 38.74, 37.61, 36.53, 35.50, 34.53, 33.63, 32.85, 32.23}; // fermi velosity, m.s^-1
 const real_t Matep::XI0_arr[18] = {77.21, 57.04, 45.85, 38.77, 33.91, 30.37, 27.66, 25.51, 23.76, 22.29, 21.03, 19.94, 18.99, 18.15, 17.41, 16.77, 16.22, 15.76};
 
-
-//********************************************************************
-// ***          data sheet of fudge exponet polynomial             ***
-//********************************************************************
-
-
-const std::vector<real_t> Matep::coef4 = {-6.00498973e-03, -1.01758101e-02,  1.46969023e-03, -1.14870022e-04, 4.11400719e-06};
-
-
-//const std::vector<real_t> Matep::coef4 = {-6.00498973*std::pow(10.f,-3), -1.01758101*std::pow(10.f,-2), 1.46969023*std::pow(10.f,-3), -1.14870022*std::pow(10.f,-4), 4.11400719*std::pow(10.f,-6)};
-
-
 //*********************************************************************
 //***     member functions, interfaces of dimensional qualities     ***
 //*********************************************************************
 
 real_t
 Matep::Tcp(real_t p){
-  real_t Tc = lininterp(Tc_arr, p)*std::pow(10.0f,-3);
+  real_t Tc = lininterp(Tc_arr, p)*(1.0e-3);
   return Tc;
 }
 
 real_t
-Matep::Tcp_mK(real_t p) {return lininterp(Tc_arr, p);
+Matep::Tcp_mK(real_t p) {
+  return lininterp(Tc_arr, p);
 }
 
 
@@ -95,8 +87,7 @@ Matep::N0p(real_t p){
   /*
    * the maginitude of N0p is about 10^(50), it must be double type 
    */
-  double N0 = (std::pow(mEffp(p),2)*vFp(p))/((2.0f*pi*pi)*std::pow(hbar,3));
-  // ((mEff(p)**(2))*vF(p))/((2*pi*pi)*(hbar**(3)))
+  double N0 = (std::pow(mEffp(p),2)*vFp(p))/((2.0f*pi*pi)*(hbar*hbar*hbar));
   return N0;
 }
 
@@ -106,44 +97,44 @@ Matep::N0p(real_t p){
 //**********************************************************************
 
 real_t
-Matep::alpha_td(real_t p, real_t T){ return 1.f*(T/Tcp_mK(p)-1); }  
+Matep::alpha_td(real_t t){ return 1.f*(t-1); }  
 
 
 real_t
-Matep::beta1_td(real_t p, real_t T){
-  real_t beta1 = c_betai*(-1.0f + (T/Tcp_mK(p))*exp_q(p)*lininterp(c1_arr, p));
+Matep::beta1_td(real_t p, real_t t){
+  real_t beta1 = c_betai*(-1.0f + (t)*lininterp(c1_arr, p));
 
   return beta1;
 }  
 
 
 real_t
-Matep::beta2_td(real_t p, real_t T){
-  real_t beta2 = c_betai*(2.0f + (T/Tcp_mK(p))*exp_q(p)*lininterp(c2_arr, p));
+Matep::beta2_td(real_t p, real_t t){
+  real_t beta2 = c_betai*(2.0f + (t)*lininterp(c2_arr, p));
 
   return beta2;
 }  
 
 
 real_t
-Matep::beta3_td(real_t p, real_t T){
-  real_t beta3 = c_betai*(2.0f + (T/Tcp_mK(p))*exp_q(p)*lininterp(c3_arr, p));
+Matep::beta3_td(real_t p, real_t t){
+  real_t beta3 = c_betai*(2.0f + (t)*lininterp(c3_arr, p));
 
   return beta3;
 }  
 
 
 real_t
-Matep::beta4_td(real_t p, real_t T){
-  real_t beta4 = c_betai*(2.0f + (T/Tcp_mK(p))*exp_q(p)*lininterp(c4_arr, p));
+Matep::beta4_td(real_t p, real_t t){
+  real_t beta4 = c_betai*(2.0f + (t)*lininterp(c4_arr, p));
 
   return beta4;
 }
 
 
 real_t
-Matep::beta5_td(real_t p, real_t T){
-  real_t beta5 = c_betai*(-2.0f + (T/Tcp_mK(p))*exp_q(p)*lininterp(c5_arr, p));
+Matep::beta5_td(real_t p, real_t t){
+  real_t beta5 = c_betai*(-2.0f + (t)*lininterp(c5_arr, p));
 
   return beta5;
 }  
@@ -154,22 +145,22 @@ Matep::beta5_td(real_t p, real_t T){
 //**********************************************************************
 
 real_t
-Matep::beta_A_td(real_t p, real_t T){
-  return beta2_td(p, T) + beta4_td(p, T) + beta5_td(p, T);
+Matep::beta_A_td(real_t p, real_t t){
+  return beta2_td(p, t) + beta4_td(p, t) + beta5_td(p, t);
 }
 
 real_t
-Matep::beta_B_td(real_t p, real_t T){
-  return beta1_td(p, T) + beta2_td(p, T) + (1.f/3.f)*(beta3_td(p, T) + beta4_td(p, T) + beta5_td(p, T));
+Matep::beta_B_td(real_t p, real_t t){
+  return beta1_td(p, t) + beta2_td(p, t) + (1.f/3.f)*(beta3_td(p, t) + beta4_td(p, t) + beta5_td(p, t));
 }
 
 // A-phase gap energy, in unit of Kb * Tc
 real_t
-Matep::gap_A_td(real_t p, real_t T){
+Matep::gap_A_td(real_t p, real_t t){
 
-  if (T <= Tcp_mK(p))
+  if (t <= 1.0)
     {
-      real_t gap2 =-alpha_td(p, T)/(2.f*beta_A_td(p, T)); // (kb Tc)^2
+      real_t gap2 =-alpha_td(t)/(2.f*beta_A_td(p, t)); // (kb Tc)^2
 
       return std::sqrt(gap2);    
     }
@@ -180,11 +171,11 @@ Matep::gap_A_td(real_t p, real_t T){
 
 // B-phase gap energy, in unit of Kb * Tc
 real_t
-Matep::gap_B_td(real_t p, real_t T){
+Matep::gap_B_td(real_t p, real_t t){
 
-  if (T <= Tcp_mK(p))
+  if (t <= 1.0)
     {
-      real_t gap2 =-alpha_td(p, T)/(2.f*beta_B_td(p, T)); // (kb Tc)^2
+      real_t gap2 =-alpha_td(t)/(2.f*beta_B_td(p, t)); // (kb Tc)^2
 
       return std::sqrt(gap2);
     }
@@ -194,30 +185,30 @@ Matep::gap_B_td(real_t p, real_t T){
 
 // A general gap function with message of equlibrium phase
 real_t
-Matep::gap_td(real_t p, real_t T){
+Matep::gap_td(real_t p, real_t t){
 
-  if (f_A_td(p, T) > f_B_td(p, T)){
-    std::cout << " \nnow p, T are: " << p << ", " << T
+  if (f_A_td(p, t) > f_B_td(p, t)){
+    std::cout << " \nnow p, T are: " << p << ", " << t
               << ", equlibrum bulk phase is B phase. "
               << std::endl;
-    return gap_A_td(p, T);
+    return gap_A_td(p, t);
     
-  } else if (f_A_td(p, T) < f_B_td(p, T)) { 
+  } else if (f_A_td(p, t) < f_B_td(p, t)) { 
     
-    std::cout << " \nnow p, T are: " << p << ", " << T
+    std::cout << " \nnow p, T are: " << p << ", " << t
               << ", equlibrum bulk phase is A phase. "
               << std::endl;
-    return gap_B_td(p, T);   
+    return gap_B_td(p, t);   
 
   } else {
 
     if (
 	// (f_A_td(p, T) == f_B_td(p, T))
 	// && (T < Tcp_mK(p))
-	T < Tcp_mK(p)
+	t < 1.0
        ){
 
-       std::cout << " \nnow p, T are: " << p << ", " << T
+       std::cout << " \nnow p, t are: " << p << ", " << t
                  << ", and A and B degenerate, return as -1. "
                  << std::endl;
        return -1.f;
@@ -228,12 +219,12 @@ Matep::gap_td(real_t p, real_t T){
             // )
 	  {
 
-            std::cout << " \nnow p, T are: " << p << ", " << T
+            std::cout << " \nnow p, t are: " << p << ", " << t
 	            << ", system is in normal phase. "
 	            << std::endl;
 	    return 0.f;
 
-    }
+          }
 
   }
 }
@@ -251,11 +242,11 @@ Matep::tAB_RWS(real_t p){
 
 // A-Phase free energy density in unit of (1/3)(Kb Tc)^2 N(0)
 real_t
-Matep::f_A_td(real_t p, real_t T)
+Matep::f_A_td(real_t p, real_t t)
 {
-  if (T <= Tcp_mK(p))
+  if (t <= 1.0)
     {
-     return (-1.f/4.f)*(std::pow(alpha_td(p, T),2.f))/beta_A_td(p, T);    
+     return (-1.f/4.f)*(std::pow(alpha_td(t),2.f))/beta_A_td(p, t);    
     }
   else //if (T > Tcp_mK(p))
     return 0.;
@@ -264,11 +255,11 @@ Matep::f_A_td(real_t p, real_t T)
 
 // B-Phase free energy density in unit of (1/3)(Kb Tc)^2 N(0)
 real_t
-Matep::f_B_td(real_t p, real_t T)
+Matep::f_B_td(real_t p, real_t t)
 {
-  if (T <= Tcp_mK(p))
+  if (t <= 1.0)
     {
-     return (-1.f/4.f)*(std::pow(alpha_td(p, T),2.f))/beta_B_td(p, T);
+     return (-1.f/4.f)*(std::pow(alpha_td(t),2.f))/beta_B_td(p, t);
     }
   else //if (T > Tcp_mK(p))
     return 0.;
@@ -301,53 +292,14 @@ Matep::epsilon(int al, int be, int ga)
     {return 0.0;}
 }  
 
-
-//**********************************************************************
-//***              private method : fudge expotential                ***
-//**********************************************************************
-
-real_t
-Matep::exp_q(real_t p){
-  // 4th-order polynomial of q for Greywall scale
-
-  real_t q = 0.f, defp_G;
-  defp_G = p - p_pcp;
-  
-  // std::cout << " \n defp_G is " << defp_G << std::endl;
-  if (Switch == "ON") {
-    
-    if (defp_G >= 0.f){
-      
-      for (unsigned co = 0; co < 5; ++co){
-      	q += coef4[co]*(std::pow(defp_G,co));
-      }
-    } else {
-      q = 0.f;
-    } 
-    
-    return std::exp(q);
-
-  } else if (Switch == "OFF") {
-    q = 0.f;
-    //std::cout << " q is " << q << std::endl;
-    return std::exp(0.f);
-
-  } else {
-
-    std::cout << " \n Switch must be \"ON\" or \"OFF\"! " << std::endl;
-    return 1;
-  }
-  
-}  
-
 //**********************************************************************
 //***       private method :  linear intepolation function           ***
 //**********************************************************************
 
 real_t
 Matep::lininterp(const real_t *cX_arr, real_t p){
-  float pk, pk1, fp;
-  size_t k, k1;
+  float pk, fp;
+  size_t k;
 
   if ((p >= 0.0) && (p < 2.0)) { pk = 0.0f; k = 0; }
 
@@ -388,4 +340,5 @@ Matep::lininterp(const real_t *cX_arr, real_t p){
 }
 
 
+} // FemGL_mpi namespace ends at here
 

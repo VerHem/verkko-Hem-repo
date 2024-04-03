@@ -2,8 +2,8 @@
 
 include_directories(${CMAKE_SOURCE_DIR}/matep/inc)
 
-add_library(conf STATIC
-# main source codes of confreader class   
+add_library(matep STATIC
+# main source codes of matep class   
   ${CMAKE_SOURCE_DIR}/matep/src/matep.cc
   )
 
