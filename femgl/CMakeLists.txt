@@ -10,8 +10,10 @@ add_library(femgl STATIC
 # main source codes of femgl class   
   ${CMAKE_SOURCE_DIR}/femgl/src/femgl.cc
 #  ${CMAKE_SOURCE_DIR}/femgl/src/makegrid2.cc
-  ${CMAKE_SOURCE_DIR}/femgl/src/makegrid3.cc  
-  ${CMAKE_SOURCE_DIR}/femgl/src/setup.cc
+#  ${CMAKE_SOURCE_DIR}/femgl/src/makegrid3.cc
+  ${CMAKE_SOURCE_DIR}/femgl/src/makegrid4.cc  
+#  ${CMAKE_SOURCE_DIR}/femgl/src/setup.cc
+  ${CMAKE_SOURCE_DIR}/femgl/src/setup_3.cc  
 #  ${CMAKE_SOURCE_DIR}/femgl/src/assemble.cc
 #  ${CMAKE_SOURCE_DIR}/femgl/src/assemble_2.cc
   ${CMAKE_SOURCE_DIR}/femgl/src/assemble_3.cc  
