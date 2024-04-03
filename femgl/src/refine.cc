@@ -71,6 +71,8 @@
 
 #include "femgl.h"
 #include "dirichlet.h"
+#include "confreader.h"
+#include "matep.h"
  
 
 namespace FemGL_mpi

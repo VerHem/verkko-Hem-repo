@@ -72,7 +72,7 @@
 #include "femgl.h"
 #include "dirichlet.h"
 #include "confreader.h"
- 
+#include "matep.h" 
 
 namespace FemGL_mpi
 {
@@ -198,8 +198,8 @@ namespace FemGL_mpi
 			   * mat_lhs_K1(grad_phi_u_i_q, grad_phi_v_i_q, grad_phi_u_j_q, grad_phi_v_j_q))
 			  +((K2 + K3)
 			    * mat_lhs_K2K3(grad_phi_u_i_q, grad_phi_v_i_q, grad_phi_u_j_q, grad_phi_v_j_q))
-			  +(alpha_0
-			    * (reduced_t-1.0)
+			  +(/*alpha_0*/
+			    alpha/*(reduced_t-1.0)*/
 			    * mat_lhs_alpha(phi_u_i_q, phi_u_j_q, phi_v_i_q, phi_v_j_q))
 			  +2.0*((beta1			    
 			         * mat_lhs_beta1(old_solution_u, old_solution_v, phi_u_i_q, phi_u_j_q, phi_v_i_q, phi_v_j_q))
@@ -226,8 +226,8 @@ namespace FemGL_mpi
 		       * vec_rhs_K1(grad_old_u_q, grad_old_v_q, grad_phi_u_i_q, grad_phi_v_i_q))
 		      +((K2 + K3)
 			* vec_rhs_K2K3(grad_phi_u_i_q, grad_phi_v_i_q, grad_old_u_q, grad_old_v_q))
-		      +(alpha_0
-			* (reduced_t-1.0)
+		      +(/*alpha_0*/
+			alpha/*(reduced_t-1.0)*/
 			* vec_rhs_alpha(phi_u_i_q, phi_v_i_q, old_solution_u, old_solution_v))
 		      +2.0*((beta1
 			     * vec_rhs_beta1(old_solution_u, old_solution_v, phi_u_i_q, phi_v_i_q))

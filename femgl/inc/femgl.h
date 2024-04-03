@@ -103,6 +103,8 @@ namespace LA
 #include <fstream>
 #include <iostream>
 
+#include "matep.h"
+
 namespace FemGL_mpi
 {
   using namespace dealii;
@@ -310,18 +312,24 @@ namespace FemGL_mpi
     const double K2      = 0.42072;     // 0.42072
     const double K3      = 0.42072;     // 0.42072
     
-    const double alpha_0  = 1.0;
-    const double beta1    = -0.010657; // -0.010657
-    const double beta2    = 0.0213139; // 0.0213139   
-    const double beta3    = 0.0213139; // 0.0213139
-    const double beta4    = 0.0213139; // 0.0213139   
-    const double beta5    = -0.0213139; // -0.0213139
+    // const double alpha_0  = 1.0;
+    // const double beta1    = -0.010657; // -0.010657
+    // const double beta2    = 0.0213139; // 0.0213139   
+    // const double beta3    = 0.0213139; // 0.0213139
+    // const double beta4    = 0.0213139; // 0.0213139   
+    // const double beta5    = -0.0213139; // -0.0213139
 
+    Matep mat; // matep object
+    
+    double alpha,
+           beta1, beta2, beta3, beta4, beta5;
+
+    
     // AdGR diffuse parameter
     double bt; // 1e10 specular, 2.0 diffuse
 
-    // reduced tmeprature t=T/T_c
-    double reduced_t;
+    // reduced tmeprature t=T/T_c, pressure p in bar
+    double reduced_t, p;
 
     ConditionalOStream pcout;
     TimerOutput        computing_timer;

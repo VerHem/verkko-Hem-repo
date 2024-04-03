@@ -71,6 +71,7 @@
 #include "femgl.h"
 #include "dirichlet.h"
 #include "confreader.h"
+#include "matep.h"
 
 namespace FemGL_mpi
 {
@@ -116,12 +117,41 @@ namespace FemGL_mpi
     /* physical parameters */
     conf.enter_subsection("physical parameters");
 
+    p = conf.get_double("pressure in bar");    
+    
     reduced_t = conf.get_double("t_reduced");
 
     bt        = conf.get_double("AdGR diffuse length");
     
     conf.leave_subsection();
+    
+    /*---------------------------------------------------*/
+    /* calculate material parameters i.e., alpha, betai  */
+    /*---------------------------------------------------*/    
 
+    alpha = mat.alpha_td(reduced_t);
+    beta1 = mat.beta1_td(p, reduced_t);
+    beta2 = mat.beta2_td(p, reduced_t);
+    beta3 = mat.beta3_td(p, reduced_t);
+    beta4 = mat.beta4_td(p, reduced_t);
+    beta5 = mat.beta5_td(p, reduced_t);    
+
+    /*---------------------------------------------------*/
+    /*     output the useful physical quantities         */
+    /*---------------------------------------------------*/    
+    
+    pcout << "------------------------------------------------------" << "\n"
+          << ">>>>>>>>>>  Physical Parameters in this run  <<<<<<<<<" << "\n"
+          << "------------------------------------------------------" << "\n"
+          << " p is " << p << ", t is " << reduced_t << ", T is " << (reduced_t * mat.Tcp_mK(p))
+          << "\n"
+          << " gapA is " << mat.gap_A_td(p, reduced_t) << ", gapB is " << mat.gap_B_td(p, reduced_t)
+          << "\n"
+          << " f_A is " << mat.f_A_td(p, reduced_t) << ", f_B is " << mat.f_B_td(p, reduced_t)
+          << "\n"
+          << "------------------------------------------------------"      
+          << std::endl;
+          
     /* Initialize the component mask object by a bool vector 
      * This is necessary for setting up AffineConstraints objects
      * in the interpolate_boundary_values() call.
