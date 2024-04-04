@@ -10,16 +10,12 @@ add_library(femgl STATIC
 # main source codes of femgl class   
   ${CMAKE_SOURCE_DIR}/femgl/src/femgl.cc
 #  ${CMAKE_SOURCE_DIR}/femgl/src/makegrid2.cc
-#  ${CMAKE_SOURCE_DIR}/femgl/src/makegrid3.cc
-  ${CMAKE_SOURCE_DIR}/femgl/src/makegrid4.cc  
-#  ${CMAKE_SOURCE_DIR}/femgl/src/setup.cc
-  ${CMAKE_SOURCE_DIR}/femgl/src/setup_3.cc  
-#  ${CMAKE_SOURCE_DIR}/femgl/src/assemble.cc
-#  ${CMAKE_SOURCE_DIR}/femgl/src/assemble_2.cc
-  ${CMAKE_SOURCE_DIR}/femgl/src/assemble_3.cc  
-#  ${CMAKE_SOURCE_DIR}/femgl/src/residual.cc
-#  ${CMAKE_SOURCE_DIR}/femgl/src/residual_2.cc
-  ${CMAKE_SOURCE_DIR}/femgl/src/residual_3.cc  
+#  ${CMAKE_SOURCE_DIR}/femgl/src/makegrid_xz-normal_AdGR.cc
+  ${CMAKE_SOURCE_DIR}/femgl/src/makegrid_z-normal_AdGR.cc  
+#  ${CMAKE_SOURCE_DIR}/femgl/src/setup_fully_random.cc
+  ${CMAKE_SOURCE_DIR}/femgl/src/setup_uniform_A-phase.cc
+  ${CMAKE_SOURCE_DIR}/femgl/src/assemble.cc  
+  ${CMAKE_SOURCE_DIR}/femgl/src/residual.cc  
   ${CMAKE_SOURCE_DIR}/femgl/src/solve.cc
   ${CMAKE_SOURCE_DIR}/femgl/src/iteration.cc
   ${CMAKE_SOURCE_DIR}/femgl/src/refine.cc
