@@ -187,13 +187,6 @@ namespace FemGL_mpi
     			      false);
         LA::MPI::Vector distrubuted_tmp_solution(locally_owned_dofs,
                                                  mpi_communicator);
-
-	/* components access for iniitializing a A-phase */
-        // ComponentMask u11_comp_mask = fe.component_mask(components_u[0]);
-        // ComponentMask v12_comp_mask = fe.component_mask(components_v[1]);
-
-        // IndexSet u11_component_dofs_list = DoFTools::extract_dofs(dof_handler, u11_comp_mask);
-        // IndexSet v12_component_dofs_list = DoFTools::extract_dofs(dof_handler, v12_comp_mask);		
 	 
         for (auto it = distrubuted_tmp_solution.begin(); it != distrubuted_tmp_solution.end(); ++it)
          {
@@ -201,16 +194,6 @@ namespace FemGL_mpi
 	  //*it = gaussian_distr2(gen);
 	  *it = gaussian_distr(gen);	   
          }
-
-	// for (auto u11_comp_dof : u11_component_dofs_list)
-	//   {
-        //    distrubuted_tmp_solution[u11_comp_dof] = gaussian_distr(gen);
-	//   }
-
-	// for (auto v12_comp_dof : v12_component_dofs_list)
-	//   {
-        //    distrubuted_tmp_solution[v12_comp_dof] = gaussian_distr(gen);
-	//   }	
 	
         // AffineConstriant::distribute call
         constraints_solution.distribute(distrubuted_tmp_solution);
