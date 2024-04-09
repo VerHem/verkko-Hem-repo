@@ -11,7 +11,8 @@ add_library(femgl STATIC
   ${CMAKE_SOURCE_DIR}/femgl/src/femgl.cc
 #  ${CMAKE_SOURCE_DIR}/femgl/src/makegrid2.cc
 #  ${CMAKE_SOURCE_DIR}/femgl/src/makegrid_xz-normal_AdGR.cc
-  ${CMAKE_SOURCE_DIR}/femgl/src/makegrid_z-normal_AdGR.cc  
+#  ${CMAKE_SOURCE_DIR}/femgl/src/makegrid_cube-z-normal_AdGR.cc
+  ${CMAKE_SOURCE_DIR}/femgl/src/makegrid_retangle-z-normal_AdGR.cc
 #  ${CMAKE_SOURCE_DIR}/femgl/src/setup_fully_random.cc
   ${CMAKE_SOURCE_DIR}/femgl/src/setup_uniform_A-phase.cc
   ${CMAKE_SOURCE_DIR}/femgl/src/assemble.cc  
