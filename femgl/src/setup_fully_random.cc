@@ -106,6 +106,7 @@ namespace FemGL_mpi
     }
 
     {
+      constraints_newton_update.clear();
       constraints_newton_update.reinit(locally_relevant_dofs);
       DoFTools::make_hanging_node_constraints(dof_handler, constraints_newton_update);
 
@@ -133,6 +134,7 @@ namespace FemGL_mpi
     }
 
     {
+      constraints_solution.clear();
       constraints_solution.reinit(locally_relevant_dofs);
 
       DoFTools::make_hanging_node_constraints(dof_handler, constraints_solution);
