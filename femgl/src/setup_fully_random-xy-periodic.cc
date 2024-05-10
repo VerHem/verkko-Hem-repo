@@ -163,14 +163,16 @@ namespace FemGL_mpi
       /*---------------------------------------*/
       
       DoFTools::make_periodicity_constraints<dim, dim>(matched_pairs_x,
-                                                       constraints_newton_update,
-                                                       {} /* default, all components */,
-						       first_vector_components /* first_vector_components of whole vector is 0 */);
+                                                       constraints_newton_update
+                                                       //{}  default, all components,
+						       //first_vector_components first_vector_components of whole vector is 0
+						       );
 
       DoFTools::make_periodicity_constraints<dim, dim>(matched_pairs_y,
-                                                       constraints_newton_update,
-                                                       {} /* default, all components */,
-						       first_vector_components /* first_vector_components of whole vector is 0 */);
+                                                       constraints_newton_update
+                                                       //{} default, all components,
+						       //first_vector_components first_vector_components of whole vector is 0
+						       );
    
       /*---------------------------------------*/
       /* periodicity info handling ends here   */
@@ -210,14 +212,16 @@ namespace FemGL_mpi
       /*---------------------------------------*/
       
       DoFTools::make_periodicity_constraints<dim, dim>(matched_pairs_x,
-                                                       constraints_solution,
-                                                       {} /* default, all components */,
-						       first_vector_components /* first_vector_components of whole vector is 0 */);
+                                                       constraints_solution
+                                                       //{} default, all components,
+						       //first_vector_components first_vector_components of whole vector is 0
+						       );
 
       DoFTools::make_periodicity_constraints<dim, dim>(matched_pairs_y,
-                                                       constraints_solution,
-                                                       {} /* default, all components */,
-						       first_vector_components /* first_vector_components of whole vector is 0 */);
+                                                       constraints_solution
+                                                       //{} default, all components,
+						       //first_vector_components first_vector_components of whole vector is 0
+						       );
    
       /*---------------------------------------*/
       /* periodicity info handling ends here   */
