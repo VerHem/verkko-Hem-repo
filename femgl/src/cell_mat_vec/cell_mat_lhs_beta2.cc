@@ -73,6 +73,7 @@
 #include "dirichlet.h"
 #include "confreader.h"
 #include "matep.h"
+#include "BinA.h"
 
 namespace FemGL_mpi
 {

@@ -73,6 +73,7 @@
 #include "dirichlet.h"
 #include "confreader.h"
 #include "matep.h"
+#include "BinA.h"
  
 
 namespace FemGL_mpi
@@ -93,6 +94,8 @@ namespace FemGL_mpi
 
          triangulation.refine_global(1);
 	 setup_system();
+         pcout << "setup_system() call is done ! this is global refinment"
+	       << std::endl;	 
          TrilinosWrappers::MPI::Vector distributed_solution_tmp(locally_owned_dofs,
 							        mpi_communicator);	 
   

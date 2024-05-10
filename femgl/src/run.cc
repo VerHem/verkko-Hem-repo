@@ -73,6 +73,7 @@
 #include "dirichlet.h"
 #include "confreader.h"
 #include "matep.h"
+#include "BinA.h"
 
 namespace FemGL_mpi
 {
@@ -84,21 +85,27 @@ namespace FemGL_mpi
   {
     pcout << "Running using Trilinos." << std::endl;
 
-    std::string ref_str = "adaptive";
-
     /*---------------------------------------*/
     /* loading refinements control paramters */
     /*---------------------------------------*/    
     conf.enter_subsection("control parameters"); 
-    const unsigned int n_cycles                = conf.get_integer("Number of adaptive refinements");
+    const unsigned int n_cycles                = conf.get_integer("Number of refinements");
     const unsigned int n_iteration             = conf.get_integer("Number of interations");
     const double       Cycle0_refine_threshold = conf.get_double("threshold of Cycle 0 refinement");    
     const double       refine_threshold        = conf.get_double("threshold of refinement");
-    const double       converge_acc            = conf.get_double("converge accuracy");    
+    const double       converge_acc            = conf.get_double("converge accuracy");
+    const bool         do_global_refine        = conf.get_bool("do global refinement");
     conf.leave_subsection();
     /*---------------------------------------*/
     /*    paramters loading ends at here     */
-    /*---------------------------------------*/    
+    /*---------------------------------------*/
+
+    /* conditional statements for refine stratagy */
+    std::string ref_str;
+    if (do_global_refine == false)
+      ref_str = "adaptive";
+    else
+        ref_str = "global";
 
     
     for (cycle = 0; cycle <= n_cycles; ++cycle)

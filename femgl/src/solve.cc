@@ -73,7 +73,7 @@
 #include "dirichlet.h"
 #include "confreader.h"
 #include "matep.h"
- 
+#include "BinA.h"
 
 namespace FemGL_mpi
 {
@@ -91,8 +91,9 @@ namespace FemGL_mpi
      /*  and SolverContral Paramters          */
      /* ------------------------------------- */      
      conf.enter_subsection("control parameters");
-     const unsigned int no_n_cycles = conf.get_integer("Number of n-cycle in AdditionalData");
-     const double tol               = conf.get_double("tolrence of linear SolverControl");     
+     const unsigned int no_n_cycles                  = conf.get_integer("Number of n-cycle in AdditionalData");
+     const double tol                                = conf.get_double("tolrence of linear SolverControl");
+     const unsigned int max_linear_solver_iterations = conf.get_integer("maximum linear iteration number");
      conf.leave_subsection();
      /* ------------------------------------- */
      /*  AMG precondtioner paramters          */
@@ -129,8 +130,8 @@ namespace FemGL_mpi
      {
       // With that, we can finally set up the linear solver and solve the system:
       pcout << " system_rhs.l2_norm() is " << system_rhs.l2_norm() << std::endl;
-      SolverControl solver_control(10*system_matrix.m(),
-                          /*7e-1*/ tol * system_rhs.l2_norm());
+      SolverControl solver_control(/*10*system_matrix.m()*/ max_linear_solver_iterations,
+                                   /*7e-1*/ tol * system_rhs.l2_norm());
 
       //SolverMinRes<LA::MPI::Vector> solver(solver_control);
       SolverFGMRES<LA::MPI::Vector> solver(solver_control);
@@ -140,6 +141,7 @@ namespace FemGL_mpi
       // AffineContraint::set_zero() set the values of all constrained DoFs in a vector to zero. 
       // constraints_newton_update.set_zero(distributed_newton_update);
 
+      pcout << " Starting linear solving." << std::endl;            
       solver.solve(system_matrix,
                    distributed_newton_update,
                    system_rhs,

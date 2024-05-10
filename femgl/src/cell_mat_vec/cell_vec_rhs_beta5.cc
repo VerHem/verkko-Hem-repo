@@ -73,6 +73,7 @@
 #include "dirichlet.h"
 #include "confreader.h"
 #include "matep.h"
+#include "BinA.h"
 
 namespace FemGL_mpi
 {
@@ -180,7 +181,7 @@ namespace FemGL_mpi
 
     poly_I.add(-1.0, mm1);
 
-    poly_I.add(-1.0, mm2);    
+    poly_I.add(1.0, mm2);    
 
     
     /* **  matrices summation construction ends here ***** */
