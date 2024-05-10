@@ -109,10 +109,22 @@ namespace FemGL_mpi
       prm.declare_entry("cube half side length", "20", Patterns::Double(0),
 			"This is only for cube geomrtry, full side length is doubled, default value is 20 xi_0_GL");
 
+      
+      prm.declare_entry("half x length of retangle", "20", Patterns::Double(0),
+			"This is only for retangle geomrtry, full x-length is doubled, default value is 20 xi_0_GL");
+      
+      prm.declare_entry("half y length of retangle", "20", Patterns::Double(0),
+			"This is only for retangle geomrtry, full side length is doubled, default value is 20 xi_0_GL");
+      
+      prm.declare_entry("half z length of retangle", "20", Patterns::Double(0),
+			"This is only for retangle geomrtry, full side length is doubled, default value is 2 xi_0_GL");
+
+      
       prm.declare_entry("B-phase ball radius ratio", "0.5", Patterns::Double(0),
 			"This is for BinA configuration, real value is ratio * half_side_length, default value is 0.5");     
       
-      prm.declare_entry("Number of adaptive refinements", "5", Patterns::Integer(0),
+
+      prm.declare_entry("Number of refinements", "5", Patterns::Integer(0),
 			"default value is 5, this is needed in run()");
 
       prm.declare_entry("Number of interations", "40", Patterns::Integer(0),
@@ -137,13 +149,21 @@ namespace FemGL_mpi
       prm.declare_entry("Number of initial global refinments", "4", Patterns::Integer(0),
 			"default value is 4, which is used in makegrid() call");
 
+      prm.declare_entry("do global refinement", "false", Patterns::Bool(),
+			"default value is false, which is used in run() call"); 
+
       
       /* iteration and linear solver control parameters */
       prm.declare_entry("Number of n-cycle in AdditionalData", "4", Patterns::Integer(0),
 			"AMG precondtioner control parameter in solve() call");
 
+
+      prm.declare_entry("maximum linear iteration number", "10000", Patterns::Integer(0),
+			"maximum times of linear iterations");
+
       prm.declare_entry("tolrence of linear SolverControl", "7.0e-1", Patterns::Double(0),
 			"default value is 7.0e-1 * system_rhs.norm()");
+
 
       prm.declare_entry("Using dampped Newton iteration", "true", Patterns::Bool(),
 			"dampped newton iteration is default, false will give you standard newton iteration");      
