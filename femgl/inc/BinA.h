@@ -70,6 +70,8 @@
 #include <fstream>
 #include <iostream>
 
+//#include "matep.h"
+
 namespace FemGL_mpi
 {
   using namespace dealii;
@@ -84,27 +86,54 @@ namespace FemGL_mpi
   class BinA : public Function<dim>
   {
   public:
-    BinA(double &r)
+    BinA(double r, double p, double t, double matelem_A, double matelem_B)
       : Function<dim>(18) // tell base Function<dim> class I want a 2-components vector-valued function
       , radius(r)
+      , p(p)
+      , reduced_t(t)
+      , matrix_elem_A(matelem_A)
+      , matrix_elem_B(matelem_B)
     {}
 
-    double radius; // in unit of \xi_0
+    double radius;         // in unit of \xi_0    
+    double p, reduced_t;
+    double matrix_elem_A, matrix_elem_B;
+    //Matep mat;           // matep object
     
-    virtual void vector_value(const Point<dim> & /*p*/,
+    virtual void vector_value(const Point<dim> &point /*p*/,
                               Vector<double> &values) const override
     {
       Assert(values.size() == 18, ExcDimensionMismatch(values.size(), 18));
 
-      if ( (p(0)*p(0) + p(1)*p(1) +p(2)*p(2)) <= (r*r) )
+      if ( (point(0)*point(0) + point(1)*point(1) + point(2)*point(2)) <= (radius*radius) )     //inside sphere, B-phase
 	{
-         for (auto &value_of_index : values)
+	  for (unsigned int index = 0; index < values.size(); index++)
            {
-            
-	   }
-
+	     if (
+		 (index == 0)     /*u11*/
+		 || (index == 4)  /*u22*/
+		 || (index == 8)  /*u33*/		 
+		)
+	       values[index] = matrix_elem_B; //mat.gap_B_td(p, reduced_t) * 0.57735f;
+             else
+	       values[index] = 0.0;	       
+	   } // B-phase setup loop
 	}
-    }
+      else if ( (point(0)*point(0) + point(1)*point(1) + point(2)*point(2)) > (radius*radius) ) //outside sphere, A-phase
+	{
+	  for (unsigned int index = 0; index < values.size(); index++)
+           {
+	     if (
+		 (index == 0)      /*u11*/
+		 || (index == 10)  /*v12*/
+		)
+	       values[index] = matrix_elem_A; //mat.gap_A_td(p, reduced_t) * 0.707107f;
+             else
+	       values[index] = 0.0;	       
+	   } // A-phase setup loop
+
+     	}
+    } // vector_value() function ends here
 
     virtual void
     vector_value_list(const std::vector<Point<dim>> &points,
