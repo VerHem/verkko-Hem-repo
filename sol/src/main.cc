@@ -100,8 +100,8 @@ int main(int argc, char *argv[])
       
       //FemGL<2> GLsolver(2);
       //FemGL<3> GLsolver(2);
-      //FemGL<3> GLsolver(1, prmHandler);
-      FemGL<3> GLsolver(2, prmHandler);      
+      FemGL<3> GLsolver(1, prmHandler);
+      //FemGL<3> GLsolver(2, prmHandler);      
       GLsolver.run();
     }
   catch (std::exception &exc)
