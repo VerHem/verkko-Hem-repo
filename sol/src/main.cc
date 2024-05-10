@@ -1,21 +1,34 @@
 /* ------------------------------------------------------------------------------------------
- * 
- * This is source code of finite element solver of complex valued scalar GL equation 
- * i.e., s-wave SC/SF GL equation.
- * It is developed on the top of deal.II 9.3.3 finite element C++ library. 
- * 
- * License of this code is GNU Lesser General Public License, which been 
- * published by Free Software Fundation, either version 2.1 and later version.
- * You are free to use, modify and redistribute this program.
  *
+ * Copyright (C) 2023-present by Kuang. Zhang
+ *
+ * This library is free software; you can redistribute it and/or modify it under 
+ * the terms of the GNU Lesser General Public License as published by the Free Software Foundation; 
+ * either version 2.1 of the License, or (at your option) any later version.
+ *
+ * Permission is hereby granted to use or copy this program under the
+ * terms of the GNU LGPL, provided that the Copyright, this License 
+ * and the Availability of the original version is retained on all copies.
+ * User documentation of any code that uses this code or any modified
+ * version of this code must cite the Copyright, this License, the
+ * Availability note, and "Used by permission." 
+
+ * Permission to modify the code and to distribute modified code is granted, 
+ * provided the Copyright, this License, and the Availability note are retained,
+ * and a notice that the code was modified is included.
+
+ * The third party libraries which are used by this library are deal.II, Triinos and few others.
+ * All components involved third party supports obey their Copyrights, Licence and permissions. 
+ *  
  * ------------------------------------------------------------------------------------------
  *
  * author: Quang. Zhang (timohyva@github), 
- * QUEST-DMC project, University of Sussex;
  * Helsinki Institute of Physics, University of Helsinki;
  * 27. Kesäkuu. 2023.
  *
  */
+
+
 #include <random> // c++ std radom bumber library, for gaussian random initiation
 
 #include <deal.II/base/quadrature_lib.h>
