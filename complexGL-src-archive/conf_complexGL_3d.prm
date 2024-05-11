@@ -1,0 +1,20 @@
+subsection physical parameters
+  # reduced temperature
+    set t_reduced        = 0.0
+
+  # diffuse parameter
+    set b1_diffuse        = 1.8
+
+  # diffuse parameter
+    set b2_diffuse        = 1.8
+
+
+  # Number of global mesh refinement steps applied to initial coarse grid
+  #  set Number of refinements = 5
+end
+
+subsection switches
+  # flipping Robin face normal to inforward
+    set flip_normal = true
+
+end
