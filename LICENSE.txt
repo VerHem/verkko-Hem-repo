@@ -1,4 +1,4 @@
-The GNU Lesser General Public License v2.1 
+The LGPL license
 
 Copyright (C) 2023-present by Kuang. Zhang
  
