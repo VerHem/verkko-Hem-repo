@@ -268,7 +268,7 @@ namespace FemGL_mpi
     
     
     //std::string        refinement_strategy = "global";
-    unsigned int       degree, cycle;    
+    unsigned int       degree, cycle, iteration_loop;    
     MPI_Comm           mpi_communicator;
     
     FESystem<dim>                             fe;

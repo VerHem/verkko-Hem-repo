@@ -149,7 +149,7 @@ namespace FemGL_mpi
 	  refine_grid(ref_str);
 
 	double residual_last_iter = 0.0; // residual_vector.norm() in last time interation
-        for (unsigned int iteration_loop = 0; iteration_loop <= n_iteration; ++iteration_loop)
+        for (iteration_loop = 0; iteration_loop <= n_iteration; ++iteration_loop)
 	  {
 	     pcout << "Refinement cycle : " << cycle << ", "
                    << "iteration_loop: " << iteration_loop	       
