@@ -171,7 +171,7 @@ namespace FemGL_mpi
      for (const auto &cell : dof_handler.active_cell_iterators())
        if (cell->is_locally_owned())
 	 {
-	   //pcout << " I'm in assembly function now!" << std::endl;
+	   pcout << " I'm in assembly function now! cycle is " << cycle << " interation loop is " << iteration_loop << std::endl;
 	   cell_matrix  = 0;
 	   cell_rhs     = 0;
 
