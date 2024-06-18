@@ -122,6 +122,19 @@ namespace FemGL_mpi
 
       prm.declare_entry("AdGR diffuse length", "1.0e10", Patterns::Double(0),
 			"AdGR diffuse parameter");
+
+
+      prm.declare_entry("gaussian random mean value", "2.0", Patterns::Double(0),
+			"mean value of gaussian random generator in setup() call");
+
+      prm.declare_entry("gaussian random STD", "0.1", Patterns::Double(0),
+			"STD of gaussian random generator in setup() call");
+
+
+      prm.declare_entry("trun on Strong Coupling Correction", "true", Patterns::Bool(),
+			"Switch of JWS2019 strong coupling corrections");
+      
+            
     }
     prm.leave_subsection();
 
@@ -147,7 +160,10 @@ namespace FemGL_mpi
 
       
       prm.declare_entry("B-phase ball radius ratio", "0.5", Patterns::Double(0),
-			"This is for BinA configuration, real value is ratio * half_side_length, default value is 0.5");     
+			"This is for BinA configuration, real value is ratio * half_side_length, default value is 0.5");
+
+      prm.declare_entry("A-phase block range ratio", "0.0", Patterns::Double(0),
+			"This is for BnA configuration in retangle box, real value is ratio * half z length of retangle");
       
 
       prm.declare_entry("Number of refinements", "5", Patterns::Integer(0),
