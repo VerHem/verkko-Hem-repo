@@ -138,6 +138,9 @@ namespace FemGL_mpi
       {
         pcout << "\n"
 	      << "Refinement Cycle is " << cycle
+	      << "\n"
+	      << "------------------------------------------------------" << "\n"
+	      << "------------------------------------------------------" << "\n"
 	      << std::endl;
 
         if (cycle == 0)
@@ -148,8 +151,8 @@ namespace FemGL_mpi
         else
 	  refine_grid(ref_str);
 
-	// pcout << " 0th rank has active cells : " << triangulation.n_active_cells() << std::endl;
-	std::cout << " this rank has active cells : " << triangulation.n_active_cells() << std::endl;
+	pcout << " 0th rank has active cells : " << triangulation.n_active_cells() << "\n" << std::endl;
+	//std::cout << " this rank has active cells : " << triangulation.n_active_cells() << std::endl;
 	double residual_last_iter = 0.0; // residual_vector.norm() in last time interation
         for (iteration_loop = 0; iteration_loop <= n_iteration; ++iteration_loop)
 	  {
@@ -158,7 +161,7 @@ namespace FemGL_mpi
 		   << std::endl;
 
              assemble_system();
-	     pcout << "assembly is done !" << std::endl;
+	     pcout << " assembly is done !" << std::endl;
              solve();
 	     pcout << " AMG preconditioned solving is done !" << std::endl;	     
 	     newton_iteration();
@@ -166,8 +169,10 @@ namespace FemGL_mpi
 
              if (Utilities::MPI::n_mpi_processes(mpi_communicator) <= 12800)
               {
+               std::string dirc = "./refine-cycle_" + std::to_string(cycle) + "/";
+	       
                TimerOutput::Scope t(computing_timer, "output");
-	       output_results(iteration_loop);
+	       output_results(dirc);
               }
 
              computing_timer.print_summary();

@@ -104,7 +104,7 @@ namespace FemGL_mpi
   using namespace dealii;
 
   template <int dim>
-  void FemGL<dim>::output_results(const unsigned int cycle) const
+  void FemGL<dim>::output_results(const std::string &dirc) const
   {
 
     std::vector<std::string> newton_update_components_names;
@@ -164,7 +164,7 @@ namespace FemGL_mpi
      data_out.build_patches();
 
      data_out.write_vtu_with_pvtu_record(
-      "./", "solution", cycle, mpi_communicator, 2);
+      dirc, "solution", iteration_loop, mpi_communicator, 2);
     } // DataOut block ends here, release memory
 
   }
