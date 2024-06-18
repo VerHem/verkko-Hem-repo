@@ -144,17 +144,21 @@ namespace FemGL_mpi
     /* physical parameters */
     conf.enter_subsection("physical parameters");
 
-    p = conf.get_double("pressure in bar");    
+    p                         = conf.get_double("pressure in bar");    
     
-    reduced_t = conf.get_double("t_reduced");
+    reduced_t                 = conf.get_double("t_reduced");
 
-    bt        = conf.get_double("AdGR diffuse length");
+    bt                        = conf.get_double("AdGR diffuse length");
+
+    SCC_key                   = conf.get_bool("trun on Strong Coupling Correction");    
     
     conf.leave_subsection();
     
     /*---------------------------------------------------*/
     /* calculate material parameters i.e., alpha, betai  */
-    /*---------------------------------------------------*/    
+    /*---------------------------------------------------*/
+
+    mat.with_SCC(SCC_key);
 
     alpha = mat.alpha_td(reduced_t);
     beta1 = mat.beta1_td(p, reduced_t);
@@ -171,14 +175,21 @@ namespace FemGL_mpi
           << ">>>>>>>>>>  Physical Parameters in this run  <<<<<<<<<" << "\n"
           << "------------------------------------------------------" << "\n"
           << " p is " << p << ", t is " << reduced_t << ", T is " << (reduced_t * mat.Tcp_mK(p))
+          << ", SCC_key is " << SCC_key
           << "\n"
           << " gapA is " << mat.gap_A_td(p, reduced_t) << ", gapB is " << mat.gap_B_td(p, reduced_t)
           << "\n"
           << " f_A is " << mat.f_A_td(p, reduced_t) << ", f_B is " << mat.f_B_td(p, reduced_t)
           << "\n"
-          << "------------------------------------------------------"      
+          << " alpha is " << alpha << ", beta1 is " << beta1 << ", beta2 is " << beta2
+          << "\n"
+          << " beta3 is " << beta3 << ", beta4 is " << beta4 << ", beta5 is " << beta5
+          << "\n"
+          << "------------------------------------------------------" << "\n"
+          << ">>>>>>>>>>  Physical Parameters in this run  <<<<<<<<<" << "\n"
+          << "------------------------------------------------------" << "\n"
           << std::endl;
-          
+    
     /* Initialize the component mask object by a bool vector 
      * This is necessary for setting up AffineConstraints objects
      * in the interpolate_boundary_values() call.

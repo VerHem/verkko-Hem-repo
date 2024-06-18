@@ -113,6 +113,12 @@ namespace FemGL_mpi
     system_matrix         = 0;
     system_rhs            = 0;
 
+    const double V = GridTools::volume(triangulation);
+    pcout << "\n"
+          << " V is " << V
+	  << "\n"
+          << std::endl;    
+
     { //block of assembly starts from here, all local objects in there will be release to save memory leak
      const QGauss<dim> quadrature_formula(degree + 1);
      const QGauss<dim - 1> face_quadrature_formula(fe.degree + 1);     
@@ -171,7 +177,7 @@ namespace FemGL_mpi
      for (const auto &cell : dof_handler.active_cell_iterators())
        if (cell->is_locally_owned())
 	 {
-	   pcout << " I'm in assembly function now! cycle is " << cycle << " interation loop is " << iteration_loop << std::endl;
+	   //pcout << " I'm in assembly function now! cycle is " << cycle << " interation loop is " << iteration_loop << std::endl;
 	   cell_matrix  = 0;
 	   cell_rhs     = 0;
 
