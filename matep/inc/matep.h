@@ -42,7 +42,14 @@ namespace FemGL_mpi
 
  class Matep {
  public:
-        Matep() = default;                                                  // default constructor
+        Matep() = default;                                  // default constructor
+        //Matep(const bool &key) : scc_on(key) {}
+
+  /* -------------------------------------------------------------------------
+   * switch function for turning on/off SCC JWS2019
+   * -------------------------------------------------------------------------
+   */
+        void with_SCC(const bool &);
 
   // ************************************************************************** //
   // >>>>>>>>>>>        interfaces of dimensional qualities        <<<<<<<<<<<< //
@@ -98,6 +105,8 @@ namespace FemGL_mpi
         // physical constants for he3
         static const real_t u, m3, nm, hbar, kb
                             ,zeta3, c_betai;
+
+        bool scc_on;
         
         // SC-data sheets arries, All associate to SCCO class
         static const real_t c1_arr[18]; 
