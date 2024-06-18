@@ -134,7 +134,7 @@ namespace FemGL_mpi
     void solve();
     void newton_iteration();
     void refine_grid(std::string &);
-    void output_results(const unsigned int cycle) const;
+    void output_results(const std::string &dirc) const;
 
 
     /*------------------------------------------------------------------------------------
@@ -339,6 +339,9 @@ namespace FemGL_mpi
 
     // reduced tmeprature t=T/T_c, pressure p in bar
     double reduced_t, p;
+
+    // SCC switch for matep
+    bool SCC_key;
 
     ConditionalOStream pcout;
     TimerOutput        computing_timer;
