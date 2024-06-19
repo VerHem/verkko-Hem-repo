@@ -174,8 +174,11 @@ namespace FemGL_mpi
     pcout << "------------------------------------------------------" << "\n"
           << ">>>>>>>>>>  Physical Parameters in this run  <<<<<<<<<" << "\n"
           << "------------------------------------------------------" << "\n"
+          << " Number of MPI processes is " << Utilities::MPI::n_mpi_processes(mpi_communicator)
+          << "\n"
           << " p is " << p << ", t is " << reduced_t << ", T is " << (reduced_t * mat.Tcp_mK(p))
-          << ", SCC_key is " << SCC_key
+          << "\n"
+          << " AdGR expolation lenghtn bt is " << bt << ", SCC_key is " << SCC_key
           << "\n"
           << " gapA is " << mat.gap_A_td(p, reduced_t) << ", gapB is " << mat.gap_B_td(p, reduced_t)
           << "\n"

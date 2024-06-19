@@ -105,7 +105,6 @@ namespace FemGL_mpi
 {
   using namespace dealii;
 
-
   template <int dim>
   void FemGL<dim>::run()
   {
@@ -117,23 +116,33 @@ namespace FemGL_mpi
     conf.enter_subsection("control parameters"); 
     const unsigned int n_cycles                = conf.get_integer("Number of refinements");
     const unsigned int n_iteration             = conf.get_integer("Number of interations");
-    const double       Cycle0_refine_threshold = conf.get_double("threshold of Cycle 0 refinement");    
-    const double       refine_threshold        = conf.get_double("threshold of refinement");
+    const double       Cycle0_refine_threshold = conf.get_double("Cycle 0 refinement threshold");
+    const double       Cycle1_refine_threshold = conf.get_double("Cycle 1 refinement threshold");
+    const bool         Cycle1_do_global_refine = conf.get_bool("Cycle 1 do global refinement");        
+    const double       Cycle2_refine_threshold = conf.get_double("Cycle 2 refinement threshold");
+    const bool         Cycle2_do_global_refine = conf.get_bool("Cycle 2 do global refinement");        
+    const double       Cycle3_refine_threshold = conf.get_double("Cycle 3 refinement threshold");
+    const bool         Cycle3_do_global_refine = conf.get_bool("Cycle 3 do global refinement");        
+    const bool         Cycle4_do_global_refine = conf.get_bool("Cycle 4 do global refinement");        
     const double       converge_acc            = conf.get_double("converge accuracy");
-    const bool         do_global_refine        = conf.get_bool("do global refinement");
     conf.leave_subsection();
     /*---------------------------------------*/
     /*    paramters loading ends at here     */
     /*---------------------------------------*/
 
-    /* conditional statements for refine stratagy */
+    /* arameters lists for refine stratagy */
     std::string ref_str;
-    if (do_global_refine == false)
-      ref_str = "adaptive";
-    else
-        ref_str = "global";
 
-    
+    std::vector<double> cycleX_refine_threshold = {Cycle0_refine_threshold,
+						   Cycle1_refine_threshold,
+						   Cycle2_refine_threshold,
+						   Cycle3_refine_threshold};
+
+    std::vector<bool> cycleX_refine_strategy = {Cycle1_do_global_refine,
+					        Cycle2_do_global_refine,
+					        Cycle3_do_global_refine,
+					        Cycle4_do_global_refine};
+        
     for (cycle = 0; cycle <= n_cycles; ++cycle)
       {
         pcout << "\n"
@@ -143,16 +152,25 @@ namespace FemGL_mpi
 	      << "------------------------------------------------------" << "\n"
 	      << std::endl;
 
+        if (cycleX_refine_strategy[cycle-1] == false)
+          ref_str = "adaptive";
+        else
+          ref_str = "global";
+
         if (cycle == 0)
 	  {
 	   make_grid();
            setup_system();	
 	  }
         else
-	  refine_grid(ref_str);
+	  refine_grid(ref_str);	
 
-	pcout << " 0th rank has active cells : " << triangulation.n_active_cells() << "\n" << std::endl;
+	pcout << " 0th rank has active cells : " << triangulation.n_active_cells()
+	      << " cycleX_refine_strategy[cycle-1] is " << cycleX_refine_strategy[cycle-1]
+	      << "\n"
+	      << std::endl;
 	//std::cout << " this rank has active cells : " << triangulation.n_active_cells() << std::endl;
+	
 	double residual_last_iter = 0.0; // residual_vector.norm() in last time interation
         for (iteration_loop = 0; iteration_loop <= n_iteration; ++iteration_loop)
 	  {
@@ -181,17 +199,11 @@ namespace FemGL_mpi
              pcout << std::endl;
 
 	     const double residual_l2_norm = residual_vector.l2_norm();
-	     if (/* Cycle 0 stuck-refine condtion */
-		 (std::fabs(residual_l2_norm - residual_last_iter) < Cycle0_refine_threshold)
+	     if (/* Cycle x stuck-refine condtion */
+		 (std::fabs(residual_l2_norm - residual_last_iter) < cycleX_refine_threshold[cycle])
 		 && (residual_l2_norm > converge_acc)
-		 && (cycle == 0)
+		 && (cycle < n_cycles)
 		)
-	       break;
-	     else if (/* Cycle < n_cycles stuck-refine condtion */
-		      (std::fabs(residual_l2_norm - residual_last_iter) < refine_threshold)
-		      && (residual_l2_norm > converge_acc)
-		      && (cycle < n_cycles)
-		     )
 	       break;
 	     else if (/* this part is for final converge checking */
                       (residual_l2_norm <= converge_acc)
