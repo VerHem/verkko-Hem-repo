@@ -167,7 +167,11 @@ namespace FemGL_mpi
 
       //--------------------------------------------------
       //--------------------------------------------------      
-            
+
+      prm.declare_entry("B-phase inner plate radius ratio", "0.4666", Patterns::Double(0),
+			"This is for BinB polkka-dot configuration with 7.46 xi0GL slab, real value is ratio * half_side_length, default value is 0.46");
+
+      
       prm.declare_entry("B-phase ball radius ratio", "0.5", Patterns::Double(0),
 			"This is for BinA configuration, real value is ratio * half_side_length, default value is 0.5");
 
@@ -189,12 +193,20 @@ namespace FemGL_mpi
       prm.declare_entry("Cycle 0 refinement threshold", "1.0e0", Patterns::Double(0),
 			"Refine grid when the difference of residual.norm() smaller than this value in Cycle 0");
 
+      prm.declare_entry("Cycle 0 linear solver tol", "1.0e-1", Patterns::Double(0),
+			"Refine grid when the difference of residual.norm() smaller than this value in Cycle 0");
 
+
+      
       prm.declare_entry("Cycle 1 refinement threshold", "1.0e0", Patterns::Double(0),
 			"Refine grid when the difference of residual.norm() smaller than this value in Cycle 1");
 
       prm.declare_entry("Cycle 1 do global refinement", "false", Patterns::Bool(),
 			"default value is false, which is used in run() call");
+
+      prm.declare_entry("Cycle 1 linear solver tol", "1.0e-1", Patterns::Double(0),
+			"Refine grid when the difference of residual.norm() smaller than this value in Cycle 1");
+      
 
       prm.declare_entry("Cycle 2 refinement threshold", "1.0e0", Patterns::Double(0),
 			"Refine grid when the difference of residual.norm() smaller than this value in Cycle 2");
@@ -202,19 +214,31 @@ namespace FemGL_mpi
       prm.declare_entry("Cycle 2 do global refinement", "false", Patterns::Bool(),
 			"default value is false, which is used in run() call");
 
+      prm.declare_entry("Cycle 2 linear solver tol", "1.0e-1", Patterns::Double(0),
+			"Refine grid when the difference of residual.norm() smaller than this value in Cycle 2");
+
+      
+
       prm.declare_entry("Cycle 3 refinement threshold", "1.0e0", Patterns::Double(0),
 			"Refine grid when the difference of residual.norm() smaller than this value in Cycle 3");
 
       prm.declare_entry("Cycle 3 do global refinement", "false", Patterns::Bool(),
 			"default value is false, which is used in run() call");
 
+      prm.declare_entry("Cycle 3 linear solver tol", "1.0e-1", Patterns::Double(0),
+			"Refine grid when the difference of residual.norm() smaller than this value in Cycle 3");
+      
+
 
       prm.declare_entry("Cycle 4 do global refinement", "false", Patterns::Bool(),
 			"default value is false, which is used in run() call");
+
+      prm.declare_entry("Cycle 4 linear solver tol", "1.0e-1", Patterns::Double(0),
+			"Refine grid when the difference of residual.norm() smaller than this value in Cycle 4");
+      
       
       
      
-
       prm.declare_entry("converge accuracy", "5.0e-6", Patterns::Double(0),
 			"terminate current Cycle if residual.norm() smaller than this value");      
 
@@ -246,8 +270,8 @@ namespace FemGL_mpi
       prm.declare_entry("maximum linear iteration number", "10000", Patterns::Integer(0),
 			"maximum times of linear iterations");
 
-      prm.declare_entry("tolrence of linear SolverControl", "7.0e-1", Patterns::Double(0),
-			"default value is 7.0e-1 * system_rhs.norm()");
+      // prm.declare_entry("tolrence of linear SolverControl", "7.0e-1", Patterns::Double(0),
+      // 			"default value is 7.0e-1 * system_rhs.norm()");
 
 
       prm.declare_entry("Using dampped Newton iteration", "true", Patterns::Bool(),

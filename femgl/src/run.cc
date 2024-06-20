@@ -117,13 +117,18 @@ namespace FemGL_mpi
     const unsigned int n_cycles                = conf.get_integer("Number of refinements");
     const unsigned int n_iteration             = conf.get_integer("Number of interations");
     const double       Cycle0_refine_threshold = conf.get_double("Cycle 0 refinement threshold");
+    const double       Cycle0_solve_tol        = conf.get_double("Cycle 0 linear solver tol");
     const double       Cycle1_refine_threshold = conf.get_double("Cycle 1 refinement threshold");
-    const bool         Cycle1_do_global_refine = conf.get_bool("Cycle 1 do global refinement");        
+    const bool         Cycle1_do_global_refine = conf.get_bool("Cycle 1 do global refinement");
+    const double       Cycle1_solve_tol        = conf.get_double("Cycle 1 linear solver tol");    
     const double       Cycle2_refine_threshold = conf.get_double("Cycle 2 refinement threshold");
-    const bool         Cycle2_do_global_refine = conf.get_bool("Cycle 2 do global refinement");        
+    const bool         Cycle2_do_global_refine = conf.get_bool("Cycle 2 do global refinement");
+    const double       Cycle2_solve_tol        = conf.get_double("Cycle 2 linear solver tol");    
     const double       Cycle3_refine_threshold = conf.get_double("Cycle 3 refinement threshold");
-    const bool         Cycle3_do_global_refine = conf.get_bool("Cycle 3 do global refinement");        
-    const bool         Cycle4_do_global_refine = conf.get_bool("Cycle 4 do global refinement");        
+    const bool         Cycle3_do_global_refine = conf.get_bool("Cycle 3 do global refinement");
+    const double       Cycle3_solve_tol        = conf.get_double("Cycle 3 linear solver tol");    
+    const bool         Cycle4_do_global_refine = conf.get_bool("Cycle 4 do global refinement");
+    const double       Cycle4_solve_tol        = conf.get_double("Cycle 4 linear solver tol");    
     const double       converge_acc            = conf.get_double("converge accuracy");
     conf.leave_subsection();
     /*---------------------------------------*/
@@ -138,10 +143,16 @@ namespace FemGL_mpi
 						   Cycle2_refine_threshold,
 						   Cycle3_refine_threshold};
 
-    std::vector<bool> cycleX_refine_strategy = {Cycle1_do_global_refine,
-					        Cycle2_do_global_refine,
-					        Cycle3_do_global_refine,
-					        Cycle4_do_global_refine};
+    std::vector<bool>   cycleX_refine_strategy = {Cycle1_do_global_refine,
+					          Cycle2_do_global_refine,
+					          Cycle3_do_global_refine,
+					          Cycle4_do_global_refine};
+
+    std::vector<double> cycleX_solve_tol{Cycle0_solve_tol,
+                                         Cycle1_solve_tol,
+                                         Cycle2_solve_tol,
+                                         Cycle3_solve_tol,
+                                         Cycle4_solve_tol};
         
     for (cycle = 0; cycle <= n_cycles; ++cycle)
       {
@@ -152,23 +163,40 @@ namespace FemGL_mpi
 	      << "------------------------------------------------------" << "\n"
 	      << std::endl;
 
-        if (cycleX_refine_strategy[cycle-1] == false)
-          ref_str = "adaptive";
-        else
-          ref_str = "global";
+	//std::cout << " this rank has active cells : " << triangulation.n_active_cells() << std::endl;	
 
-        if (cycle == 0)
+	if (cycle == 0)
 	  {
-	   make_grid();
-           setup_system();	
-	  }
-        else
-	  refine_grid(ref_str);	
+  	   pcout << " cycle 0 will be globally refined in make_grid() call "
+                 << "\n"
+		 << std::endl;
 
-	pcout << " 0th rank has active cells : " << triangulation.n_active_cells()
-	      << " cycleX_refine_strategy[cycle-1] is " << cycleX_refine_strategy[cycle-1]
-	      << "\n"
-	      << std::endl;
+	   make_grid();
+           setup_system();		   
+	  }
+	else if (cycle > 0)
+	  {
+	   pcout << " 0th rank has active cells : " << triangulation.n_active_cells()
+	         << " cycleX_refine_strategy[cycle-1] is " << cycleX_refine_strategy[cycle-1]
+	         << "\n"
+	         << std::endl;
+
+	   if (cycleX_refine_strategy[cycle-1] == false)
+            ref_str = "adaptive";
+           else
+            ref_str = "global";
+
+	   refine_grid(ref_str);		   	   
+	  }
+	
+        // if (cycle == 0)
+	//   {
+	//    make_grid();
+        //    setup_system();	
+	//   }
+        // else
+	//   refine_grid(ref_str);	
+
 	//std::cout << " this rank has active cells : " << triangulation.n_active_cells() << std::endl;
 	
 	double residual_last_iter = 0.0; // residual_vector.norm() in last time interation
@@ -180,8 +208,8 @@ namespace FemGL_mpi
 
              assemble_system();
 	     pcout << " assembly is done !" << std::endl;
-             solve();
-	     pcout << " AMG preconditioned solving is done !" << std::endl;	     
+             solve(cycleX_solve_tol[cycle]);
+	     pcout << " AMG preconditioned solving is done ! With solver_tol " << cycleX_solve_tol[cycle] << std::endl;	     
 	     newton_iteration();
 	     pcout << " newton iteration is done !" << std::endl;	     	     
 
