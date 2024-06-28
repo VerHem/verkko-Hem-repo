@@ -122,6 +122,29 @@ namespace FemGL_mpi
 
       prm.declare_entry("AdGR diffuse length", "1.0e10", Patterns::Double(0),
 			"AdGR diffuse parameter");
+      
+      //--------------------------------------------------
+      //--------------------------------------------------      
+      
+      prm.declare_entry("gaussian random mean value", "2.0", Patterns::Double(0),
+			"mean value of gaussian random generator in setup() call");
+
+      prm.declare_entry("gaussian random STD", "0.1", Patterns::Double(0),
+			"STD of gaussian random generator in setup() call");
+
+      //--------------------------------------------------
+      //--------------------------------------------------      
+      
+      prm.declare_entry("trun on Strong Coupling Correction", "true", Patterns::Bool(),
+			"Switch of JWS2019 strong coupling corrections");
+
+      //--------------------------------------------------
+      //--------------------------------------------------      
+      
+      prm.declare_entry("amplitude u parameter", "1.0", Patterns::Double(),
+			"expansion amplitude u pd PDW anzaz in arXiv:2104.15125");
+      
+      
     }
     prm.leave_subsection();
 
@@ -131,10 +154,14 @@ namespace FemGL_mpi
      *****************************************************/
     prm.enter_subsection("control parameters");
     {
+      
       /* grid control paramters */
       prm.declare_entry("cube half side length", "20", Patterns::Double(0),
 			"This is only for cube geomrtry, full side length is doubled, default value is 20 xi_0_GL");
 
+      //--------------------------------------------------
+      //--------------------------------------------------      
+      
       
       prm.declare_entry("half x length of retangle", "20", Patterns::Double(0),
 			"This is only for retangle geomrtry, full x-length is doubled, default value is 20 xi_0_GL");
@@ -145,27 +172,86 @@ namespace FemGL_mpi
       prm.declare_entry("half z length of retangle", "20", Patterns::Double(0),
 			"This is only for retangle geomrtry, full side length is doubled, default value is 2 xi_0_GL");
 
+      //--------------------------------------------------
+      //--------------------------------------------------      
+
+      prm.declare_entry("B-phase inner plate radius ratio", "0.4666", Patterns::Double(0),
+			"This is for BinB polkka-dot configuration with 7.46 xi0GL slab, real value is ratio * half_side_length, default value is 0.46");
+
       
       prm.declare_entry("B-phase ball radius ratio", "0.5", Patterns::Double(0),
-			"This is for BinA configuration, real value is ratio * half_side_length, default value is 0.5");     
+			"This is for BinA configuration, real value is ratio * half_side_length, default value is 0.5");
+
+      prm.declare_entry("A-phase block range ratio", "0.0", Patterns::Double(0),
+			"This is for BnA configuration in retangle box, real value is ratio * half z length of retangle");
+
+      //--------------------------------------------------
+      //--------------------------------------------------      
       
 
-      prm.declare_entry("Number of refinements", "5", Patterns::Integer(0),
+      prm.declare_entry("Number of refinements", "4", Patterns::Integer(0),
 			"default value is 5, this is needed in run()");
 
       prm.declare_entry("Number of interations", "40", Patterns::Integer(0),
 			"number of iterations run in one Cycle");
+      
 
-      prm.declare_entry("threshold of Cycle 0 refinement", "1.0e0", Patterns::Double(0),
-			"Refine grid when the difference of residual.norm() smaller than this value in Cycle 0");            
+      
+      prm.declare_entry("Cycle 0 refinement threshold", "1.0e0", Patterns::Double(0),
+			"Refine grid when the difference of residual.norm() smaller than this value in Cycle 0");
 
-      prm.declare_entry("threshold of refinement", "1.0e-3", Patterns::Double(0),
-			"Refine grid when the difference of residual.norm() smaller than this value");      
+      prm.declare_entry("Cycle 0 linear solver tol", "1.0e-1", Patterns::Double(0),
+			"Refine grid when the difference of residual.norm() smaller than this value in Cycle 0");
 
+
+      
+      prm.declare_entry("Cycle 1 refinement threshold", "1.0e0", Patterns::Double(0),
+			"Refine grid when the difference of residual.norm() smaller than this value in Cycle 1");
+
+      prm.declare_entry("Cycle 1 do global refinement", "false", Patterns::Bool(),
+			"default value is false, which is used in run() call");
+
+      prm.declare_entry("Cycle 1 linear solver tol", "1.0e-1", Patterns::Double(0),
+			"Refine grid when the difference of residual.norm() smaller than this value in Cycle 1");
+      
+
+      prm.declare_entry("Cycle 2 refinement threshold", "1.0e0", Patterns::Double(0),
+			"Refine grid when the difference of residual.norm() smaller than this value in Cycle 2");
+
+      prm.declare_entry("Cycle 2 do global refinement", "false", Patterns::Bool(),
+			"default value is false, which is used in run() call");
+
+      prm.declare_entry("Cycle 2 linear solver tol", "1.0e-1", Patterns::Double(0),
+			"Refine grid when the difference of residual.norm() smaller than this value in Cycle 2");
+
+      
+
+      prm.declare_entry("Cycle 3 refinement threshold", "1.0e0", Patterns::Double(0),
+			"Refine grid when the difference of residual.norm() smaller than this value in Cycle 3");
+
+      prm.declare_entry("Cycle 3 do global refinement", "false", Patterns::Bool(),
+			"default value is false, which is used in run() call");
+
+      prm.declare_entry("Cycle 3 linear solver tol", "1.0e-1", Patterns::Double(0),
+			"Refine grid when the difference of residual.norm() smaller than this value in Cycle 3");
+      
+
+
+      prm.declare_entry("Cycle 4 do global refinement", "false", Patterns::Bool(),
+			"default value is false, which is used in run() call");
+
+      prm.declare_entry("Cycle 4 linear solver tol", "1.0e-1", Patterns::Double(0),
+			"Refine grid when the difference of residual.norm() smaller than this value in Cycle 4");
+      
+      
+      
+     
       prm.declare_entry("converge accuracy", "5.0e-6", Patterns::Double(0),
 			"terminate current Cycle if residual.norm() smaller than this value");      
-      
-      
+
+      //--------------------------------------------------
+      //--------------------------------------------------      
+            
       prm.declare_entry("adaptive refinment ratio", "0.3", Patterns::Double(0),
 			"refiment parameter for refine_and_coarsen_fixed_number() call");
 
@@ -175,10 +261,14 @@ namespace FemGL_mpi
       prm.declare_entry("Number of initial global refinments", "4", Patterns::Integer(0),
 			"default value is 4, which is used in makegrid() call");
 
-      prm.declare_entry("do global refinement", "false", Patterns::Bool(),
-			"default value is false, which is used in run() call"); 
+      // prm.declare_entry("do global refinement", "false", Patterns::Bool(),
+      // 			"default value is false, which is used in run() call"); 
 
       
+      //--------------------------------------------------
+      //--------------------------------------------------      
+
+            
       /* iteration and linear solver control parameters */
       prm.declare_entry("Number of n-cycle in AdditionalData", "4", Patterns::Integer(0),
 			"AMG precondtioner control parameter in solve() call");
@@ -187,8 +277,8 @@ namespace FemGL_mpi
       prm.declare_entry("maximum linear iteration number", "10000", Patterns::Integer(0),
 			"maximum times of linear iterations");
 
-      prm.declare_entry("tolrence of linear SolverControl", "7.0e-1", Patterns::Double(0),
-			"default value is 7.0e-1 * system_rhs.norm()");
+      // prm.declare_entry("tolrence of linear SolverControl", "7.0e-1", Patterns::Double(0),
+      // 			"default value is 7.0e-1 * system_rhs.norm()");
 
 
       prm.declare_entry("Using dampped Newton iteration", "true", Patterns::Bool(),

@@ -67,6 +67,27 @@ const real_t Matep::Ms_arr[18] = {2.80, 3.05, 3.27, 3.48, 3.68, 3.86, 4.03, 4.20
 const real_t Matep::VF_arr[18] = {59.03, 55.41, 52.36, 49.77, 47.56, 45.66, 44.00, 42.51, 41.17, 39.92, 38.74, 37.61, 36.53, 35.50, 34.53, 33.63, 32.85, 32.23}; // fermi velosity, m.s^-1
 const real_t Matep::XI0_arr[18] = {77.21, 57.04, 45.85, 38.77, 33.91, 30.37, 27.66, 25.51, 23.76, 22.29, 21.03, 19.94, 18.99, 18.15, 17.41, 16.77, 16.22, 15.76};
 
+
+/*********************************************************************
+ ***     member functions, interfaces of dimensional qualities     ***
+ *********************************************************************
+ */
+
+// Matep::Matep(const bool &key)
+//   : scc_on(key)
+// {}  
+
+
+/* -------------------------------------------------------------------------
+ * switch function for turning on/off SCC JWS2019
+ * -------------------------------------------------------------------------
+ */
+
+void
+Matep::with_SCC(const bool &key){
+  scc_on = key;
+}
+  
 //*********************************************************************
 //***     member functions, interfaces of dimensional qualities     ***
 //*********************************************************************
@@ -122,7 +143,12 @@ Matep::alpha_td(real_t t){ return 1.f*(t-1); }
 
 real_t
 Matep::beta1_td(real_t p, real_t t){
-  real_t beta1 = c_betai*(-1.0f + (t)*lininterp(c1_arr, p));
+  real_t beta1;
+  
+  if (scc_on == true)
+    beta1 = c_betai*(-1.0f + (t)*lininterp(c1_arr, p));
+  else if (scc_on == false)
+    beta1 = c_betai*(-1.0f);    
 
   return beta1;
 }  
@@ -130,7 +156,12 @@ Matep::beta1_td(real_t p, real_t t){
 
 real_t
 Matep::beta2_td(real_t p, real_t t){
-  real_t beta2 = c_betai*(2.0f + (t)*lininterp(c2_arr, p));
+  real_t beta2;
+  
+  if (scc_on == true)
+    beta2 = c_betai*(2.0f + (t)*lininterp(c2_arr, p));
+  else if (scc_on == false)
+    beta2 = c_betai*(2.0f);    
 
   return beta2;
 }  
@@ -138,7 +169,12 @@ Matep::beta2_td(real_t p, real_t t){
 
 real_t
 Matep::beta3_td(real_t p, real_t t){
-  real_t beta3 = c_betai*(2.0f + (t)*lininterp(c3_arr, p));
+  real_t beta3;
+  
+  if (scc_on == true)
+    beta3 = c_betai*(2.0f + (t)*lininterp(c3_arr, p));
+  else if (scc_on == false)
+    beta3 = c_betai*(2.0f);    
 
   return beta3;
 }  
@@ -146,15 +182,25 @@ Matep::beta3_td(real_t p, real_t t){
 
 real_t
 Matep::beta4_td(real_t p, real_t t){
-  real_t beta4 = c_betai*(2.0f + (t)*lininterp(c4_arr, p));
-
+  real_t beta4;
+  
+  if (scc_on == true)
+    beta4 = c_betai*(2.0f + (t)*lininterp(c4_arr, p));
+  else if (scc_on == false)
+    beta4 = c_betai*(2.0f);
+  
   return beta4;
 }
 
 
 real_t
 Matep::beta5_td(real_t p, real_t t){
-  real_t beta5 = c_betai*(-2.0f + (t)*lininterp(c5_arr, p));
+  real_t beta5;
+  
+  if (scc_on == true)
+    beta5 = c_betai*(-2.0f + (t)*lininterp(c5_arr, p));
+  else if (scc_on == false)
+    beta5 = c_betai*(-2.0f);    
 
   return beta5;
 }  

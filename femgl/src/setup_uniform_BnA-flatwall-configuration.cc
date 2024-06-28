@@ -28,7 +28,6 @@
  *
  */
 
-
 #include <random> // c++ std radom bumber library, for gaussian random initiation
 
 #include <deal.II/base/quadrature_lib.h>
@@ -99,6 +98,7 @@
 #include "dirichlet.h"
 #include "confreader.h"
 #include "matep.h"
+#include "BnA.h" 
  
 
 namespace FemGL_mpi
@@ -123,7 +123,7 @@ namespace FemGL_mpi
       TimerOutput::Scope t(computing_timer, "setup");
       dof_handler.distribute_dofs(fe);
 
-      pcout << " Number of degrees of freedom: "
+      pcout << "   Number of degrees of freedom: "
  	    << dof_handler.n_dofs()
 	    << std::endl;
 
@@ -132,7 +132,6 @@ namespace FemGL_mpi
     }
 
     {
-      constraints_newton_update.clear();
       constraints_newton_update.reinit(locally_relevant_dofs);
       DoFTools::make_hanging_node_constraints(dof_handler, constraints_newton_update);
 
@@ -160,7 +159,6 @@ namespace FemGL_mpi
     }
 
     {
-      constraints_solution.clear();
       constraints_solution.reinit(locally_relevant_dofs);
 
       DoFTools::make_hanging_node_constraints(dof_handler, constraints_solution);
@@ -203,36 +201,38 @@ namespace FemGL_mpi
      if (cycle == 0)
        {
 
-        /*---------------------------------------*/ 
-        /* loading refinements control paramters */
+        /*  set up initial local_solution Vector */
         /*---------------------------------------*/
-        conf.enter_subsection("physical parameters");
-        const double gaussian_mean           = conf.get_double("gaussian random mean value");
-        const double gaussian_std            = conf.get_double("gaussian random STD");
+        // std::random_device rd{};         // rd will be used to obtain a seed for the random number engine
+        // std::mt19937       gen{rd()};    // Standard mersenne_twister_engine seeded with rd()
+        // std::normal_distribution<double> gaussian_distr{1.0, 0.05}; // gaussian distribution, 1st arg is mean. 2nd arg is STD
+        //std::normal_distribution<double> gaussian_distr2{0.0, 0.1}; // gaussian distribution, 1st arg is mean. 2nd arg is STD	
+
+        /*---------------------------------------*/ 
+        /*  loading A-phase block size paramters */
+        /*---------------------------------------*/
+        conf.enter_subsection("control parameters");
+        const double rangeA_ratio          = conf.get_double("A-phase block range ratio");
+        const double z_axis_half_length = conf.get_double("half z length of retangle");	
         conf.leave_subsection();
         /*---------------------------------------*/
         /*    paramters loading ends at here     */
         /*---------------------------------------*/
-	 
-        /*  set up initial local_solution Vector */
-        /*---------------------------------------*/
-        std::random_device rd{};         // rd will be used to obtain a seed for the random number engine
-        std::mt19937       gen{rd()};    // Standard mersenne_twister_engine seeded with rd()
-        std::normal_distribution<double> gaussian_distr{gaussian_mean, gaussian_std}; // gaussian distribution, 1st arg is mean. 2nd arg is STD
-        //std::normal_distribution<double> gaussian_distr2{0.0, 0.1}; // gaussian distribution, 1st arg is mean. 2nd arg is STD	
-
+	 	 
         local_solution.reinit(locally_relevant_dofs,
     			      mpi_communicator,
     			      false);
         LA::MPI::Vector distrubuted_tmp_solution(locally_owned_dofs,
                                                  mpi_communicator);
-	 
-        for (auto it = distrubuted_tmp_solution.begin(); it != distrubuted_tmp_solution.end(); ++it)
-         {
-	  //*it = 0.0;
-	  //*it = gaussian_distr2(gen);
-	  *it = gaussian_distr(gen);	   
-         }
+
+	/* interpolate() call for setting BinA configuration */
+	const double z_ofA     = rangeA_ratio * z_axis_half_length;
+	const double matelem_A = mat.gap_A_td(p, reduced_t) * 0.7071067811865475f;
+	const double matelem_B = mat.gap_B_td(p, reduced_t) * 0.5773502691896258f;
+	
+        VectorTools::interpolate(dof_handler,
+		                 BnA<dim>(z_ofA, p, reduced_t, matelem_A, matelem_B),
+		                 distrubuted_tmp_solution); 	
 	
         // AffineConstriant::distribute call
         constraints_solution.distribute(distrubuted_tmp_solution);
@@ -248,7 +248,7 @@ namespace FemGL_mpi
       locally_relevant_newton_solution.reinit(locally_relevant_dofs, mpi_communicator);
       locally_relevant_damped_vector.reinit(locally_relevant_dofs, mpi_communicator);
       system_rhs.reinit(locally_owned_dofs, mpi_communicator);
-      residual_vector.reinit(locally_owned_dofs, mpi_communicator);    
+      residual_vector.reinit(locally_owned_dofs, mpi_communicator);
     }
   }
 

@@ -131,10 +131,10 @@ namespace FemGL_mpi
     void setup_system();
     void assemble_system();
     void compute_residual(/*const LA::MPI::Vector &*/);
-    void solve();
+    void solve(const double &);
     void newton_iteration();
     void refine_grid(std::string &);
-    void output_results(const unsigned int cycle) const;
+    void output_results(const std::string &dirc) const;
 
 
     /*------------------------------------------------------------------------------------
@@ -268,7 +268,7 @@ namespace FemGL_mpi
     
     
     //std::string        refinement_strategy = "global";
-    unsigned int       degree, cycle;    
+    unsigned int       degree, cycle, iteration_loop;    
     MPI_Comm           mpi_communicator;
     
     FESystem<dim>                             fe;
@@ -339,6 +339,9 @@ namespace FemGL_mpi
 
     // reduced tmeprature t=T/T_c, pressure p in bar
     double reduced_t, p;
+
+    // SCC switch for matep
+    bool SCC_key;
 
     ConditionalOStream pcout;
     TimerOutput        computing_timer;

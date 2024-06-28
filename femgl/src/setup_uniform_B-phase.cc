@@ -202,11 +202,22 @@ namespace FemGL_mpi
      if (cycle == 0)
        {
 
+        /*---------------------------------------*/
+	/* loading refinements control paramters */
+	/*---------------------------------------*/
+	conf.enter_subsection("physical parameters");
+	const double gaussian_mean           = conf.get_double("gaussian random mean value");
+	const double gaussian_std            = conf.get_double("gaussian random STD");
+	conf.leave_subsection();
+	/*---------------------------------------*/
+	/*    paramters loading ends at here     */
+	/*---------------------------------------*/
+	 
         /*  set up initial local_solution Vector */
         /*---------------------------------------*/
         std::random_device rd{};         // rd will be used to obtain a seed for the random number engine
         std::mt19937       gen{rd()};    // Standard mersenne_twister_engine seeded with rd()
-        std::normal_distribution<double> gaussian_distr{1.0, 0.05}; // gaussian distribution, 1st arg is mean. 2nd arg is STD
+        std::normal_distribution<double> gaussian_distr{gaussian_mean, gaussian_std}; // gaussian distribution, 1st arg is mean. 2nd arg is STD
         //std::normal_distribution<double> gaussian_distr2{0.0, 0.1}; // gaussian distribution, 1st arg is mean. 2nd arg is STD	
 
         local_solution.reinit(locally_relevant_dofs,
@@ -234,17 +245,17 @@ namespace FemGL_mpi
 	for (auto u11_comp_dof : u11_component_dofs_list)
 	  {
 	    // distrubuted_tmp_solution[u11_comp_dof] = gaussian_distr(gen) * (mat.gap_A_td(p, reduced_t) * 0.707107f);
-	    distrubuted_tmp_solution[u11_comp_dof] = (mat.gap_B_td(p, reduced_t) * 0.57735f);	    
+	    distrubuted_tmp_solution[u11_comp_dof] = (mat.gap_B_td(p, reduced_t) * 0.577350269f);	    
 	  }
 
 	for (auto u22_comp_dof : u22_component_dofs_list)
 	  {
-            distrubuted_tmp_solution[u22_comp_dof] = (mat.gap_B_td(p, reduced_t) * 0.57735f);
+            distrubuted_tmp_solution[u22_comp_dof] = (mat.gap_B_td(p, reduced_t) * 0.577350269f);
 	  }	
 
 	for (auto u33_comp_dof : u33_component_dofs_list)
 	  {
-            distrubuted_tmp_solution[u33_comp_dof] = (mat.gap_B_td(p, reduced_t) * 0.57735f);
+            distrubuted_tmp_solution[u33_comp_dof] = (mat.gap_B_td(p, reduced_t) * 0.577350269f);
 	  }	
         
 	

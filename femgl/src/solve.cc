@@ -106,7 +106,7 @@ namespace FemGL_mpi
   using namespace dealii;
   
   template <int dim>
-  void FemGL<dim>::solve()
+  void FemGL<dim>::solve(const double &tol)
   {
     TimerOutput::Scope t(computing_timer, "solve");
 
@@ -118,7 +118,7 @@ namespace FemGL_mpi
      /* ------------------------------------- */      
      conf.enter_subsection("control parameters");
      const unsigned int no_n_cycles                  = conf.get_integer("Number of n-cycle in AdditionalData");
-     const double tol                                = conf.get_double("tolrence of linear SolverControl");
+     // const double tol                                = conf.get_double("tolrence of linear SolverControl");
      const unsigned int max_linear_solver_iterations = conf.get_integer("maximum linear iteration number");
      conf.leave_subsection();
      /* ------------------------------------- */

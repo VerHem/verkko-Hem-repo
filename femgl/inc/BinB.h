@@ -29,11 +29,13 @@
  */
 
 
+#ifndef BINB_H
+#define BINB_H
+
 #include <random> // c++ std radom bumber library, for gaussian random initiation
 
 #include <deal.II/base/quadrature_lib.h>
 #include <deal.II/base/function.h>
-#include <deal.II/base/parameter_handler.h>
 #include <deal.II/base/timer.h>
 
 #include <deal.II/lac/generic_linear_algebra.h>
@@ -74,6 +76,8 @@
 #include <deal.II/fe/fe_values.h>
 #include <deal.II/fe/fe_q.h>
 #include <deal.II/fe/fe_system.h>
+#include <deal.II/fe/component_mask.h>
+
 #include <deal.II/numerics/vector_tools.h>
 #include <deal.II/numerics/data_out.h>
 #include <deal.II/numerics/error_estimator.h>
@@ -93,82 +97,77 @@
 #include <fstream>
 #include <iostream>
 
-#include "femgl.h"
-#include "dirichlet.h"
-#include "confreader.h"
-#include "matep.h"
-#include "BinA.h"
+//#include "matep.h"
 
 namespace FemGL_mpi
 {
   using namespace dealii;
 
+  /* ------------------------------------------------------------------------------------------
+   * class template BinA inhereted from Function<dim>.
+   * set the reference value_list to B-in-A configuration for full-step newton iteration.
+   * ------------------------------------------------------------------------------------------
+   */
+  
   template <int dim>
-  void FemGL<dim>::output_results(const std::string &dirc) const
+  class BinB : public Function<dim>
   {
+  public:
+    BinB(const double &r)
+      : Function<dim>(18) // tell base Function<dim> class I want a 2-components vector-valued function
+      , radius(r)
+    {}
 
-    std::vector<std::string> newton_update_components_names;
-    newton_update_components_names.emplace_back("du_11");
-    newton_update_components_names.emplace_back("du_12");
-    newton_update_components_names.emplace_back("du_13");
-    newton_update_components_names.emplace_back("du_21");
-    newton_update_components_names.emplace_back("du_22");
-    newton_update_components_names.emplace_back("du_23");
-    newton_update_components_names.emplace_back("du_31");
-    newton_update_components_names.emplace_back("du_32");
-    newton_update_components_names.emplace_back("du_33");
-    newton_update_components_names.emplace_back("dv_11");
-    newton_update_components_names.emplace_back("dv_12");
-    newton_update_components_names.emplace_back("dv_13");
-    newton_update_components_names.emplace_back("dv_21");
-    newton_update_components_names.emplace_back("dv_22");
-    newton_update_components_names.emplace_back("dv_23");
-    newton_update_components_names.emplace_back("dv_31");
-    newton_update_components_names.emplace_back("dv_32");
-    newton_update_components_names.emplace_back("dv_33");
-
-    std::vector<std::string> solution_components_names;
-    solution_components_names.emplace_back("u_11");
-    solution_components_names.emplace_back("u_12");
-    solution_components_names.emplace_back("u_13");
-    solution_components_names.emplace_back("u_21");
-    solution_components_names.emplace_back("u_22");
-    solution_components_names.emplace_back("u_23");
-    solution_components_names.emplace_back("u_31");
-    solution_components_names.emplace_back("u_32");
-    solution_components_names.emplace_back("u_33");
-    solution_components_names.emplace_back("v_11");
-    solution_components_names.emplace_back("v_12");
-    solution_components_names.emplace_back("v_13");
-    solution_components_names.emplace_back("v_21");
-    solution_components_names.emplace_back("v_22");
-    solution_components_names.emplace_back("v_23");
-    solution_components_names.emplace_back("v_31");
-    solution_components_names.emplace_back("v_32");
-    solution_components_names.emplace_back("v_33");
+    double radius;         // in unit of \xi_0    
     
-    { // DataOut block starts here, release memory
-     DataOut<dim> data_out;
-     data_out.attach_dof_handler(dof_handler);
+    virtual void vector_value(const Point<dim> &point /*p*/,
+                              Vector<double> &values) const override
+    {
+      Assert(values.size() == 18, ExcDimensionMismatch(values.size(), 18));
 
-     data_out.add_data_vector(locally_relevant_newton_solution, newton_update_components_names,
-			     DataOut<dim>::type_dof_data);
-     data_out.add_data_vector(local_solution, solution_components_names,
-			     DataOut<dim>::type_dof_data);
+      if ( (point(0)*point(0) + point(1)*point(1)) <= (radius*radius) )     //inside sphere, B-phase
+	{
+          values[0] = 0.859734; values[9] = 0.859734;
+          values[1] = -0.285668; values[10] = -0.285668;
+          values[2] = -1.76655; values[11] = -1.76655;
+	  
+          values[3] = 1.58845; values[12] = 1.58845;
+          values[4] = -1.25931; values[13] = -1.25931;
+          values[5] = 0.763255;	values[14] = 0.763255;	  
 
-     Vector<float> subdomain(triangulation.n_active_cells());
-     for (unsigned int i = 0; i < subdomain.size(); ++i)
-       subdomain(i) = triangulation.locally_owned_subdomain();
-     data_out.add_data_vector(subdomain, "subdomain");
+          values[6] = 1.26923; values[15] = 1.26923;
+          values[7] = 1.77689; values[16] = 1.77689;
+          values[8] = 0.245094; values[17] = 0.245094;	  	  	  	  
+	}
+      else if ( (point(0)*point(0) + point(1)*point(1)) > (radius*radius) ) //outside sphere, B-phase
+	{
+          values[0] = 0.668541; values[9] = 0.668541;
+          values[1] = 0.632763; values[10] = 0.632763;
+          values[2] = 1.7257; values[11] = 1.7257;
+	  
+          values[3] = 1.63496; values[12] = 1.63496;
+          values[4] = -1.50349; values[13] = -1.50349;
+          values[5] = -0.0439564; values[14] = -0.0439564;	  
 
-     data_out.build_patches();
+          values[6] = 1.3531; values[15] = 1.3531;
+          values[7] = 1.50482; values[16] = 1.50482;
+          values[8] = -0.799212; values[17] = -0.799212;	  	  	  	  
+          
+     	}
+    } // vector_value() function ends here
 
-     data_out.write_vtu_with_pvtu_record(
-      dirc, "solution", iteration_loop, mpi_communicator, 2);
-    } // DataOut block ends here, release memory
+    virtual void
+    vector_value_list(const std::vector<Point<dim>> &points,
+                      std::vector<Vector<double>> &  value_list) const override
+    {
+      Assert(value_list.size() == points.size(),
+             ExcDimensionMismatch(value_list.size(), points.size()));
 
-  }
+      for (unsigned int p = 0; p < points.size(); ++p)
+        BinB<dim>::vector_value(points[p], value_list[p]);
+    }
+  };
 
-  template class FemGL<3>;  
 } // namespace FemGL_mpi
 
+#endif

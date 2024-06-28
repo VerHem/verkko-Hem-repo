@@ -29,11 +29,13 @@
  */
 
 
+#ifndef BINA_H
+#define BINA_H
+
 #include <random> // c++ std radom bumber library, for gaussian random initiation
 
 #include <deal.II/base/quadrature_lib.h>
 #include <deal.II/base/function.h>
-#include <deal.II/base/parameter_handler.h>
 #include <deal.II/base/timer.h>
 
 #include <deal.II/lac/generic_linear_algebra.h>
@@ -95,111 +97,83 @@
 #include <fstream>
 #include <iostream>
 
-#include "femgl.h"
-#include "dirichlet.h"
-#include "confreader.h" 
-#include "matep.h"
+//#include "matep.h"
 
 namespace FemGL_mpi
 {
   using namespace dealii;
 
-  template <int dim>
-  void FemGL<dim>::make_grid()
-  {
-    if (dim==2)
-      {
-        /*const double half_length = 10.0, inner_radius = 2.0;
-        GridGenerator::hyper_cube_with_cylindrical_hole(triangulation,
-	inner_radius, half_length);*/
-
-	GridGenerator::hyper_cube(triangulation, 0., 10.);
-	
-        triangulation.refine_global(4);
-        // Dirichlet pillars centers
-        //const Point<dim> p1(0., 0.);
-
-        /*for (const auto &cell : triangulation.cell_iterators())
-        for (const auto &face : cell->face_iterators())
- 	  {
-            const auto center = face->center();
-	    if (
-	        (std::fabs(center(0) - (-half_length)) < 1e-12)
-	        ||
-	        (std::fabs(center(0) - (half_length)) < 1e-12)
-	        ||
-	        (std::fabs(center(1) - (-half_length)) < 1e-12)
-	        ||
-	        (std::fabs(center(1) - (half_length)) < 1e-12)
-               )
-	       face->set_boundary_id(1);
-
-	    if ((std::fabs(center.distance(p1) - inner_radius) <=0.15))
-	      face->set_boundary_id(0);
-	      }*/
-
-        //triangulation.refine_global(1);
-      }
-    else if (dim==3)
-      {
-
-         /*---------------------------------------*/ 
-         /* loading refinements control paramters */
-         /*---------------------------------------*/
-         conf.enter_subsection("control parameters");
-         const double number_global_refine  = conf.get_integer("Number of initial global refinments");
-	 conf.leave_subsection();
-         /*---------------------------------------*/
-	 /*    paramters loading ends at here     */
-         /*---------------------------------------*/
-	
-	const double D = 20., l = 50., Ex = 100.;
-        const Point<dim> p1(-l, 0., 0.);
-        const Point<dim> p2(l, Ex, D);	
-
-        GridGenerator::hyper_rectangle(triangulation,
-		  	               p1, p2); 		
-	
-	triangulation.refine_global(number_global_refine /*4*/); // The refine_global() number is somehow important.
-	                                                         // If one puts just 3, DoF will be about 30K.
-	                                                         // When this small mount DoF are distribited on say 64 cpu processes,
-	                                                         // LAPCK rises up waring:
-	                                                         // "dorgqr WARNING : performing QR on a MxN matrix where M<N".
-	                                                         // To suppress this warning, one should put 4 as global refine number,
-	                                                         // looks like this will make DoF disstribution smoother and beheave better.
-
-	
-	for (const auto &cell : triangulation.cell_iterators())
-	  for (const auto &face : cell->face_iterators())
-	    {
-	      const auto center = face->center();
-	      if (
-		  (std::fabs(center(0) - (-l)) < 1e-12 * l)
-		  ||
-		  (std::fabs(center(0) - l) < 1e-12 * l)
-		 )
-		face->set_boundary_id(1); // HOmo-Neumann BC i.e., along x direction 
-
-	      if (
-		  (std::fabs(center(1) - 0.0) < 1e-12 * Ex)
-		  ||
-		  (std::fabs(center(1) - Ex) < 1e-12 * Ex)
-		 )
-	        face->set_boundary_id(1); // homogenous BC i.e., homogenuous Neumann along y direction 
-
-	      if (
-		  (std::fabs(center(2) - 0.0) < 1e-12 * D)
-		  ||
-		  (std::fabs(center(2) - D) < 1e-12 * D)		  
-		 )
-	        face->set_boundary_id(4); // diffuse BC i.e., homogenuous Robin + Direchlet along z direction 
-	      
-	    }
-
-      } // dim==3 block
-  }
-
-  template class FemGL<3>;
+  /* ------------------------------------------------------------------------------------------
+   * class template BinA inhereted from Function<dim>.
+   * set the reference value_list to B-in-A configuration for full-step newton iteration.
+   * ------------------------------------------------------------------------------------------
+   */
   
+  template <int dim>
+  class BnA : public Function<dim>
+  {
+  public:
+    BnA(double zA, double p, double t, double matelem_A, double matelem_B)
+      : Function<dim>(18) // tell base Function<dim> class I want a 2-components vector-valued function
+      , rangeA(zA)
+      , p(p)
+      , reduced_t(t)
+      , matrix_elem_A(matelem_A)
+      , matrix_elem_B(matelem_B)
+    {}
+
+    double rangeA;         // in unit of \xi_0    
+    double p, reduced_t;
+    double matrix_elem_A, matrix_elem_B;
+    //Matep mat;           // matep object
+    
+    virtual void vector_value(const Point<dim> &point /*p*/,
+                              Vector<double> &values) const override
+    {
+      Assert(values.size() == 18, ExcDimensionMismatch(values.size(), 18));
+
+      if ( point(2) >= rangeA )     //inside sphere, B-phase
+	{
+	  for (unsigned int index = 0; index < values.size(); index++)
+           {
+	     if (
+		 (index == 0)     /*u11*/
+		 || (index == 4)  /*u22*/
+		 || (index == 8)  /*u33*/		 
+		)
+	       values[index] = matrix_elem_B; //mat.gap_B_td(p, reduced_t) * 0.57735f;
+             else
+	       values[index] = 0.0;	       
+	   } // B-phase setup loop
+	}
+      else if ( point(2) < rangeA ) //outside sphere, A-phase
+	{
+	  for (unsigned int index = 0; index < values.size(); index++)
+           {
+	     if (
+		 (index == 0)      /*u11*/
+		 || (index == 10)  /*v12*/
+		)
+	       values[index] = matrix_elem_A; //mat.gap_A_td(p, reduced_t) * 0.707107f;
+             else
+	       values[index] = 0.0;	       
+	   } // A-phase setup loop
+
+     	}
+    } // vector_value() function ends here
+
+    virtual void
+    vector_value_list(const std::vector<Point<dim>> &points,
+                      std::vector<Vector<double>> &  value_list) const override
+    {
+      Assert(value_list.size() == points.size(),
+             ExcDimensionMismatch(value_list.size(), points.size()));
+
+      for (unsigned int p = 0; p < points.size(); ++p)
+        BnA<dim>::vector_value(points[p], value_list[p]);
+    }
+  };
+
 } // namespace FemGL_mpi
 
+#endif

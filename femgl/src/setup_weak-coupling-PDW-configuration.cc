@@ -99,6 +99,7 @@
 #include "dirichlet.h"
 #include "confreader.h"
 #include "matep.h"
+#include "pdw_config.h"
  
 
 namespace FemGL_mpi
@@ -118,12 +119,38 @@ namespace FemGL_mpi
     ComponentMask comp_mask_x(Dirichlet_x_marking_list);
     ComponentMask comp_mask_y(Dirichlet_y_marking_list);
     ComponentMask comp_mask_z(Dirichlet_z_marking_list);
+
+    /*---------------------------------------*/
+    /* identify matched faces pairs          */
+    /* for periodicity along x, y direction  */
+    /*---------------------------------------*/
+    
+    std::vector<GridTools::PeriodicFacePair<typename DoFHandler<dim>::cell_iterator>> matched_pairs_x, matched_pairs_y;
+
+    GridTools::collect_periodic_faces(dof_handler,
+                                      5 /*b_id1 */, 6 /*b_id2*/,
+                                      0, /*spatial direction of periodicity */
+                                      matched_pairs_x);       
+
+    GridTools::collect_periodic_faces(dof_handler,
+                                      7 /*b_id1 */, 8 /*b_id2*/,
+                                      1, /*spatial direction of periodicity */
+                                      matched_pairs_y);
+
+    /* cook first_vector_component up for make_periodicity_constraints */
+    std::vector<unsigned int> first_vector_components;
+    first_vector_components.push_back(0);      
+    
+    /*---------------------------------------*/
+    /* inditify matched face ends here       */
+    /*---------------------------------------*/
+    
     
     {
       TimerOutput::Scope t(computing_timer, "setup");
       dof_handler.distribute_dofs(fe);
 
-      pcout << " Number of degrees of freedom: "
+      pcout << "   Number of degrees of freedom: "
  	    << dof_handler.n_dofs()
 	    << std::endl;
 
@@ -156,6 +183,29 @@ namespace FemGL_mpi
                                                constraints_newton_update,
 					       comp_mask_z);
                                                //fe.component_mask(velocities));
+
+      /*---------------------------------------*/
+      /* identify matched faces pairs          */
+      /* add perodicuty info into triangulation*/
+      /*---------------------------------------*/
+      
+      DoFTools::make_periodicity_constraints<dim, dim>(matched_pairs_x,
+                                                       constraints_newton_update
+                                                       //{}  default, all components,
+						       //first_vector_components first_vector_components of whole vector is 0
+						       );
+
+      DoFTools::make_periodicity_constraints<dim, dim>(matched_pairs_y,
+                                                       constraints_newton_update
+                                                       //{} default, all components,
+						       //first_vector_components first_vector_components of whole vector is 0
+						       );
+   
+      /*---------------------------------------*/
+      /* periodicity info handling ends here   */
+      /*---------------------------------------*/
+      
+	      
       constraints_newton_update.close();
     }
 
@@ -183,6 +233,28 @@ namespace FemGL_mpi
                                                constraints_solution,
 					       comp_mask_z);
                                                //fe.component_mask(velocities));
+      /*---------------------------------------*/
+      /* identify matched faces pairs          */
+      /* add perodicuty info into triangulation*/
+      /*---------------------------------------*/
+      
+      DoFTools::make_periodicity_constraints<dim, dim>(matched_pairs_x,
+                                                       constraints_solution
+                                                       //{} default, all components,
+						       //first_vector_components first_vector_components of whole vector is 0
+						       );
+
+      DoFTools::make_periodicity_constraints<dim, dim>(matched_pairs_y,
+                                                       constraints_solution
+                                                       //{} default, all components,
+						       //first_vector_components first_vector_components of whole vector is 0
+						       );
+   
+      /*---------------------------------------*/
+      /* periodicity info handling ends here   */
+      /*---------------------------------------*/
+
+      
       constraints_solution.close();
     }
 
@@ -206,19 +278,27 @@ namespace FemGL_mpi
         /*---------------------------------------*/ 
         /* loading refinements control paramters */
         /*---------------------------------------*/
+        // conf.enter_subsection("physical parameters");
+        // const double gaussian_mean           = conf.get_double("gaussian random mean value");
+        // const double gaussian_std            = conf.get_double("gaussian random STD");
+        // conf.leave_subsection();
+
         conf.enter_subsection("physical parameters");
-        const double gaussian_mean           = conf.get_double("gaussian random mean value");
-        const double gaussian_std            = conf.get_double("gaussian random STD");
+        const double u               = conf.get_double("amplitude u parameter");
         conf.leave_subsection();
+
+        conf.enter_subsection("control parameters");
+        const double half_D          = conf.get_double("half z length of retangle");
+        conf.leave_subsection();	 	
         /*---------------------------------------*/
         /*    paramters loading ends at here     */
         /*---------------------------------------*/
 	 
         /*  set up initial local_solution Vector */
         /*---------------------------------------*/
-        std::random_device rd{};         // rd will be used to obtain a seed for the random number engine
-        std::mt19937       gen{rd()};    // Standard mersenne_twister_engine seeded with rd()
-        std::normal_distribution<double> gaussian_distr{gaussian_mean, gaussian_std}; // gaussian distribution, 1st arg is mean. 2nd arg is STD
+        // std::random_device rd{};         // rd will be used to obtain a seed for the random number engine
+        // std::mt19937       gen{rd()};    // Standard mersenne_twister_engine seeded with rd()
+        // std::normal_distribution<double> gaussian_distr{gaussian_mean, gaussian_std}; // gaussian distribution, 1st arg is mean. 2nd arg is STD
         //std::normal_distribution<double> gaussian_distr2{0.0, 0.1}; // gaussian distribution, 1st arg is mean. 2nd arg is STD	
 
         local_solution.reinit(locally_relevant_dofs,
@@ -226,13 +306,21 @@ namespace FemGL_mpi
     			      false);
         LA::MPI::Vector distrubuted_tmp_solution(locally_owned_dofs,
                                                  mpi_communicator);
-	 
-        for (auto it = distrubuted_tmp_solution.begin(); it != distrubuted_tmp_solution.end(); ++it)
-         {
-	  //*it = 0.0;
-	  //*it = gaussian_distr2(gen);
-	  *it = gaussian_distr(gen);	   
-         }
+
+	/* interpolate() call for setting BinA configuration */
+	const double Q    = 3.141592653589793/(1.7320508075688772 * 2. * half_D);
+
+        VectorTools::interpolate(dof_handler,
+		                 PDWconfig<dim>(u, Q, half_D, mat.gap_B_td(p, reduced_t)),
+		                 distrubuted_tmp_solution); 	
+	
+	
+        // for (auto it = distrubuted_tmp_solution.begin(); it != distrubuted_tmp_solution.end(); ++it)
+        //  {
+	//   //*it = 0.0;
+	//   //*it = gaussian_distr2(gen);
+	//   *it = gaussian_distr(gen);	   
+        //  }
 	
         // AffineConstriant::distribute call
         constraints_solution.distribute(distrubuted_tmp_solution);

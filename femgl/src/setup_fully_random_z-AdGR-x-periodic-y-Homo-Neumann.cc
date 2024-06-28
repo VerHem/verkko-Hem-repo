@@ -118,6 +118,27 @@ namespace FemGL_mpi
     ComponentMask comp_mask_x(Dirichlet_x_marking_list);
     ComponentMask comp_mask_y(Dirichlet_y_marking_list);
     ComponentMask comp_mask_z(Dirichlet_z_marking_list);
+
+    /*---------------------------------------*/
+    /* identify matched faces pairs          */
+    /* for periodicity along x, y direction  */
+    /*---------------------------------------*/
+    
+    std::vector<GridTools::PeriodicFacePair<typename DoFHandler<dim>::cell_iterator>> matched_pairs_x, matched_pairs_y;
+
+    GridTools::collect_periodic_faces(dof_handler,
+                                      5 /*b_id1 */, 6 /*b_id2*/,
+                                      0, /*spatial direction of periodicity */
+                                      matched_pairs_x);       
+
+    /* cook first_vector_component up for make_periodicity_constraints */
+    std::vector<unsigned int> first_vector_components;
+    first_vector_components.push_back(0);      
+    
+    /*---------------------------------------*/
+    /* inditify matched face ends here       */
+    /*---------------------------------------*/
+    
     
     {
       TimerOutput::Scope t(computing_timer, "setup");
@@ -156,6 +177,23 @@ namespace FemGL_mpi
                                                constraints_newton_update,
 					       comp_mask_z);
                                                //fe.component_mask(velocities));
+
+      /*---------------------------------------*/
+      /* identify matched faces pairs          */
+      /* add perodicuty info into triangulation*/
+      /*---------------------------------------*/
+      
+      DoFTools::make_periodicity_constraints<dim, dim>(matched_pairs_x,
+                                                       constraints_newton_update
+                                                       //{}  default, all components,
+						       //first_vector_components first_vector_components of whole vector is 0
+						       );
+   
+      /*---------------------------------------*/
+      /* periodicity info handling ends here   */
+      /*---------------------------------------*/
+      
+	      
       constraints_newton_update.close();
     }
 
@@ -183,6 +221,22 @@ namespace FemGL_mpi
                                                constraints_solution,
 					       comp_mask_z);
                                                //fe.component_mask(velocities));
+      /*---------------------------------------*/
+      /* identify matched faces pairs          */
+      /* add perodicuty info into triangulation*/
+      /*---------------------------------------*/
+      
+      DoFTools::make_periodicity_constraints<dim, dim>(matched_pairs_x,
+                                                       constraints_solution
+                                                       //{} default, all components,
+						       //first_vector_components first_vector_components of whole vector is 0
+						       );
+   
+      /*---------------------------------------*/
+      /* periodicity info handling ends here   */
+      /*---------------------------------------*/
+
+      
       constraints_solution.close();
     }
 
@@ -213,6 +267,7 @@ namespace FemGL_mpi
         /*---------------------------------------*/
         /*    paramters loading ends at here     */
         /*---------------------------------------*/
+
 	 
         /*  set up initial local_solution Vector */
         /*---------------------------------------*/
