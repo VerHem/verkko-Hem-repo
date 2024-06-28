@@ -172,7 +172,12 @@ namespace FemGL_mpi
 		 << std::endl;
 
 	   make_grid();
-           setup_system();		   
+           setup_system();
+           {
+             std::string dirc = "./setup_config/";
+             output_results(dirc);
+           }
+	   
 	  }
 	else if (cycle > 0)
 	  {
