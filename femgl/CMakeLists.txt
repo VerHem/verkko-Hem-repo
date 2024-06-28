@@ -57,7 +57,8 @@ add_library(femgl STATIC
 #  ${CMAKE_SOURCE_DIR}/femgl/src/setup_fully_random-xy-periodic.cc
 #  ${CMAKE_SOURCE_DIR}/femgl/src/setup_fully_random-xyz-periodic.cc
 #  ${CMAKE_SOURCE_DIR}/femgl/src/setup_fully_random_z-AdGR-x-periodic-y-Homo-Neumann.cc
-  ${CMAKE_SOURCE_DIR}/femgl/src/setup_uniform_BnB-polkka-dot-like-configuration.cc
+#  ${CMAKE_SOURCE_DIR}/femgl/src/setup_uniform_BnB-polkka-dot-like-configuration.cc
+  ${CMAKE_SOURCE_DIR}/femgl/src/setup_weak-coupling-PDW-configuration.cc
 #  ${CMAKE_SOURCE_DIR}/femgl/src/setup_uniform_BinA-bubble-like-configuration.cc
 #  ${CMAKE_SOURCE_DIR}/femgl/src/setup_uniform_BnA-flatwall-configuration.cc
 #  ${CMAKE_SOURCE_DIR}/femgl/src/setup_BnA-xyz-periodic.cc
