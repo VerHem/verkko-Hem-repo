@@ -137,7 +137,14 @@ namespace FemGL_mpi
       
       prm.declare_entry("trun on Strong Coupling Correction", "true", Patterns::Bool(),
 			"Switch of JWS2019 strong coupling corrections");
-                  
+
+      //--------------------------------------------------
+      //--------------------------------------------------      
+      
+      prm.declare_entry("amplitude u parameter", "1.0", Patterns::Double(),
+			"expansion amplitude u pd PDW anzaz in arXiv:2104.15125");
+      
+      
     }
     prm.leave_subsection();
 
