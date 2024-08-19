@@ -242,12 +242,12 @@ namespace FemGL_mpi
 	for (auto u11_comp_dof : u11_component_dofs_list)
 	  {
 	    // distrubuted_tmp_solution[u11_comp_dof] = gaussian_distr(gen) * (mat.gap_A_td(p, reduced_t) * 0.707107f);
-	    distrubuted_tmp_solution[u11_comp_dof] = (mat.gap_A_td(p, reduced_t) * 0.707107f);	    
+	    distrubuted_tmp_solution[u11_comp_dof] = (mat.gap_A_td(p, reduced_t) * 0.707106781f);	    
 	  }
 
 	for (auto v12_comp_dof : v12_component_dofs_list)
 	  {
-            distrubuted_tmp_solution[v12_comp_dof] = (mat.gap_A_td(p, reduced_t) * 0.707107f);
+            distrubuted_tmp_solution[v12_comp_dof] = (mat.gap_A_td(p, reduced_t) * 0.707106781f);
 	  }	
 	
         // AffineConstriant::distribute call
