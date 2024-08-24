@@ -99,23 +99,24 @@
 #include "dirichlet.h"
 #include "confreader.h"
 #include "matep.h"
-#include "BinA.h"
+//#include "BinA.h"
+#include "simplem.h"
 
 namespace FemGL_mpi
 {
   using namespace dealii;
 
   template <int dim>
-  double FemGL<dim>::vec_rhs_beta3(FullMatrix<double> &old_solution_u, FullMatrix<double> &old_solution_v,
-				   FullMatrix<double> &phi_u_i_q, FullMatrix<double> &phi_v_i_q)
+  double FemGL<dim>::vec_rhs_beta3(SimpleMatrix<double> &old_solution_u, SimpleMatrix<double> &old_solution_v,
+				   SimpleMatrix<double> &phi_u_i_q, SimpleMatrix<double> &phi_v_i_q)
   {
     //block of assembly starts from here, all local objects in there will be release to save memory leak
 
-    FullMatrix<double>    u0_v0t(3,3), /*^.*/
+    SimpleMatrix<double>  u0_v0t(3,3), /*^.*/
                           u0t_u0(3,3) /*?*/, u0t_v0(3,3) /*???*/,
                           v0t_v0(3,3); /*sss*/
 
-    FullMatrix<double>             u0t_phi_u_i_q(3,3), /*??*/
+    SimpleMatrix<double>           u0t_phi_u_i_q(3,3), /*??*/
                                    u0t_phi_v_i_q(3,3), /*?7*/
                                    v0t_phi_u_i_q(3,3), /*xxx*/
                                    v0t_phi_v_i_q(3,3), /*---*/     
@@ -125,9 +126,9 @@ namespace FemGL_mpi
                                    phi_ut_i_q_v0(3.3), /*????*/
                                    phi_vt_i_q_u0(3.3); /*?6*/
 
-    FullMatrix<double>   mm1(3,3),mm2(3,3);
+    SimpleMatrix<double>   mm1(3,3),mm2(3,3);
     
-    FullMatrix<double>   poly_I(3,3);
+    SimpleMatrix<double>   poly_I(3,3);
           
     /*-------------------------------------------------------------*/
     /* phi^u, phi^v matrices have been cooked up in other fuctions */

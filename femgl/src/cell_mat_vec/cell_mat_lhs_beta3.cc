@@ -99,33 +99,34 @@
 #include "dirichlet.h"
 #include "confreader.h"
 #include "matep.h"
-#include "BinA.h"
+//#include "BinA.h"
+#include "simplem.h"
 
 namespace FemGL_mpi
 {
   using namespace dealii;
 
   template <int dim>
-  double FemGL<dim>::mat_lhs_beta3(FullMatrix<double> &old_solution_u, FullMatrix<double> &old_solution_v,
-				   FullMatrix<double> &phi_u_i_q,FullMatrix<double> &phi_u_j_q,
-		                   FullMatrix<double> &phi_v_i_q,FullMatrix<double> &phi_v_j_q)
+  double FemGL<dim>::mat_lhs_beta3(SimpleMatrix<double> &old_solution_u, SimpleMatrix<double> &old_solution_v,
+				   SimpleMatrix<double> &phi_u_i_q,SimpleMatrix<double> &phi_u_j_q,
+		                   SimpleMatrix<double> &phi_v_i_q,SimpleMatrix<double> &phi_v_j_q)
   {
     //block of assembly starts from here, all local objects in there will be release to save memory leak
 
                           /* default DoF indices pattern of multiplication 
                            * between phis is phi_phit_matrics_i_j_q(3,3);
                            */
-    FullMatrix<double>    phi_u_phi_ut(3,3) /* *** */, phi_v_phi_vt(3,3), /*ooo*/
+    SimpleMatrix<double>  phi_u_phi_ut(3,3) /* *** */, phi_v_phi_vt(3,3), /*ooo*/
                           phi_u_phi_vt(3,3) /*~~~*/, phi_v_phi_ut(3,3), /*->->->*/
                           phi_ut_phi_u(3,3) /*888*/, phi_vt_phi_v(3,3), /*aaa*/ // aaa is a bug
                           phi_ut_phi_v(3,3) /*\\\*/, phi_vt_phi_u(3,3); /*///*/
 
-    FullMatrix<double>    u0_u0t(3,3) /*(..)*/, //v0_v0t(3,3), /*WTF is this*/ 
+    SimpleMatrix<double>  u0_u0t(3,3) /*(..)*/, //v0_v0t(3,3), /*WTF is this*/ 
                           u0_v0t(3,3) /*^.*/, v0_u0t(3,3) /*LTLT*/,
                           v0t_v0(3,3) /*sss*/, 
                           v0t_u0(3,3); /*o+*/
 
-    FullMatrix<double>              u0_phi_ut_i_q(3,3), /*o*/
+    SimpleMatrix<double>            u0_phi_ut_i_q(3,3), /*o*/
                                     u0_phi_ut_j_q(3,3), /*^*/
                                     v0_phi_vt_i_q(3,3), /*o.*/
                                     v0_phi_vt_j_q(3,3), /* * */
@@ -140,20 +141,20 @@ namespace FemGL_mpi
 
 
                                     /* ************** */
-    FullMatrix<double>              phi_u_j_q_u0t(3,3), /*ox*/
+    SimpleMatrix<double>            phi_u_j_q_u0t(3,3), /*ox*/
                                     phi_v_j_q_u0t(3,3), /*^^^*/
                                     /* ************** */      
                                     phi_ut_j_q_v0(3,3), /*+++*/
                                     phi_vt_j_q_v0(3,3); /*--- ---*/
 
-    FullMatrix<double>              mm1(3,3), mm2(3,3),
+    SimpleMatrix<double>            mm1(3,3), mm2(3,3),
                                     mm3(3,3), mm4(3,3),
                                     mm5(3,3), mm6(3,3); // mmx matrix is for handling "-" minus matrix
                                     //ms1(3,3), ms2(3,3);
     
     // Matrices for saving trace polynomils NO. I, II, II and IV
     // see note for understanding details
-    FullMatrix<double>              poly_I(3,3), poly_II(3,3),
+    SimpleMatrix<double>            poly_I(3,3), poly_II(3,3),
                                     poly_III(3,3), poly_IV(3,3);
 
           

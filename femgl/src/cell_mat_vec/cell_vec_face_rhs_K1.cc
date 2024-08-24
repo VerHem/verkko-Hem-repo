@@ -99,15 +99,16 @@
 #include "dirichlet.h"
 #include "confreader.h"
 #include "matep.h"
-#include "BinA.h"
+//#include "BinA.h"
+#include "simplem.h"
 
 namespace FemGL_mpi
 {
   using namespace dealii;
 
   template <int dim>
-  double FemGL<dim>::vec_face_rhs_K1(FullMatrix<double> &phi_uf_i_q, FullMatrix<double> &phi_vf_i_q,
-				     FullMatrix<double> &old_f_solution_u, FullMatrix<double> &old_f_solution_v)
+  double FemGL<dim>::vec_face_rhs_K1(SimpleMatrix<double> &phi_uf_i_q, SimpleMatrix<double> &phi_vf_i_q,
+				     SimpleMatrix<double> &old_f_solution_u, SimpleMatrix<double> &old_f_solution_v)
   {
     //block of assembly starts from here, all local objects in there will be release to save memory leak
     /* --------------------------------------------------------------------------------
@@ -115,8 +116,8 @@ namespace FemGL_mpi
      * they are products of phi tensors or u/v tensors.
      * --------------------------------------------------------------------------------
      */
-    FullMatrix<double>  uf0_phi_uft_i_q(3,3),
-                        vf0_phi_vft_i_q(3,3);
+    SimpleMatrix<double>  uf0_phi_uft_i_q(3,3),
+                          vf0_phi_vft_i_q(3,3);
 
     /* --------------------------------------------------
      * conduct matrices multiplacations
