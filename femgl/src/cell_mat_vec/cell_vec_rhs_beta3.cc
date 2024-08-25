@@ -123,8 +123,8 @@ namespace FemGL_mpi
                                     /* ************** */
                                    v0_phi_ut_i_q(3,3), /*s*/
                                     /* ************** */
-                                   phi_ut_i_q_v0(3.3), /*????*/
-                                   phi_vt_i_q_u0(3.3); /*?6*/
+                                   phi_ut_i_q_v0(3,3), /*????*/
+                                   phi_vt_i_q_u0(3,3); /*?6*/
 
     SimpleMatrix<double>   mm1(3,3),mm2(3,3);
     
