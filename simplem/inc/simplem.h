@@ -38,10 +38,14 @@ namespace FemGL_mpi
  {
   public:
    // constructor
-   SimpleMatrix(unsigned int M, unsigned int N);
+   SimpleMatrix() = default;
+   SimpleMatrix(unsigned int M, unsigned int N, const numbertype number = 0.0);
 
    // overloading assignment oprator
    SimpleMatrix<numbertype> &operator= (const numbertype &number);
+
+   // overloading call () operator, return matrix element (m,n), this makes SimpleMatrix callable object
+   numbertype operator() (const unsigned  int, const unsigned int) const;
 
    // set element value on (i,j)
    void set(unsigned int i, unsigned int j, const numbertype &melement);

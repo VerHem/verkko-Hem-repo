@@ -28,18 +28,22 @@
  *
  */
 
-#include "SimpleMatrix.h"
+#include "simplem.h"
 #include <iostream>
 
 namespace FemGL_mpi
 {
 
 template <typename numbertype>
-SimpleMatrix<numbertype>::SimpleMatrix(unsigned int M, unsigned int N)
+SimpleMatrix<numbertype>::SimpleMatrix(unsigned int M, unsigned int N, const numbertype number)
   : nRow(M), nCol(N)
 {
   for (unsigned int m = 0; m < 9u; ++m)
-     mData[m] = 0.0;   
+     mData[m] = 0.0;
+
+  // generate diagnolized Matrix if bumber != 0
+  if (number != 0.0)
+    { mData[0] = number; mData[4] = number; mData[8] = number; }  
 }
 
 template <typename numbertype>
@@ -51,6 +55,12 @@ SimpleMatrix<numbertype> &SimpleMatrix<numbertype>::operator= (const numbertype 
   return *this; 
 }
 
+template <typename numbertype>
+numbertype SimpleMatrix<numbertype>::operator() (const unsigned int i, const unsigned int j) const
+{
+  return (this->mData[(i * nCol) + j]); 
+}
+  
 template <typename numbertype>
 void SimpleMatrix<numbertype>::set(unsigned int i, unsigned int j, const numbertype &melement)
 {

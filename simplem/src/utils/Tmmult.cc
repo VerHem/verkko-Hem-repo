@@ -29,7 +29,7 @@
  */
 
 
-#include "SimpleMatrix.h"
+#include "simplem.h"
 #include <iostream>
 
 namespace FemGL_mpi
