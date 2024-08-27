@@ -5,8 +5,11 @@
 *.txt~
 *.vtk
 *.pdf
-*.vtu*
+
 *.h5
+*.cmake
+*.vtu*
+xs
 
 *~
 *.csv
@@ -23,6 +26,7 @@ complexGL
 
 CMakeFiles/
 doc/
+ScalarGL_RealValue_DifferentGeometry_1/
 poissonEq_hdf5OutPut/
 build/
 
