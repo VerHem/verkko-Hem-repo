@@ -99,15 +99,16 @@
 #include "dirichlet.h"
 #include "confreader.h"
 #include "matep.h"
-#include "BinA.h"
+//#include "BinA.h"
+#include "simplem.h"
 
 namespace FemGL_mpi
 {
   using namespace dealii;
 
   template <int dim>
-  double FemGL<dim>::vec_rhs_K1(std::vector<FullMatrix<double>> &grad_old_u_q, std::vector<FullMatrix<double>> &grad_old_v_q,
-			        std::vector<FullMatrix<double>> &grad_phi_u_i_q, std::vector<FullMatrix<double>> &grad_phi_v_i_q)
+  double FemGL<dim>::vec_rhs_K1(std::vector<SimpleMatrix<double>> &grad_old_u_q, std::vector<SimpleMatrix<double>> &grad_old_v_q,
+			        std::vector<SimpleMatrix<double>> &grad_phi_u_i_q, std::vector<SimpleMatrix<double>> &grad_phi_v_i_q)
   {
     //block of assembly starts from here, all local objects in there will be release to save memory leak
     /* --------------------------------------------------------------------------------
@@ -115,7 +116,7 @@ namespace FemGL_mpi
      * they are products of phi tensors or u/v tensors.
      * --------------------------------------------------------------------------------
      */
-    FullMatrix<double> rhs_K1grad_matrics_sum_i_q(3,3);
+    SimpleMatrix<double> rhs_K1grad_matrics_sum_i_q(3,3);
     
     /*---------------------------------------------------------------------------------------------*/
     /* grad_phi^u_i_q, grad_phi^v_j_q matrices have beeen cooked up in other functions             */
@@ -129,7 +130,7 @@ namespace FemGL_mpi
 
     for (unsigned int k = 0; k < dim; ++k)
       {
-	/* FullMatrix::mTmult does C+=A.BT if the adding boolen is true
+	/* SimpleMatrix::mTmult does C+=A.BT if the adding boolen is true
          */
         grad_old_u_q[k].mTmult(rhs_K1grad_matrics_sum_i_q, grad_phi_u_i_q[k], true); 
         grad_old_v_q[k].mTmult(rhs_K1grad_matrics_sum_i_q, grad_phi_v_i_q[k], true); 

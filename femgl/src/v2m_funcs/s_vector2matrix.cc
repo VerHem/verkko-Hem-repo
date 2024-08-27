@@ -99,7 +99,8 @@
 #include "dirichlet.h"
 #include "confreader.h"
 #include "matep.h"
-#include "BinA.h"
+//#include "BinA.h"
+#include "simplem.h"
 
 namespace FemGL_mpi
 {
@@ -117,8 +118,8 @@ namespace FemGL_mpi
   void FemGL<dim>::vector_matrix_generator(const FEValues<dim>  &fe_values,
 					   const char &vector_flag,
 					   const unsigned int   q, const unsigned int n_q_points,
-					   FullMatrix<double>   &u_matrix_at_q,
-					   FullMatrix<double>   &v_matrix_at_q)
+					   SimpleMatrix<double>   &u_matrix_at_q,
+					   SimpleMatrix<double>   &v_matrix_at_q)
   {
     { // vector-matrix generator block starts from here, memory will be released after run
       //LA::MPI::Vector vector_solution(locally_relevant_dofs, mpi_communicator);
@@ -163,14 +164,14 @@ namespace FemGL_mpi
     
     } // vector-matrix generator block ends at here, release memory
 
-  }
+  } // func vector_matrix_generator() ends here
 
   template <int dim>
   void FemGL<dim>::grad_vector_matrix_generator(const FEValues<dim>  &fe_values,
 						const char &vector_flag,
 						const unsigned int q, const unsigned int n_q_points,
-						std::vector<FullMatrix<double>> &grad_u_at_q,
-						std::vector<FullMatrix<double>> &grad_v_at_q)
+						std::vector<SimpleMatrix<double>> &grad_u_at_q,
+						std::vector<SimpleMatrix<double>> &grad_v_at_q)
   {
     { //grad_vector_matrix block starts from here, memory must be released after this to save leak
       //LA::MPI::Vector vector_solution(locally_relevant_dofs, mpi_communicator);
@@ -220,8 +221,8 @@ namespace FemGL_mpi
   void FemGL<dim>::vector_face_matrix_generator(const FEFaceValues<dim> &fe_face_values,
 					        const char &vector_flag,
 					        const unsigned int   q, const unsigned int n_q_points,
-					        FullMatrix<double>   &u_face_matrix_at_q,
-					        FullMatrix<double>   &v_face_matrix_at_q,
+					        SimpleMatrix<double>   &u_face_matrix_at_q,
+					        SimpleMatrix<double>   &v_face_matrix_at_q,
 						types::boundary_id b_id)
   {
     { // vector-matrix generator block starts from here, memory will be released after run

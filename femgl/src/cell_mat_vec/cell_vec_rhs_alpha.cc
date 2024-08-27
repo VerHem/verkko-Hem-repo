@@ -99,15 +99,16 @@
 #include "dirichlet.h"
 #include "confreader.h"
 #include "matep.h"
-#include "BinA.h"
+//#include "BinA.h"
+#include "simplem.h"
 
 namespace FemGL_mpi
 {
   using namespace dealii;
 
   template <int dim>
-  double FemGL<dim>::vec_rhs_alpha(FullMatrix<double> &phi_u_i_q, FullMatrix<double> &phi_v_i_q,
-				  FullMatrix<double> &old_solution_u, FullMatrix<double> &old_solution_v)
+  double FemGL<dim>::vec_rhs_alpha(SimpleMatrix<double> &phi_u_i_q, SimpleMatrix<double> &phi_v_i_q,
+				   SimpleMatrix<double> &old_solution_u, SimpleMatrix<double> &old_solution_v)
   {
     //block of assembly starts from here, all local objects in there will be release to save memory leak
     /* --------------------------------------------------------------------------------
@@ -115,8 +116,8 @@ namespace FemGL_mpi
      * they are products of phi tensors or u/v tensors.
      * --------------------------------------------------------------------------------
      */
-    FullMatrix<double>  old_u_phi_ut_i_q(3,3),
-                        old_v_phi_vt_i_q(3,3);
+    SimpleMatrix<double>  old_u_phi_ut_i_q(3,3),
+                          old_v_phi_vt_i_q(3,3);
 
     /*--------------------------------------------------*/
     /* phi^u, phi^v matrices have been                  */

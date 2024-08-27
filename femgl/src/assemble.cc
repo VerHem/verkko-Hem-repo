@@ -99,7 +99,8 @@
 #include "dirichlet.h"
 #include "confreader.h"
 #include "matep.h"
-#include "BinA.h"
+//#include "BinA.h"
+#include "simplem.h"
 
 namespace FemGL_mpi
 {
@@ -146,13 +147,13 @@ namespace FemGL_mpi
       * --------------------------------------------------------------------------------
       */
 
-     FullMatrix<double> old_solution_u(3,3), old_f_solution_u(3,3);
-     FullMatrix<double> old_solution_v(3,3), old_f_solution_v(3,3);
+     SimpleMatrix<double> old_solution_u(3,3), old_f_solution_u(3,3);
+     SimpleMatrix<double> old_solution_v(3,3), old_f_solution_v(3,3);
 
      // containers of old_solution_gradients_u(3,3), old_solution_gradient_v(3,3);
-     const FullMatrix<double>        identity (IdentityMatrix(3));
-     std::vector<FullMatrix<double>> grad_old_u_q(dim, identity);     // grad_phi_u_i container of gradient matrics, [0, dim-1]
-     std::vector<FullMatrix<double>> grad_old_v_q(dim, identity);     // grad_phi_v_i container of gradient matrics, [0, dim-1]
+     const SimpleMatrix<double>        identity(3, 3, 1.0);     
+     std::vector<SimpleMatrix<double>> grad_old_u_q(dim, identity);     // grad_phi_u_i container of gradient matrics, [0, dim-1]
+     std::vector<SimpleMatrix<double>> grad_old_v_q(dim, identity);     // grad_phi_v_i container of gradient matrics, [0, dim-1]
 
      /* --------------------------------------------------------------------------------
       * matrices objects for shape functions tensors phi^u, phi^v.    
@@ -160,16 +161,16 @@ namespace FemGL_mpi
       * --------------------------------------------------------------------------------
       */
 
-     FullMatrix<double> phi_u_i_q(3,3), phi_uf_i_q(3,3);
-     FullMatrix<double> phi_u_j_q(3,3), phi_uf_j_q(3,3);
-     FullMatrix<double> phi_v_i_q(3,3), phi_vf_i_q(3,3);
-     FullMatrix<double> phi_v_j_q(3,3), phi_vf_j_q(3,3);
+     SimpleMatrix<double> phi_u_i_q(3,3), phi_uf_i_q(3,3);
+     SimpleMatrix<double> phi_u_j_q(3,3), phi_uf_j_q(3,3);
+     SimpleMatrix<double> phi_v_i_q(3,3), phi_vf_i_q(3,3);
+     SimpleMatrix<double> phi_v_j_q(3,3), phi_vf_j_q(3,3);
 
      //types::global_dof_index spacedim = (dim == 2)? 2 : 3;              // using  size_type = types::global_dof_index
-     std::vector<FullMatrix<double>> grad_phi_u_i_q(dim, identity);     // grad_phi_u_i container of gradient matrics, [0, dim-1]
-     std::vector<FullMatrix<double>> grad_phi_v_i_q(dim, identity);     // grad_phi_v_i container of gradient matrics, [0, dim-1]
-     std::vector<FullMatrix<double>> grad_phi_u_j_q(dim, identity);     // grad_phi_u_j container of gradient matrics, [0, dim-1]
-     std::vector<FullMatrix<double>> grad_phi_v_j_q(dim, identity);     // grad_phi_v_j container of gradient matrics, [0, dim-1]
+     std::vector<SimpleMatrix<double>> grad_phi_u_i_q(dim, identity);     // grad_phi_u_i container of gradient matrics, [0, dim-1]
+     std::vector<SimpleMatrix<double>> grad_phi_v_i_q(dim, identity);     // grad_phi_v_i container of gradient matrics, [0, dim-1]
+     std::vector<SimpleMatrix<double>> grad_phi_u_j_q(dim, identity);     // grad_phi_u_j container of gradient matrics, [0, dim-1]
+     std::vector<SimpleMatrix<double>> grad_phi_v_j_q(dim, identity);     // grad_phi_v_j container of gradient matrics, [0, dim-1]
      
      // vector-flag for old_soluttion
      char flag_solution = 's';

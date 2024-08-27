@@ -99,17 +99,18 @@
 #include "dirichlet.h"
 #include "confreader.h"
 #include "matep.h"
-#include "BinA.h"
+//#include "BinA.h"
+#include "simplem.h"
 
 namespace FemGL_mpi
 {
   using namespace dealii;
 
   template <int dim>
-  double FemGL<dim>::vec_rhs_K2K3(std::vector<FullMatrix<double>> grad_phi_u_i_q,
-				  std::vector<FullMatrix<double>> grad_phi_v_i_q,
-				  std::vector<FullMatrix<double>> grad_old_u_q,
-				  std::vector<FullMatrix<double>> grad_old_v_q)
+  double FemGL<dim>::vec_rhs_K2K3(std::vector<SimpleMatrix<double>> grad_phi_u_i_q,
+				  std::vector<SimpleMatrix<double>> grad_phi_v_i_q,
+				  std::vector<SimpleMatrix<double>> grad_old_u_q,
+				  std::vector<SimpleMatrix<double>> grad_old_v_q)
   {
     //block of assembly starts from here, all local objects in there will be release to save memory leak
     /* --------------------------------------------------------------------------------
@@ -122,9 +123,9 @@ namespace FemGL_mpi
     Vector<double> vec_partial_x_XX_x(3);
 
     /* container of all grad_phi_u/v_i_q and grad_old_u/v_q */
-    std::vector<std::vector<FullMatrix<double>>> container_grad{grad_old_u_q, grad_phi_u_i_q, grad_old_v_q, grad_phi_v_i_q};
+    std::vector<std::vector<SimpleMatrix<double>>> container_grad{grad_old_u_q, grad_phi_u_i_q, grad_old_v_q, grad_phi_v_i_q};
     
-    /*deal.ii::Vector<> doesn't need to be initialized in the way,which FullMatrix<> does i.e., '=0.0'.*/ 
+    /*deal.ii::Vector<> doesn't need to be initialized in the way,which SimpleMatrix<> does i.e., '=0.0'.*/ 
     /*dealii::Vector<> v(3) will do the job, in which a 3-components Vector is defines as 0-vector.    */ 
     
     Vector<double>  partial_x_phi_u_x_i(3);  //Vector of part_x_phi_u^mu_x_i, with i is DoF index, x is spatial-prbital index and they contract

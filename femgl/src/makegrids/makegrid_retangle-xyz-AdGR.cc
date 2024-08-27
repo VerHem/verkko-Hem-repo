@@ -97,51 +97,111 @@
 
 #include "femgl.h"
 #include "dirichlet.h"
-#include "confreader.h"
+#include "confreader.h" 
 #include "matep.h"
-//#include "BinA.h"
-#include "simplem.h"
 
 namespace FemGL_mpi
 {
   using namespace dealii;
 
   template <int dim>
-  double FemGL<dim>::mat_lhs_K1(std::vector<SimpleMatrix<double>> &grad_phi_u_i_q,
-				std::vector<SimpleMatrix<double>> &grad_phi_v_i_q,
-				std::vector<SimpleMatrix<double>> &grad_phi_u_j_q,
-				std::vector<SimpleMatrix<double>> &grad_phi_v_j_q)
+  void FemGL<dim>::make_grid()
   {
-    //block of assembly starts from here, all local objects in there will be release to save memory leak
-    /* --------------------------------------------------------------------------------
-     * matrics for free energy terms: gradient terms, alpha-term, beta-term,
-     * they are products of phi tensors or u/v tensors.
-     * --------------------------------------------------------------------------------
-     */
-    SimpleMatrix<double>              K1grad_matrics_sum_i_j_q(3,3);
-    
-    /*---------------------------------------------------------------------------------------------*/
-    /* grad_phi^u_i_q, grad_phi^v_j_q matrices have beeen cooked up in other functions             */
-    /*---------------------------------------------------------------------------------------------*/
-
-    /* --------------------------------------------------
-     * conduct matrices multiplacations
-     * --------------------------------------------------
-     */
-    K1grad_matrics_sum_i_j_q = 0.0; // initialize 
-
-    for (unsigned int k = 0; k < dim; ++k)
+    if (dim==2)
       {
-	/* SimpleMatrix::mTmult does C+=A.BT if the adding boolen is true
-         */
-        grad_phi_u_i_q[k].mTmult(K1grad_matrics_sum_i_j_q, grad_phi_u_j_q[k], true); 
-	grad_phi_v_i_q[k].mTmult(K1grad_matrics_sum_i_j_q, grad_phi_v_j_q[k], true);
+        /*const double half_length = 10.0, inner_radius = 2.0;
+        GridGenerator::hyper_cube_with_cylindrical_hole(triangulation,
+	inner_radius, half_length);*/
+
+	GridGenerator::hyper_cube(triangulation, 0., 10.);
+	
+        triangulation.refine_global(4);
+        // Dirichlet pillars centers
+        //const Point<dim> p1(0., 0.);
+
+        /*for (const auto &cell : triangulation.cell_iterators())
+        for (const auto &face : cell->face_iterators())
+ 	  {
+            const auto center = face->center();
+	    if (
+	        (std::fabs(center(0) - (-half_length)) < 1e-12)
+	        ||
+	        (std::fabs(center(0) - (half_length)) < 1e-12)
+	        ||
+	        (std::fabs(center(1) - (-half_length)) < 1e-12)
+	        ||
+	        (std::fabs(center(1) - (half_length)) < 1e-12)
+               )
+	       face->set_boundary_id(1);
+
+	    if ((std::fabs(center.distance(p1) - inner_radius) <=0.15))
+	      face->set_boundary_id(0);
+	      }*/
+
+        //triangulation.refine_global(1);
       }
-    
-    return  K1grad_matrics_sum_i_j_q.trace();
+    else if (dim==3)
+      {
+
+        /*---------------------------------------*/ 
+        /* loading refinements control paramters */
+        /*---------------------------------------*/
+        conf.enter_subsection("control parameters");
+        const unsigned int number_global_refine  = conf.get_integer("Number of initial global refinments");
+        const double half_x_length               = conf.get_double("half x length of retangle");
+        const double half_y_length               = conf.get_double("half y length of retangle");
+        const double half_z_length               = conf.get_double("half z length of retangle");	 	 
+        conf.leave_subsection();
+        /*---------------------------------------*/
+	/*    paramters loading ends at here     */
+        /*---------------------------------------*/
+
+        const Point<dim> p1(-half_x_length, -half_y_length, -half_z_length);
+        const Point<dim> p2(half_x_length, half_y_length, half_z_length);	
+	
+        GridGenerator::hyper_rectangle(triangulation,
+		  	               p1, p2); 		
+		
+	for (const auto &cell : triangulation.cell_iterators())
+	  for (const auto &face : cell->face_iterators())
+	    {
+	      const auto center = face->center();
+	      if (
+		  (std::fabs(center(0) - (-half_x_length)) < 1e-12 * half_x_length)
+		  ||
+		  (std::fabs(center(0) - half_x_length) < 1e-12 * half_x_length)
+		 )
+		face->set_boundary_id(2); // AdGR along x direction 
+
+	      if (
+		  (std::fabs(center(1) - (-half_y_length)) < 1e-12 * half_y_length)
+		  ||
+		  (std::fabs(center(1) - half_y_length) < 1e-12 * half_y_length)
+		 )
+	        face->set_boundary_id(3); // AdGR along y direction 
+
+	      if (
+		  (std::fabs(center(2) - (-half_z_length)) < 1e-12 * half_z_length)
+		  ||
+		  (std::fabs(center(2) - half_z_length) < 1e-12 * half_z_length)		  
+		 )
+	        face->set_boundary_id(4); // AdGR i.e., homogenuous Robin + Direchlet along z direction 
+	      
+	    }
+
+	triangulation.refine_global(number_global_refine /*4*/); // The refine_global() number is somehow important.
+	                                                         // If one puts just 3, DoF will be about 30K.
+	                                                         // When this small mount DoF are distribited on say 64 cpu processes,
+	                                                         // LAPCK rises up waring:
+	                                                         // "dorgqr WARNING : performing QR on a MxN matrix where M<N".
+	                                                         // To suppress this warning, one should put 4 as global refine number,
+	                                                         // looks like this will make DoF disstribution smoother and beheave better.
+	
+
+      } // dim==3 block
   }
 
   template class FemGL<3>;
-
-} // namespace FemGL_mpi ends at here
+  
+} // namespace FemGL_mpi
 

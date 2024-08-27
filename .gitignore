@@ -9,6 +9,7 @@
 *.h5
 *.cmake
 *.vtu*
+xs
 
 *~
 *.csv
