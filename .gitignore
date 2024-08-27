@@ -5,17 +5,24 @@
 *.txt~
 *.vtk
 *.pdf
+*.vtu*
 *.h5
-*.cmake
 
 *~
+*.csv
+*.out
 
 CMakeCache.txt
+*.cmake
 
-poisson_eq
-domain_dof
-domain
+Makefile
+
+# ignore execuatbe binary
+scalarGL_realValue
+complexGL
 
 CMakeFiles/
 doc/
-ScalarGL_RealValue_DifferentGeometry_1/
+poissonEq_hdf5OutPut/
+build/
+
