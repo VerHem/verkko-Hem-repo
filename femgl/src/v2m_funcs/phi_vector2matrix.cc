@@ -99,7 +99,8 @@
 #include "dirichlet.h"
 #include "confreader.h"
 #include "matep.h"
-#include "BinA.h"
+//#include "BinA.h"
+#include "simplem.h"
 
 namespace FemGL_mpi
 {
@@ -116,8 +117,8 @@ namespace FemGL_mpi
   template <int dim>
   void FemGL<dim>::phi_matrix_generator(const FEValues<dim> &fe_values,
  				        const unsigned int  x, const unsigned int q,
-					FullMatrix<double>  &phi_u_at_x_q,
-					FullMatrix<double>  &phi_v_at_x_q)
+					SimpleMatrix<double>  &phi_u_at_x_q,
+					SimpleMatrix<double>  &phi_v_at_x_q)
   {
     for (unsigned int comp_index = 0; comp_index <= 8; ++comp_index)
       {
@@ -131,8 +132,8 @@ namespace FemGL_mpi
   template <int dim>
   void FemGL<dim>::grad_phi_matrix_container_generator(const FEValues<dim> &fe_values,
 							     const unsigned int x, const unsigned int q,
-							     std::vector<FullMatrix<double>> &container_grad_phi_u_x_q,
-							     std::vector<FullMatrix<double>> &container_grad_phi_v_x_q)
+							     std::vector<SimpleMatrix<double>> &container_grad_phi_u_x_q,
+							     std::vector<SimpleMatrix<double>> &container_grad_phi_v_x_q)
   {
     /* auto grad_u11_x_q = fe_values[u11_component].gradient(x, q);
        auto grad_v33_x_q = fe_values[v33_component].gradient(x, q);*/
@@ -153,8 +154,8 @@ namespace FemGL_mpi
   template <int dim>
   void FemGL<dim>::phi_matrix_face_generator(const FEFaceValues<dim> &fe_face_values,
  				             const unsigned int  x, const unsigned int q,
-					     FullMatrix<double>  &phi_u_face_at_x_q,
-					     FullMatrix<double>  &phi_v_face_at_x_q,
+					     SimpleMatrix<double>  &phi_u_face_at_x_q,
+					     SimpleMatrix<double>  &phi_v_face_at_x_q,
 					     types::boundary_id b_id )
   {
     for (unsigned int comp_index = 0; comp_index <= 8; ++comp_index)

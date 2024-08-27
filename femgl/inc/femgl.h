@@ -113,6 +113,7 @@ namespace LA
 #include <iostream>
 
 #include "matep.h"
+#include "simplem.h"
 
 namespace FemGL_mpi
 {
@@ -144,82 +145,82 @@ namespace FemGL_mpi
 
     /* >>>>>>>>  lhs cell matrices terms <<<<<<<<< */
     
-    double mat_lhs_alpha(FullMatrix<double> &phi_u_i_q, FullMatrix<double> &phi_u_j_q,
-		         FullMatrix<double> &phi_v_i_q, FullMatrix<double> &phi_v_j_q);
+    double mat_lhs_alpha(SimpleMatrix<double> &phi_u_i_q, SimpleMatrix<double> &phi_u_j_q,
+		         SimpleMatrix<double> &phi_v_i_q, SimpleMatrix<double> &phi_v_j_q);
     
-    double mat_lhs_beta1(FullMatrix<double> &old_solution_u, FullMatrix<double> &old_solution_v,
-	                 FullMatrix<double> &phi_u_i_q,FullMatrix<double> &phi_u_j_q,
-		         FullMatrix<double> &phi_v_i_q,FullMatrix<double> &phi_v_j_q);
+    double mat_lhs_beta1(SimpleMatrix<double> &old_solution_u, SimpleMatrix<double> &old_solution_v,
+	                 SimpleMatrix<double> &phi_u_i_q,SimpleMatrix<double> &phi_u_j_q,
+		         SimpleMatrix<double> &phi_v_i_q,SimpleMatrix<double> &phi_v_j_q);
 
-    double mat_lhs_beta2(FullMatrix<double> &old_solution_u, FullMatrix<double> &old_solution_v,
-			 FullMatrix<double> &phi_u_i_q, FullMatrix<double> &phi_u_j_q,
-		         FullMatrix<double> &phi_v_i_q, FullMatrix<double> &phi_v_j_q);
+    double mat_lhs_beta2(SimpleMatrix<double> &old_solution_u, SimpleMatrix<double> &old_solution_v,
+			 SimpleMatrix<double> &phi_u_i_q, SimpleMatrix<double> &phi_u_j_q,
+		         SimpleMatrix<double> &phi_v_i_q, SimpleMatrix<double> &phi_v_j_q);
 
-    double mat_lhs_beta3(FullMatrix<double> &old_solution_u, FullMatrix<double> &old_solution_v,
-                         FullMatrix<double> &phi_u_i_q,FullMatrix<double> &phi_u_j_q,
-                         FullMatrix<double> &phi_v_i_q,FullMatrix<double> &phi_v_j_q);
+    double mat_lhs_beta3(SimpleMatrix<double> &old_solution_u, SimpleMatrix<double> &old_solution_v,
+                         SimpleMatrix<double> &phi_u_i_q,SimpleMatrix<double> &phi_u_j_q,
+                         SimpleMatrix<double> &phi_v_i_q,SimpleMatrix<double> &phi_v_j_q);
 
-    double mat_lhs_beta4(FullMatrix<double> &old_solution_u, FullMatrix<double> &old_solution_v,
-                         FullMatrix<double> &phi_u_i_q,FullMatrix<double> &phi_u_j_q,
-                         FullMatrix<double> &phi_v_i_q,FullMatrix<double> &phi_v_j_q);
+    double mat_lhs_beta4(SimpleMatrix<double> &old_solution_u, SimpleMatrix<double> &old_solution_v,
+                         SimpleMatrix<double> &phi_u_i_q,SimpleMatrix<double> &phi_u_j_q,
+                         SimpleMatrix<double> &phi_v_i_q,SimpleMatrix<double> &phi_v_j_q);
 
-    double mat_lhs_beta5(FullMatrix<double> &old_solution_u, FullMatrix<double> &old_solution_v,
-                         FullMatrix<double> &phi_u_i_q, FullMatrix<double> &phi_u_j_q,
-                         FullMatrix<double> &phi_v_i_q, FullMatrix<double> &phi_v_j_q);
+    double mat_lhs_beta5(SimpleMatrix<double> &old_solution_u, SimpleMatrix<double> &old_solution_v,
+                         SimpleMatrix<double> &phi_u_i_q, SimpleMatrix<double> &phi_u_j_q,
+                         SimpleMatrix<double> &phi_v_i_q, SimpleMatrix<double> &phi_v_j_q);
 
-    
-    
-    double mat_lhs_K1(std::vector<FullMatrix<double>> &grad_phi_u_i_q, std::vector<FullMatrix<double>> &grad_phi_v_i_q,
-		      std::vector<FullMatrix<double>> &grad_phi_u_j_q, std::vector<FullMatrix<double>> &grad_phi_v_j_q);
-
-    double mat_face_lhs_K1(FullMatrix<double> &phi_uf_i_q, FullMatrix<double> &phi_uf_j_q,
-		           FullMatrix<double> &phi_vf_i_q, FullMatrix<double> &phi_vf_j_q);
     
     
-    /*double mat_lhs_K2K3(std::vector<FullMatrix<double>> &grad_phi_u_i_q, std::vector<FullMatrix<double>> &grad_phi_v_i_q,
-      std::vector<FullMatrix<double>> &grad_phi_u_j_q, std::vector<FullMatrix<double>> &grad_phi_v_j_q);*/
+    double mat_lhs_K1(std::vector<SimpleMatrix<double>> &grad_phi_u_i_q, std::vector<SimpleMatrix<double>> &grad_phi_v_i_q,
+		      std::vector<SimpleMatrix<double>> &grad_phi_u_j_q, std::vector<SimpleMatrix<double>> &grad_phi_v_j_q);
+
+    double mat_face_lhs_K1(SimpleMatrix<double> &phi_uf_i_q, SimpleMatrix<double> &phi_uf_j_q,
+		           SimpleMatrix<double> &phi_vf_i_q, SimpleMatrix<double> &phi_vf_j_q);
+    
+    
+    /*double mat_lhs_K2K3(std::vector<SimpleMatrix<double>> &grad_phi_u_i_q, std::vector<SimpleMatrix<double>> &grad_phi_v_i_q,
+      std::vector<SimpleMatrix<double>> &grad_phi_u_j_q, std::vector<SimpleMatrix<double>> &grad_phi_v_j_q);*/
 
     
     /*there was a hiden bug, you can't put reference into std::vector directly */
-    double mat_lhs_K2K3(std::vector<FullMatrix<double>> grad_phi_u_i_q, std::vector<FullMatrix<double>> grad_phi_v_i_q,
-                        std::vector<FullMatrix<double>> grad_phi_u_j_q, std::vector<FullMatrix<double>> grad_phi_v_j_q);
+    double mat_lhs_K2K3(std::vector<SimpleMatrix<double>> grad_phi_u_i_q, std::vector<SimpleMatrix<double>> grad_phi_v_i_q,
+                        std::vector<SimpleMatrix<double>> grad_phi_u_j_q, std::vector<SimpleMatrix<double>> grad_phi_v_j_q);
     
     /* >>>>>>>>  rhs cell matrices terms <<<<<<<<< */
     
-    double vec_rhs_alpha(FullMatrix<double> &phi_u_i_q, FullMatrix<double> &phi_v_i_q,
-			 FullMatrix<double> &old_solution_u, FullMatrix<double> &old_solution_v);
+    double vec_rhs_alpha(SimpleMatrix<double> &phi_u_i_q, SimpleMatrix<double> &phi_v_i_q,
+			 SimpleMatrix<double> &old_solution_u, SimpleMatrix<double> &old_solution_v);
     
-    double vec_rhs_beta1(FullMatrix<double> &old_solution_u, FullMatrix<double> &old_solution_v,
-			 FullMatrix<double> &phi_u_i_q, FullMatrix<double> &phi_v_i_q);    
+    double vec_rhs_beta1(SimpleMatrix<double> &old_solution_u, SimpleMatrix<double> &old_solution_v,
+			 SimpleMatrix<double> &phi_u_i_q, SimpleMatrix<double> &phi_v_i_q);    
 
-    double vec_rhs_beta2(FullMatrix<double> &old_solution_u, FullMatrix<double> &old_solution_v,
-		         FullMatrix<double> &phi_u_i_q, FullMatrix<double> &phi_v_i_q);
+    double vec_rhs_beta2(SimpleMatrix<double> &old_solution_u, SimpleMatrix<double> &old_solution_v,
+		         SimpleMatrix<double> &phi_u_i_q, SimpleMatrix<double> &phi_v_i_q);
 
-    double vec_rhs_beta3(FullMatrix<double> &old_solution_u, FullMatrix<double> &old_solution_v,
-                         FullMatrix<double> &phi_u_i_q, FullMatrix<double> &phi_v_i_q);
+    double vec_rhs_beta3(SimpleMatrix<double> &old_solution_u, SimpleMatrix<double> &old_solution_v,
+                         SimpleMatrix<double> &phi_u_i_q, SimpleMatrix<double> &phi_v_i_q);
 
-    double vec_rhs_beta4(FullMatrix<double> &old_solution_u, FullMatrix<double> &old_solution_v,
-                         FullMatrix<double> &phi_u_i_q, FullMatrix<double> &phi_v_i_q);
+    double vec_rhs_beta4(SimpleMatrix<double> &old_solution_u, SimpleMatrix<double> &old_solution_v,
+                         SimpleMatrix<double> &phi_u_i_q, SimpleMatrix<double> &phi_v_i_q);
 
-    double vec_rhs_beta5(FullMatrix<double> &old_solution_u, FullMatrix<double> &old_solution_v,
-                         FullMatrix<double> &phi_u_i_q, FullMatrix<double> &phi_v_i_q);
+    double vec_rhs_beta5(SimpleMatrix<double> &old_solution_u, SimpleMatrix<double> &old_solution_v,
+                         SimpleMatrix<double> &phi_u_i_q, SimpleMatrix<double> &phi_v_i_q);
 
     
 
 
-    double vec_rhs_K1(std::vector<FullMatrix<double>> &grad_old_u_q, std::vector<FullMatrix<double>> &grad_old_v_q,
-		      std::vector<FullMatrix<double>> &grad_phi_u_i_q, std::vector<FullMatrix<double>> &grad_phi_v_i_q);
+    double vec_rhs_K1(std::vector<SimpleMatrix<double>> &grad_old_u_q, std::vector<SimpleMatrix<double>> &grad_old_v_q,
+		      std::vector<SimpleMatrix<double>> &grad_phi_u_i_q, std::vector<SimpleMatrix<double>> &grad_phi_v_i_q);
 
-    double vec_face_rhs_K1(FullMatrix<double> &phi_uf_i_q, FullMatrix<double> &phi_vf_i_q,
-			   FullMatrix<double> &old_f_solution_u, FullMatrix<double> &old_f_solution_v);
+    double vec_face_rhs_K1(SimpleMatrix<double> &phi_uf_i_q, SimpleMatrix<double> &phi_vf_i_q,
+			   SimpleMatrix<double> &old_f_solution_u, SimpleMatrix<double> &old_f_solution_v);
     
     
-    /*double vec_rhs_K2K3(std::vector<FullMatrix<double>> &grad_phi_u_i_q, std::vector<FullMatrix<double>> &grad_phi_v_i_q,
-      std::vector<FullMatrix<double>> &grad_old_u_q, std::vector<FullMatrix<double>> &grad_old_v_q);*/
+    /*double vec_rhs_K2K3(std::vector<SimpleMatrix<double>> &grad_phi_u_i_q, std::vector<SimpleMatrix<double>> &grad_phi_v_i_q,
+      std::vector<SimpleMatrix<double>> &grad_old_u_q, std::vector<SimpleMatrix<double>> &grad_old_v_q);*/
 
     /*there is a hiden bug, you can't put reference into std::vector directly */
-    double vec_rhs_K2K3(std::vector<FullMatrix<double>> grad_phi_u_i_q, std::vector<FullMatrix<double>> grad_phi_v_i_q,
-			std::vector<FullMatrix<double>> grad_old_u_q, std::vector<FullMatrix<double>> grad_old_v_q);
+    double vec_rhs_K2K3(std::vector<SimpleMatrix<double>> grad_phi_u_i_q, std::vector<SimpleMatrix<double>> grad_phi_v_i_q,
+			std::vector<SimpleMatrix<double>> grad_old_u_q, std::vector<SimpleMatrix<double>> grad_old_v_q);
     
     /*------------------------------------------------------------------------------------
      * declearations of cell-functions of K_i terms, alpha term and beta_i term, end here.
@@ -230,41 +231,41 @@ namespace FemGL_mpi
     void   vector_matrix_generator(const FEValues<dim>  &fe_values,
                                    const char &vector_flag,
                                    const unsigned int   q, const unsigned int   n_q_point,
-                                   FullMatrix<double>   &u_matrix_at_q,
-                                   FullMatrix<double>   &v_matrix_at_q);
+                                   SimpleMatrix<double>   &u_matrix_at_q,
+                                   SimpleMatrix<double>   &v_matrix_at_q);
 
     void   vector_face_matrix_generator(const FEFaceValues<dim> &fe_face_values,
 					const char &vector_flag,
 					const unsigned int   q, const unsigned int n_q_points,
-					FullMatrix<double>   &u_face_matrix_at_q,
-					FullMatrix<double>   &v_face_matrix_at_q,
+					SimpleMatrix<double>   &u_face_matrix_at_q,
+					SimpleMatrix<double>   &v_face_matrix_at_q,
 					types::boundary_id b_id);
 
     // matrices constraction function for last step u, v tensors
     void   grad_vector_matrix_generator(const FEValues<dim>  &fe_values,
                                         const char &vector_flag,
                                         const unsigned int   q, const unsigned int   n_q_point,
-                                        std::vector<FullMatrix<double>> &grad_u_at_q,
-                                        std::vector<FullMatrix<double>> &grad_v_at_q);
+                                        std::vector<SimpleMatrix<double>> &grad_u_at_q,
+                                        std::vector<SimpleMatrix<double>> &grad_v_at_q);
 
     // matrices construction function for shape function phi_u, phi_v at given local dof x and Gaussian q
     void   phi_matrix_generator(const FEValues<dim> &fe_values,
                                 const unsigned int  x, const unsigned int q,
-                                FullMatrix<double>  &phi_u_at_x_q,
-                                FullMatrix<double>  &phi_v_at_x_q);
+                                SimpleMatrix<double>  &phi_u_at_x_q,
+                                SimpleMatrix<double>  &phi_v_at_x_q);
 
     void   phi_matrix_face_generator(const FEFaceValues<dim> &fe_face_values,
    				     const unsigned int  x, const unsigned int q,
-				     FullMatrix<double>  &phi_u_face_at_x_q,
-				     FullMatrix<double>  &phi_v_face_at_x_q,
+				     SimpleMatrix<double>  &phi_u_face_at_x_q,
+				     SimpleMatrix<double>  &phi_v_face_at_x_q,
 				     types::boundary_id b_id);
    
 
     // matrices construction function for gradient of shape function, grad_k_phi_u/v at local dof x and Gaussian q
     void   grad_phi_matrix_container_generator(const FEValues<dim> &fe_values,
                                                const unsigned int x, const unsigned int q,
-                                               std::vector<FullMatrix<double>> &container_grad_phi_u_x_q,
-                                               std::vector<FullMatrix<double>> &container_grad_phi_v_x_q);
+                                               std::vector<SimpleMatrix<double>> &container_grad_phi_u_x_q,
+                                               std::vector<SimpleMatrix<double>> &container_grad_phi_v_x_q);
     
     
     //std::string        refinement_strategy = "global";

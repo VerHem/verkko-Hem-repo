@@ -34,7 +34,8 @@
 include_directories(
   ${CMAKE_SOURCE_DIR}/femgl/inc
   ${CMAKE_SOURCE_DIR}/confreader/inc
-  ${CMAKE_SOURCE_DIR}/matep/inc  
+  ${CMAKE_SOURCE_DIR}/matep/inc
+  ${CMAKE_SOURCE_DIR}/simplem/inc    
   )
 
 add_library(femgl STATIC

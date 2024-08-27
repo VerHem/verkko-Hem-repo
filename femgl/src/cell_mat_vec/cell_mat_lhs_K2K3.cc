@@ -99,17 +99,18 @@
 #include "dirichlet.h"
 #include "confreader.h"
 #include "matep.h"
-#include "BinA.h"
+//#include "BinA.h"
+#include "simplem.h"
 
 namespace FemGL_mpi
 {
   using namespace dealii;
 
   template <int dim>
-  double FemGL<dim>::mat_lhs_K2K3(std::vector<FullMatrix<double>> grad_phi_u_i_q, /* here is bug, reference &grad_phi_u_i_q can't be directly put in std::vector*/
-				  std::vector<FullMatrix<double>> grad_phi_v_i_q,
-				  std::vector<FullMatrix<double>> grad_phi_u_j_q,
-				  std::vector<FullMatrix<double>> grad_phi_v_j_q)
+  double FemGL<dim>::mat_lhs_K2K3(std::vector<SimpleMatrix<double>> grad_phi_u_i_q, /* here is bug, reference &grad_phi_u_i_q can't be directly put in std::vector*/
+				  std::vector<SimpleMatrix<double>> grad_phi_v_i_q,
+				  std::vector<SimpleMatrix<double>> grad_phi_u_j_q,
+				  std::vector<SimpleMatrix<double>> grad_phi_v_j_q)
   {
     //block of assembly starts from here, all local objects in there will be release to save memory leak
     /* --------------------------------------------------------------------------------
@@ -118,13 +119,13 @@ namespace FemGL_mpi
      * --------------------------------------------------------------------------------
      */
 
-    /* declear a FullMatrix<> to use extract_submatrix_from() funtion to hold part_x_phi_u/v_x */
+    /* declear a SimpleMatrix<> to use extract_submatrix_from() funtion to hold part_x_phi_u/v_x */
     Vector<double> vec_partial_x_phi_x(3);
 
     /* container of all grad_phi_u/v_i/j_q */
-    std::vector<std::vector<FullMatrix<double>>> container_grad_phi{grad_phi_u_i_q, grad_phi_u_j_q, grad_phi_v_i_q, grad_phi_v_j_q};
+    std::vector<std::vector<SimpleMatrix<double>>> container_grad_phi{grad_phi_u_i_q, grad_phi_u_j_q, grad_phi_v_i_q, grad_phi_v_j_q};
     
-    /*deal.ii::Vector<> doesn't need to be initialized in the way,which FullMatrix<> does i.e., '=0.0'.*/ 
+    /*deal.ii::Vector<> doesn't need to be initialized in the way,which SimpleMatrix<> does i.e., '=0.0'.*/ 
     /*dealii::Vector<> v(3) will do the job, in which a 3-components Vector is defines as 0-vector.    */ 
     
     Vector<double>  partial_x_phi_u_x_i(3);  //Vector of part_x_phi_u^mu_x_i, with i is DoF index, x is spatial-prbital index and they contract
@@ -174,7 +175,7 @@ namespace FemGL_mpi
 
 	  }
 
-	/* FullMatrix<>::add_col() A(1...n,i) += s*A(1...n,j) + t*A(1...n,k). Multiple addition of columns of this. */
+	/* SimpleMatrix<>::add_col() A(1...n,i) += s*A(1...n,j) + t*A(1...n,k). Multiple addition of columns of this. */
 
       }
 
