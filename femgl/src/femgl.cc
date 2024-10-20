@@ -98,7 +98,6 @@
 #include "dirichlet.h"
 #include "confreader.h"
 #include "matep.h"
-#include "BinA.h"
 
 namespace FemGL_mpi
 {
@@ -177,6 +176,9 @@ namespace FemGL_mpi
           << " Number of MPI processes is " << Utilities::MPI::n_mpi_processes(mpi_communicator)
           << "\n"
           << " p is " << p << ", t is " << reduced_t << ", T is " << (reduced_t * mat.Tcp_mK(p))
+          << "\n"
+          << " xi0p is " << mat.xi0p(p) << "nm, " << " xi0GLp is " << mat.xi0GLp(p) << "nm, "
+	  << "xiGLpT is " << mat.xiGLpT(p, (reduced_t * mat.Tcp_mK(p))) << "nm."
           << "\n"
           << " AdGR expolation lenghtn bt is " << bt << ", SCC_key is " << SCC_key
           << "\n"
