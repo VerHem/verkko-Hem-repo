@@ -99,7 +99,8 @@
 #include "dirichlet.h"
 #include "confreader.h"
 #include "matep.h"
-#include "A_phase_monople_config_2.h"
+//#include "A_phase_monople_config_2.h"
+#include "A_phase_monople_config_3_inter-with-fluctuation.h"
  
 
 namespace FemGL_mpi
