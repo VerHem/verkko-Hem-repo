@@ -61,6 +61,8 @@ namespace FemGL_mpi
         real_t mEffp(real_t p);                // quisiparticle effective mass 
         real_t vFp(real_t p);                  // Fermi velocity
         real_t xi0p(real_t p);                 // zero Temperature coherent length
+        real_t xi0GLp(real_t p);               // zero Temperature GL coherent length
+        real_t xiGLpT(real_t p, real_t T);     // T-dependent GL coherent length      
         double N0p(real_t p);                  // deisty of state on Fermi surface
   
 
