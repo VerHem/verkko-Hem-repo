@@ -107,7 +107,7 @@ namespace FemGL_mpi
   using namespace dealii;
 
   template <int dim>
-  void FemGL<dim>::refine_grid(std::string &refinement_strategy)
+  void FemGL<dim>::refine_grid(std::string &refinement_strategy, const double refine_ratio)
   {
     TimerOutput::Scope t(computing_timer, "refine");
 
@@ -137,7 +137,7 @@ namespace FemGL_mpi
          /* loading refinements control paramters */
          /*---------------------------------------*/
          conf.enter_subsection("control parameters");
-         const double refine_ratio  = conf.get_double("adaptive refinment ratio");
+         // const double refine_ratio  = conf.get_double("adaptive refinment ratio");
          const double coarsen_ratio = conf.get_double("adaptive coarsen ratio");	 
 	 conf.leave_subsection();
          /*---------------------------------------*/

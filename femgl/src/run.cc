@@ -116,19 +116,29 @@ namespace FemGL_mpi
     conf.enter_subsection("control parameters"); 
     const unsigned int n_cycles                = conf.get_integer("Number of refinements");
     const unsigned int n_iteration             = conf.get_integer("Number of interations");
+    
     const double       Cycle0_refine_threshold = conf.get_double("Cycle 0 refinement threshold");
     const double       Cycle0_solve_tol        = conf.get_double("Cycle 0 linear solver tol");
+    
     const double       Cycle1_refine_threshold = conf.get_double("Cycle 1 refinement threshold");
     const bool         Cycle1_do_global_refine = conf.get_bool("Cycle 1 do global refinement");
-    const double       Cycle1_solve_tol        = conf.get_double("Cycle 1 linear solver tol");    
+    const double       Cycle1_adaptive_refinment_ratio = conf.get_double("Cycle 1 adaptive refinment ratio");
+    const double       Cycle1_solve_tol        = conf.get_double("Cycle 1 linear solver tol");
+    
     const double       Cycle2_refine_threshold = conf.get_double("Cycle 2 refinement threshold");
     const bool         Cycle2_do_global_refine = conf.get_bool("Cycle 2 do global refinement");
-    const double       Cycle2_solve_tol        = conf.get_double("Cycle 2 linear solver tol");    
+    const double       Cycle2_adaptive_refinment_ratio = conf.get_double("Cycle 2 adaptive refinment ratio");    
+    const double       Cycle2_solve_tol        = conf.get_double("Cycle 2 linear solver tol");
+    
     const double       Cycle3_refine_threshold = conf.get_double("Cycle 3 refinement threshold");
     const bool         Cycle3_do_global_refine = conf.get_bool("Cycle 3 do global refinement");
-    const double       Cycle3_solve_tol        = conf.get_double("Cycle 3 linear solver tol");    
+    const double       Cycle3_adaptive_refinment_ratio = conf.get_double("Cycle 3 adaptive refinment ratio");    
+    const double       Cycle3_solve_tol        = conf.get_double("Cycle 3 linear solver tol");
+    
     const bool         Cycle4_do_global_refine = conf.get_bool("Cycle 4 do global refinement");
-    const double       Cycle4_solve_tol        = conf.get_double("Cycle 4 linear solver tol");    
+    const double       Cycle4_adaptive_refinment_ratio = conf.get_double("Cycle 4 adaptive refinment ratio");    
+    const double       Cycle4_solve_tol        = conf.get_double("Cycle 4 linear solver tol");
+    
     const double       converge_acc            = conf.get_double("converge accuracy");
     conf.leave_subsection();
     /*---------------------------------------*/
@@ -148,6 +158,12 @@ namespace FemGL_mpi
 					          Cycle3_do_global_refine,
 					          Cycle4_do_global_refine};
 
+    std::vector<double> cycleX_adaptive_refinment_ratio{Cycle1_adaptive_refinment_ratio,
+		 			                Cycle2_adaptive_refinment_ratio,
+					                Cycle3_adaptive_refinment_ratio,
+					                Cycle4_adaptive_refinment_ratio};
+    
+    
     std::vector<double> cycleX_solve_tol{Cycle0_solve_tol,
                                          Cycle1_solve_tol,
                                          Cycle2_solve_tol,
@@ -181,8 +197,9 @@ namespace FemGL_mpi
 	  }
 	else if (cycle > 0)
 	  {
-	   pcout << " 0th rank has active cells : " << triangulation.n_active_cells()
-	         << " cycleX_refine_strategy[cycle-1] is " << cycleX_refine_strategy[cycle-1]
+	   pcout << " 0th rank has active cells : "                 << triangulation.n_active_cells()
+	         << " cycleX_refine_strategy[cycle-1] is "          << cycleX_refine_strategy[cycle-1]
+	         << " cycleX_adaptive_refinment_ratio[cycle-1] is " << cycleX_adaptive_refinment_ratio[cycle-1]
 	         << "\n"
 	         << std::endl;
 
@@ -191,7 +208,7 @@ namespace FemGL_mpi
            else
             ref_str = "global";
 
-	   refine_grid(ref_str);		   	   
+	   refine_grid(ref_str, cycleX_adaptive_refinment_ratio[cycle-1]);		   	   
 	  }
 	
         // if (cycle == 0)

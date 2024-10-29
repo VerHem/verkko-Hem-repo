@@ -192,7 +192,10 @@ namespace FemGL_mpi
       prm.declare_entry("Number of refinements", "4", Patterns::Integer(0),
 			"default value is 5, this is needed in run()");
 
-      prm.declare_entry("Number of interations", "40", Patterns::Integer(0),
+      prm.declare_entry("Number of initial global refinments", "4", Patterns::Integer(0),
+			"default value is 4, which is used in makegrid() call");
+   
+      prm.declare_entry("Number of interations", "50", Patterns::Integer(0),
 			"number of iterations run in one Cycle");
       
 
@@ -211,8 +214,11 @@ namespace FemGL_mpi
       prm.declare_entry("Cycle 1 do global refinement", "false", Patterns::Bool(),
 			"default value is false, which is used in run() call");
 
+      prm.declare_entry("Cycle 1 adaptive refinment ratio", "0.32", Patterns::Double(0),
+			"the refinement ratio of grid at begnning of Cycle 1");
+     
       prm.declare_entry("Cycle 1 linear solver tol", "1.0e-1", Patterns::Double(0),
-			"Refine grid when the difference of residual.norm() smaller than this value in Cycle 1");
+			"linear iterative solver tolrence in Cycle 1");
       
 
       prm.declare_entry("Cycle 2 refinement threshold", "1.0e0", Patterns::Double(0),
@@ -221,8 +227,11 @@ namespace FemGL_mpi
       prm.declare_entry("Cycle 2 do global refinement", "false", Patterns::Bool(),
 			"default value is false, which is used in run() call");
 
+      prm.declare_entry("Cycle 2 adaptive refinment ratio", "0.32", Patterns::Double(0),
+			"the refinement ratio of grid at begnning of Cycle 2");
+     
       prm.declare_entry("Cycle 2 linear solver tol", "1.0e-1", Patterns::Double(0),
-			"Refine grid when the difference of residual.norm() smaller than this value in Cycle 2");
+			"linear iterative solver tolrence in Cycle 2");
 
       
 
@@ -232,16 +241,22 @@ namespace FemGL_mpi
       prm.declare_entry("Cycle 3 do global refinement", "false", Patterns::Bool(),
 			"default value is false, which is used in run() call");
 
+      prm.declare_entry("Cycle 3 adaptive refinment ratio", "0.10", Patterns::Double(0),
+			"the refinement ratio of grid at begnning of Cycle 3");
+     
       prm.declare_entry("Cycle 3 linear solver tol", "1.0e-1", Patterns::Double(0),
-			"Refine grid when the difference of residual.norm() smaller than this value in Cycle 3");
+			"linear iterative solver tolrence in Cycle 3");
       
 
 
       prm.declare_entry("Cycle 4 do global refinement", "false", Patterns::Bool(),
 			"default value is false, which is used in run() call");
 
+      prm.declare_entry("Cycle 4 adaptive refinment ratio", "0.10", Patterns::Double(0),
+			"the refinement ratio of grid at begnning of Cycle 4");
+      
       prm.declare_entry("Cycle 4 linear solver tol", "1.0e-1", Patterns::Double(0),
-			"Refine grid when the difference of residual.norm() smaller than this value in Cycle 4");
+			"linear iterative solver tolrence in Cycle 4");
       
       
       
@@ -252,14 +267,11 @@ namespace FemGL_mpi
       //--------------------------------------------------
       //--------------------------------------------------      
             
-      prm.declare_entry("adaptive refinment ratio", "0.3", Patterns::Double(0),
-			"refiment parameter for refine_and_coarsen_fixed_number() call");
+      // prm.declare_entry("adaptive refinment ratio", "0.3", Patterns::Double(0),
+      // 			"refiment parameter for refine_and_coarsen_fixed_number() call");
 
       prm.declare_entry("adaptive coarsen ratio", "0.0", Patterns::Double(0),
 			"coarsen parameter for refine_and_coarsen_fixed_number() call");
-
-      prm.declare_entry("Number of initial global refinments", "4", Patterns::Integer(0),
-			"default value is 4, which is used in makegrid() call");
 
       // prm.declare_entry("do global refinement", "false", Patterns::Bool(),
       // 			"default value is false, which is used in run() call"); 
