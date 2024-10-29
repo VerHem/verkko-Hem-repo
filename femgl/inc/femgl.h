@@ -134,7 +134,7 @@ namespace FemGL_mpi
     void compute_residual(/*const LA::MPI::Vector &*/);
     void solve(const double &);
     void newton_iteration();
-    void refine_grid(std::string &);
+    void refine_grid(std::string &, const double);
     void output_results(const std::string &dirc) const;
 
 
