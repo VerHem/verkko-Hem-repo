@@ -46,7 +46,7 @@ IF(NOT ${deal.II_FOUND})
 ENDIF()
 
 deal_ii_initialize_cached_variables()
-project(VerHem VERSION 0.1)
+project(VerHem VERSION 0.0.2)
 
 add_subdirectory(matep)
 add_subdirectory(confreader)

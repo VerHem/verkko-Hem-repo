@@ -97,5 +97,5 @@ add_library(femgl STATIC
   )
 
 deal_ii_setup_target(femgl)
-target_link_libraries(femgl conf matep)
+target_link_libraries(femgl conf matep simplem)
   
