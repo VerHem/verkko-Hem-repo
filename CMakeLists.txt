@@ -32,7 +32,7 @@
 cmake_minimum_required(VERSION 3.13.4)
 #find_package(deal.II 9.3.0 REQUIRED)
 
-set(DEAL_II_DIR "/projappl/project_462000604/libs/dealii-9.6")
+set(DEAL_II_DIR "/projappl/project_462000604/libs/dealii-9.5")
 
 FIND_PACKAGE(deal.II 9.3.0
   HINTS ${deal.II_DIR} ${DEAL_II_DIR} ../ ../../ $ENV{DEAL_II_DIR}
