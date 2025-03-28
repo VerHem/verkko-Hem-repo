@@ -298,6 +298,14 @@ namespace FemGL_mpi
 
       prm.declare_entry("primary step length of dampped newton iteration", "0.83", Patterns::Double(0),
 			"0.83 seems work well, not drop too fast");
+
+      //--------------------------------------------------
+      //--------------------------------------------------      
+
+      /* vtu checkpoint controling */
+      prm.declare_entry("Over writing former vtu output", "true", Patterns::Bool(),
+			"over writing privious vtu is default, false make whole iteration be checkpointed, which is disck killer");      
+      
                    
     }
     prm.leave_subsection();
