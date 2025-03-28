@@ -107,6 +107,7 @@ namespace FemGL_mpi
   FemGL<dim>::FemGL(unsigned int Q_degree,
 		    ParameterHandler &prmHandler)
     : degree(Q_degree)
+    , iteration_loop(0u)  
     , mpi_communicator(MPI_COMM_WORLD)
     , fe(FE_Q<dim>(Q_degree), 18)
     , triangulation(mpi_communicator,
@@ -175,20 +176,47 @@ namespace FemGL_mpi
           << "------------------------------------------------------" << "\n"
           << " Number of MPI processes is " << Utilities::MPI::n_mpi_processes(mpi_communicator)
           << "\n"
-          << " p is " << p << ", t is " << reduced_t << ", T is " << (reduced_t * mat.Tcp_mK(p))
+          << " p is " << p
           << "\n"
-          << " xi0p is " << mat.xi0p(p) << "nm, " << " xi0GLp is " << mat.xi0GLp(p) << "nm, "
-	  << "xiGLpT is " << mat.xiGLpT(p, (reduced_t * mat.Tcp_mK(p))) << "nm."
+	  << " Tc is " << mat.Tcp_mK(p)
           << "\n"
-          << " AdGR expolation lenghtn bt is " << bt << ", SCC_key is " << SCC_key
+	  << " t is " << reduced_t
           << "\n"
-          << " gapA is " << mat.gap_A_td(p, reduced_t) << ", gapB is " << mat.gap_B_td(p, reduced_t)
+	  << " T is " << (reduced_t * mat.Tcp_mK(p)) << "mK"
           << "\n"
-          << " f_A is " << mat.f_A_td(p, reduced_t) << ", f_B is " << mat.f_B_td(p, reduced_t)
+          << " tAB is " << mat.tAB_RWS(p)
+	  << "\n"
+	  << " TAB is " << (mat.tAB_RWS(p) * mat.Tcp_mK(p)) << "mK"
           << "\n"
-          << " alpha is " << alpha << ", beta1 is " << beta1 << ", beta2 is " << beta2
+          << " xi0p is " << mat.xi0p(p) << "nm"
           << "\n"
-          << " beta3 is " << beta3 << ", beta4 is " << beta4 << ", beta5 is " << beta5
+	  << " xi0GLp is " << mat.xi0GLp(p) << "nm"
+          << "\n"
+	  << " xiGLpT is " << mat.xiGLpT(p, (reduced_t * mat.Tcp_mK(p))) << "nm"
+          << "\n"
+          << " AdGR expolation lenghtn bt is " << bt
+          << "\n"
+	  << " SCC_key is " << SCC_key
+          << "\n"
+          << " Buld gapA is " << mat.gap_A_td(p, reduced_t)
+          << "\n"
+	  << " Bulk gapB is " << mat.gap_B_td(p, reduced_t)
+          << "\n"
+          << " Bulk f_A is " << mat.f_A_td(p, reduced_t)
+          << "\n"
+	  << " Bulk f_B is " << mat.f_B_td(p, reduced_t)
+          << "\n"
+          << " alpha is " << alpha
+          << "\n"
+	  << " beta1 is " << beta1
+          << "\n"
+	  << " beta2 is " << beta2
+          << "\n"
+          << " beta3 is " << beta3
+          << "\n"
+	  << " beta4 is " << beta4
+          << "\n"
+	  << " beta5 is " << beta5
           << "\n"
           << "------------------------------------------------------" << "\n"
           << ">>>>>>>>>>  Physical Parameters in this run  <<<<<<<<<" << "\n"
