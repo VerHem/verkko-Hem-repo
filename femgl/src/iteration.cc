@@ -201,6 +201,13 @@ namespace FemGL_mpi
 	    {
              pcout << " haa! current_residual >= previous_residual, more line search ! "
 	           << std::endl;
+	     if (i == 99)
+	       {
+		 pcout << "\n"
+		       << "maximum line search step has arrived, no good solution is found, better stop! "
+		       << "\n"
+		       << std::endl;
+	       } // unsucceeeful line-search warning
 	    }
 	  
           } // for loop ends at here
