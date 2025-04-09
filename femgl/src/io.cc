@@ -175,11 +175,11 @@ namespace FemGL_mpi
 
      if (over_writing_vtu == false)
        data_out.write_vtu_with_pvtu_record(
-        dirc, "setup_conf", iteration_loop, mpi_communicator, 2);
+        dirc, "output_conf", iteration_loop, mpi_communicator, 2);
      else
        // when overwriting the former output,
        // the soultion counter is set to be 0
-       data_out.write_vtu_with_pvtu_record(dirc, "setup_conf", 0, mpi_communicator, 2);
+       data_out.write_vtu_with_pvtu_record(dirc, "output_conf", 0, mpi_communicator, 2);
 
        
     } // DataOut block ends here, release memory
