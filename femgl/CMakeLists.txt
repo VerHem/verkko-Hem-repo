@@ -49,11 +49,11 @@ add_library(femgl STATIC
 #  ${CMAKE_SOURCE_DIR}/femgl/src/makegrids/makegrid_cube-z-normal_AdGR.cc
 #  ${CMAKE_SOURCE_DIR}/femgl/src/makegrids/makegrid_retangle-xyz-periodic.cc
 #  ${CMAKE_SOURCE_DIR}/femgl/src/makegrids/makegrid_retangle-xyz-homogenous-Neumann.cc
-#  ${CMAKE_SOURCE_DIR}/femgl/src/makegrids/makegrid_retangle-z-AdGR_xy-periodic.cc
-   ${CMAKE_SOURCE_DIR}/femgl/src/makegrids/makegrid_retangle-xyz-AdGR.cc
+   ${CMAKE_SOURCE_DIR}/femgl/src/makegrids/makegrid_retangle-z-AdGR_xy-periodic.cc
+#  ${CMAKE_SOURCE_DIR}/femgl/src/makegrids/makegrid_retangle-xyz-AdGR.cc
 #  ${CMAKE_SOURCE_DIR}/femgl/src/makegrids/makegrid_retangle-z-AdGR-xy-HomoNeumann.cc
 #  ${CMAKE_SOURCE_DIR}/femgl/src/makegrids/makegrid_retangle-z-AdGR_x-periodic-y-HomoNeumann.cc
-   ${CMAKE_SOURCE_DIR}/femgl/src/setups/setup_uniform_A-phase-AdGR-monopole-config.cc
+#  ${CMAKE_SOURCE_DIR}/femgl/src/setups/setup_uniform_A-phase-AdGR-monopole-config.cc
 #  ${CMAKE_SOURCE_DIR}/femgl/src/setups/setup_uniform_A-phase.cc
 #  ${CMAKE_SOURCE_DIR}/femgl/src/setups/setup_uniform_B-phase.cc
 #  ${CMAKE_SOURCE_DIR}/femgl/src/setups/setup_fully_random.cc
@@ -61,7 +61,7 @@ add_library(femgl STATIC
 #  ${CMAKE_SOURCE_DIR}/femgl/src/setups/setup_fully_random-xyz-periodic.cc
 #  ${CMAKE_SOURCE_DIR}/femgl/src/setups/setup_fully_random_z-AdGR-x-periodic-y-Homo-Neumann.cc
 #  ${CMAKE_SOURCE_DIR}/femgl/src/setups/setup_uniform_BnB-polkka-dot-like-configuration.cc
-#  ${CMAKE_SOURCE_DIR}/femgl/src/setups/setup_weak-coupling-PDW-configuration.cc
+   ${CMAKE_SOURCE_DIR}/femgl/src/setups/setup_weak-coupling-PDW-configuration.cc
 #  ${CMAKE_SOURCE_DIR}/femgl/src/setups/setup_uniform_BinA-bubble-like-configuration.cc
 #  ${CMAKE_SOURCE_DIR}/femgl/src/setups/setup_uniform_BnA-flatwall-configuration.cc
 #  ${CMAKE_SOURCE_DIR}/femgl/src/setups/setup_BnA-xyz-periodic.cc
