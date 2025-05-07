@@ -1,0 +1,141 @@
+subsection physical parameters
+  # pressure
+    set pressure in bar  = 32.0
+
+  # reduced temperature
+    set t_reduced        = 0.83
+
+  # diffuse parameter
+    set AdGR diffuse length        = 1e10
+
+  # gaussian radom mean value
+    set gaussian random mean value = 2.0
+
+  # JWS2019 SCC switch
+    set trun on Strong Coupling Correction = true
+
+  # expansion amplitude u pd PDW anzaz in arXiv:2104.15125
+    set amplitude u parameter = 0.8
+
+
+end
+
+subsection control parameters
+  # cube half_side length
+    set cube half side length          = 4.5
+
+  #########################################################
+  #########################################################  
+
+ # retangle box x length
+    set half x length of retangle      = 70.0
+
+ # retangle box y length
+    set half y length of retangle      = 70.0
+
+ # retangle box z length
+    set half z length of retangle      = 40.0
+
+  #########################################################
+  #########################################################  
+
+ # BinB polkka-dot configuration with 7.46 xi0GL slab, default value is 0.46
+    set B-phase inner plate radius ratio      = 0.4666
+
+
+ # BinA ini-configuration B-ball radius ratio, 0.775 srink to A, 0.8 expand toward to B
+    set B-phase ball radius ratio      = 0.79375
+
+
+  # NO of global/adaptive refinement, 4 is final adaptive refinment level
+    set Number of refinements  = 3
+
+  # No of initial global refinments
+    set Number of initial global refinments = 6
+
+  # maximum number of interations in every refinement cycle
+    set Number of interations = 100000
+
+  #########################################################
+  #########################################################  
+
+
+  # Cycle 0 refinement threshold
+    set Cycle 0 refinement threshold = 1e-5
+
+  # Cycle 0 FGMRES solver tol
+    set Cycle 0 linear solver tol    = 9.15e-1
+
+
+
+  # Cycle 1 refinement threshold
+    set Cycle 1 refinement threshold = 1e-6
+
+  # Cycle 1 do global refinement
+    set Cycle 1 do global refinement = false
+
+  # Cycle 1 adaptive refinement ratio if adaptive is used, i.e., global refine is false
+    set Cycle 1 adaptive refinment ratio = 0.36
+
+  # Cycle 1 FGMRES solver tol
+    set Cycle 1 linear solver tol    = 6.5e-1
+
+
+  # Cycle 2 refinement threshold
+    set Cycle 2 refinement threshold = 1e-7
+
+  # Cycle 2 do global refinement
+    set Cycle 2 do global refinement = false
+
+  # Cycle 2 adaptive refinement ratio if adaptive is used, i.e., global refine is false
+    set Cycle 2 adaptive refinment ratio = 0.32
+
+  # Cycle 2 FGMRES solver tol
+    set Cycle 2 linear solver tol    = 5.0e-1
+
+
+
+  # Cycle 3 refinement threshold
+    set Cycle 3 refinement threshold = 1e-8
+
+  # Cycle 3 do global refinement
+    set Cycle 3 do global refinement = false
+
+  # Cycle 3 adaptive refinement ratio if adaptive is used, i.e., global refine is false
+    set Cycle 3 adaptive refinment ratio = 0.08
+
+  # Cycle 3 FGMRES solver tol
+    set Cycle 3 linear solver tol    = 3.58e-1
+
+
+
+  # Cycle 4 do global refinement
+    set Cycle 4 do global refinement = false
+
+  # Cycle 4 adaptive refinement ratio if adaptive is used, i.e., global refine is false
+    set Cycle 4 adaptive refinment ratio = 0.02
+
+  # Cycle 4 FGMRES solver tol
+    set Cycle 4 linear solver tol    = 3.0e-1
+
+
+  # converge accuracy of final solution
+    set converge accuracy = 1.0e-9
+
+  #########################################################
+  #########################################################  
+
+
+  # adaptive refinment ratio, 0.12 gives 10M from 5M
+  set adaptive coarsen ratio           = 0.02
+
+  #########################################################
+  #########################################################  
+
+  # AMG precondtioner control parameter in solve() call
+    set Number of n-cycle in AdditionalData  = 4
+
+  # maximum inerations of linear solver
+    set maximum linear iteration number      = 250000
+
+end
