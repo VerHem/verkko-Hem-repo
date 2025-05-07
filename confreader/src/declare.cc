@@ -183,7 +183,7 @@ namespace FemGL_mpi
 			"This is for BinA configuration, real value is ratio * half_side_length, default value is 0.5");
 
       prm.declare_entry("A-phase block range ratio", "0.0", Patterns::Double(0),
-			"This is for BnA configuration in retangle box, real value is ratio * half z length of retangle");
+			"This is for BnA configuration (AB Domain wall) in retangle box, real value is ratio * half z length of retangle");
 
       //--------------------------------------------------
       //--------------------------------------------------      
