@@ -129,8 +129,11 @@ namespace FemGL_mpi
       prm.declare_entry("gaussian random mean value", "2.0", Patterns::Double(0),
 			"mean value of gaussian random generator in setup() call");
 
-      prm.declare_entry("gaussian random STD", "0.1", Patterns::Double(0),
-			"STD of gaussian random generator in setup() call");
+      prm.declare_entry("diff tolrence", "0.0", Patterns::Double(0),
+			"measurement of boundary layer thickness for A-phase string-monopole, in ratio with half-side-length");
+      
+      prm.declare_entry("normal fluctuation STD", "0.1", Patterns::Double(0),
+			"normal-ph fraction fluctuation gaussian random STD");
 
       //--------------------------------------------------
       //--------------------------------------------------      
