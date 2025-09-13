@@ -211,8 +211,12 @@ namespace FemGL_mpi
 	const double half_y_length               = conf.get_double("half y length of retangle");
 	const double half_z_length               = conf.get_double("half z length of retangle");
 	// const double gaussian_mean           = conf.get_double("gaussian random mean value");
-	// const double gaussian_std            = conf.get_double("gaussian random STD");
 	conf.leave_subsection();
+
+	conf.enter_subsection("physical parameters");
+	const double dtol                        = conf.get_double("diff tolrence");	
+	const double nfSTD                       = conf.get_double("normal fluctuation STD");
+	conf.leave_subsection();	
 	/*---------------------------------------*/
 	/*    paramters loading ends at here     */
 	/*---------------------------------------*/
@@ -225,7 +229,7 @@ namespace FemGL_mpi
 
 	/* interpolate() call for setting A-monopole configuration */
         VectorTools::interpolate(dof_handler,
-		                 APhaseMonopleconfig<dim>(half_x_length, half_y_length, half_z_length, mat.gap_A_td(p, reduced_t)),
+		                 APhaseMonopleconfig<dim>(half_x_length, half_y_length, half_z_length, mat.gap_A_td(p, reduced_t), dtol, nfSTD),
 		                 distrubuted_tmp_solution); 	
 	
         // AffineConstriant::distribute call

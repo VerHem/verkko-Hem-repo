@@ -113,20 +113,24 @@ namespace FemGL_mpi
   class APhaseMonopleconfig : public Function<dim>
   {
   public:
-    APhaseMonopleconfig(const double hx, const double hy, const double hz, const double gap_para)
+    APhaseMonopleconfig(const double hx, const double hy, const double hz,
+			const double gap_para, const double dtol, const double nfSTD)
       : Function<dim>(18) // tell base Function<dim> class I want a 2-components vector-valued function
       , half_x_length(hx)
       , half_y_length(hy)
       , half_z_length(hz)
-      , gap(gap_para)	
+      , gap(gap_para)
+      , diff_rolrence(dtol)
+      , normal_fluc_STD(nfSTD)
     {}
 
-    double half_x_length, half_y_length, half_z_length, gap;   // in unit of \xi^GL_0    
+    double half_x_length, half_y_length, half_z_length, gap;   // in unit of \xi^GL_0
+    double diff_rolrence, normal_fluc_STD;
     
     virtual void vector_value(const Point<dim> &point /*p*/,
                               Vector<double> &values) const override
     {
-      const double diff_rolrence = 3e-1;
+      // const double diff_rolrence = 3e-1;
       
       Assert(values.size() == 18, ExcDimensionMismatch(values.size(), 18));
 
@@ -246,7 +250,7 @@ namespace FemGL_mpi
       /*********************************************************/
       std::random_device rd{};
       std::mt19937       gen{rd()};
-      std::normal_distribution<double> gaussian_dis{0.0, 0.25};
+      std::normal_distribution<double> gaussian_dis{0.0, normal_fluc_STD/*0.01*/};
       if (
            !( std::fabs(point(0) - (-half_x_length)) < (diff_rolrence * half_x_length) )
 	   &&
