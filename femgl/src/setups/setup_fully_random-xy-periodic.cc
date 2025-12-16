@@ -170,14 +170,14 @@ namespace FemGL_mpi
 
       
       VectorTools::interpolate_boundary_values(dof_handler,
-                                               3, // 0 for all Dirichlet, 2 for diffuse, which 6 components are Dirichlet along y
+                                               3, // 0 for all Dirichlet, 3 for diffuse, which 6 components are Dirichlet along y
                                                DirichletBCs_newton_update<dim>(),
                                                constraints_newton_update,
 					       comp_mask_y);
 
       
       VectorTools::interpolate_boundary_values(dof_handler,
-                                               4, // 0 for all Dirichlet, 2 for diffuse, which 6 components are Dirichlet along z
+                                               4, // 0 for all Dirichlet, 4 for diffuse, which 6 components are Dirichlet along z
                                                DirichletBCs_newton_update<dim>(),
                                                constraints_newton_update,
 					       comp_mask_z);
@@ -279,7 +279,7 @@ namespace FemGL_mpi
         /*---------------------------------------*/
         conf.enter_subsection("physical parameters");
         const double gaussian_mean           = conf.get_double("gaussian random mean value");
-        const double gaussian_std            = conf.get_double("gaussian random STD");
+        const double gaussian_std            = conf.get_double("normal fluctuation STD");
         conf.leave_subsection();
         /*---------------------------------------*/
         /*    paramters loading ends at here     */
@@ -291,7 +291,6 @@ namespace FemGL_mpi
         std::random_device rd{};         // rd will be used to obtain a seed for the random number engine
         std::mt19937       gen{rd()};    // Standard mersenne_twister_engine seeded with rd()
         std::normal_distribution<double> gaussian_distr{gaussian_mean, gaussian_std}; // gaussian distribution, 1st arg is mean. 2nd arg is STD
-        //std::normal_distribution<double> gaussian_distr2{0.0, 0.1}; // gaussian distribution, 1st arg is mean. 2nd arg is STD	
 
         local_solution.reinit(locally_relevant_dofs,
     			      mpi_communicator,

@@ -193,7 +193,7 @@ namespace FemGL_mpi
 		  ||
 		  (std::fabs(center(2) - half_z_length) < 1e-12 * half_z_length)		  
 		 )
-	        face->set_boundary_id(4); // homogenous BC i.e., homogenuous Neumann along z direction 
+	        face->set_boundary_id(4); // AdGR BC i.e., AdGR along z direction 
 	      
 	    }
 	 

@@ -188,8 +188,7 @@ namespace FemGL_mpi
                                                4, // 0 for all Dirichlet, 2 for diffuse, which 6 components are Dirichlet along z
                                                DirichletBCs_newton_update<dim>(),
                                                constraints_newton_update,
-					       comp_mask_z);
-                                               //fe.component_mask(velocities));
+					       comp_mask_z);                                               
 
       /*---------------------------------------*/
       /* identify matched faces pairs          */
