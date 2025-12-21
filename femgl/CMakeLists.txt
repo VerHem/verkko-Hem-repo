@@ -48,16 +48,18 @@ add_library(femgl STATIC
 #  ${CMAKE_SOURCE_DIR}/femgl/src/makegrids/makegrid_cube-z-normal_AdGR.cc
 #  ${CMAKE_SOURCE_DIR}/femgl/src/makegrids/makegrid_retangle-xyz-periodic.cc
 #  ${CMAKE_SOURCE_DIR}/femgl/src/makegrids/makegrid_retangle-xyz-homogenous-Neumann.cc
-   ${CMAKE_SOURCE_DIR}/femgl/src/makegrids/makegrid_retangle-z-AdGR_xy-periodic.cc
+#  ${CMAKE_SOURCE_DIR}/femgl/src/makegrids/makegrid_retangle-z-AdGR_xy-periodic.cc
+   ${CMAKE_SOURCE_DIR}/femgl/src/makegrids/makegrid_retangle-x-Dirichlet-yz-periodic.cc
 #  ${CMAKE_SOURCE_DIR}/femgl/src/makegrids/makegrid_retangle-xyz-AdGR.cc
 #  ${CMAKE_SOURCE_DIR}/femgl/src/makegrids/makegrid_retangle-z-AdGR-xy-HomoNeumann.cc
 #  ${CMAKE_SOURCE_DIR}/femgl/src/makegrids/makegrid_retangle-z-Dirichlet-xy-HomoNeumann.cc
+#  ${CMAKE_SOURCE_DIR}/femgl/src/makegrids/makegrid_retangle-x-Dirichlet-yz-HomoNeumann.cc
 #  ${CMAKE_SOURCE_DIR}/femgl/src/makegrids/makegrid_retangle-z-AdGR_x-periodic-y-HomoNeumann.cc
 #  ${CMAKE_SOURCE_DIR}/femgl/src/setups/setup_uniform_A-phase-AdGR-monopole-config.cc
 #  ${CMAKE_SOURCE_DIR}/femgl/src/setups/setup_uniform_A-phase.cc
 #  ${CMAKE_SOURCE_DIR}/femgl/src/setups/setup_uniform_B-phase.cc
 #  ${CMAKE_SOURCE_DIR}/femgl/src/setups/setup_fully_random.cc
-   ${CMAKE_SOURCE_DIR}/femgl/src/setups/setup_fully_random-xy-periodic.cc
+#  ${CMAKE_SOURCE_DIR}/femgl/src/setups/setup_fully_random-xy-periodic.cc
 #  ${CMAKE_SOURCE_DIR}/femgl/src/setups/setup_noised_B_phase_z-AdGR_xy-periodic.cc
 #  ${CMAKE_SOURCE_DIR}/femgl/src/setups/setup_fully_random-xyz-periodic.cc
 #  ${CMAKE_SOURCE_DIR}/femgl/src/setups/setup_fully_random_z-AdGR-x-periodic-y-Homo-Neumann.cc
@@ -66,6 +68,8 @@ add_library(femgl STATIC
 #  ${CMAKE_SOURCE_DIR}/femgl/src/setups/setup_uniform_BinA-bubble-like-configuration.cc
 #  ${CMAKE_SOURCE_DIR}/femgl/src/setups/setup_uniform_BnA-flatwall-configuration.cc
 #  ${CMAKE_SOURCE_DIR}/femgl/src/setups/setup_uniform_BnA-flatwall-z-Dirichilet-BC-configuration.cc
+#  ${CMAKE_SOURCE_DIR}/femgl/src/setups/setup_uniform_BnA-flatwall-x-Dirichilet-BC-configuration.cc
+   ${CMAKE_SOURCE_DIR}/femgl/src/setups/setup_uniform_BnA-flatwall-x-Dirichilet-yz-periodic-configuration.cc
 #  ${CMAKE_SOURCE_DIR}/femgl/src/setups/setup_BnA-xyz-periodic.cc
   ${CMAKE_SOURCE_DIR}/femgl/src/assemble.cc  
   ${CMAKE_SOURCE_DIR}/femgl/src/residual.cc  

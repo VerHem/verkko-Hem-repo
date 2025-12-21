@@ -199,7 +199,7 @@ namespace FemGL_mpi
 	 
 	 /*---------------------------------------*/
 	 /* identify matched faces pairs          */
-	 /* add perodicuty info into triangulation*/
+	 /* add peridicity info into triangulation*/
 	 /*---------------------------------------*/
 
 	std::vector<GridTools::PeriodicFacePair<typename parallel::distributed::Triangulation<dim>::cell_iterator>> matched_pairs_x, matched_pairs_y, matched_pairs_z;	

@@ -105,12 +105,11 @@
  * *************************************************
  * A quick doc for this specific setup_system()
  *
- * This setup must be used together with makegrids/makegrid_retangle-x-Dirichlet-yz-HomoNeumann.cc.
+ * This setup must be used together with makegrids/makegrid_retangle-x-Dirichlet-yz-periodic.cc.
  * The make_grid() call in this source will generate a long 3D box along x-direction, and y-z direction 
- * boundaries all have boundary-id-1 a.k.a homo-Neumann. While x-surface has boundary-id 0 on all OP componenets.
+ * boundaries all have boundary-id-7,8 and 9, 10 a.k.a periodic. While x-surface has boundary-id 0 on all OP componenets.
  * These two x-surfaces will be put with bulk  A- and B-phase OP at p-T-H values.
- * 
- * This initial conf is used to figuring out the thickness of AB domaain wall.
+ *
  * *************************************************
  */
 
@@ -178,8 +177,7 @@ namespace FemGL_mpi
       /*
        * This interpolate_boundary_values() call is dedicated for 
        * the two flat boundary surfaces at x directon in ABWall-retangle box.
-       * This initial conf setup means for figuring out the thickness of ABWall
-       * over different p-T-H value. The two surface will be mark as boundary_id-0 during meka_grid() call,
+       * The two surface will be mark as boundary_id-0 during meka_grid() call,
        * then at here, interpolate_B_values() call put right varuation of A- or B-phase OP on these two surfaces.
        * Very similar thing must be done for contraints_solution.
        */
