@@ -32,7 +32,8 @@ namespace VerHem
                     Portable::DeviceBlockVector<Number> &dst) const;
   private:
     const GLBackgroundCoefficients<dim, fe_degree, Number> *background;
-  };
+
+  }; // LocalLinearGLOperator declaretion ends here
 
   // functor
   template <int dim, int fe_degree, typename Number>
@@ -42,12 +43,12 @@ namespace VerHem
       const Portable::DeviceBlockVector<Number> &src,
       Portable::DeviceBlockVector<Number> &dst) const
   {
-    //U block
+    // U block
     Portable::FEEvaluation<dim, fe_degree, fe_degree + 1, n_components, Number> u_eval(data, 0);
     // V block
     Portable::FEEvaluation<dim, fe_degree, fe_degree + 1, n_components, Number> v_eval(data, 1);
 
-    //Read the two blocks of the Krylov vector.
+    // Read the two blocks of the Krylov vector.
     u_eval.read_dof_values(src.block(0));
     v_eval.read_dof_values(src.block(1));
 
