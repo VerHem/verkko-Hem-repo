@@ -38,7 +38,7 @@ namespace VerHem
     const typename Portable::MatrixFree<dim, Number>::Data *data;
     const Number *u0_coefficients;
     const Number *v0_coefficients;
-  };
+  }; // LocalLinearGLOperatorQuad declearation ends here
 
 
   template <int dim, int fe_degree, typename Number>
@@ -49,6 +49,9 @@ namespace VerHem
       const int q_point) const
   {
     const unsigned int cell = data->cell_index;
+
+    // Return the quadrature point index of the given cell and q_point index.
+    // The index returned is only unique for a given MPI process.
     const unsigned int pos  = data->local_q_point_id(cell, q_point);
     /* ------------------------------------------------------------
      * Background values at this quadrature point.
@@ -57,9 +60,7 @@ namespace VerHem
     const Number *u0 = &u0_coefficients[pos * n_components];
     const Number *v0 = &v0_coefficients[pos * n_components];
     /* ------------------------------------------------------------
-     * Current Newton increment.
-     *     U = delta u
-     *     V = delta v
+     * Current linear GL soution U = \delta u, V = \delta v
      * ------------------------------------------------------------
      */
     const auto U = u_eval->get_value(q_point);
@@ -81,14 +82,13 @@ namespace VerHem
     }
 
     /* ------------------------------------------------------------
-     * Common coefficient
-     *     c(x) = alpha + beta_2 ( |U0|^2 + |V0|^2 )
+     * Common coefficient c(x) = alpha + beta_2 ( |U0|^2 + |V0|^2 )
      *
      * alpha and beta_2 should be supplied to the physics layer.     *
-     * They are placeholders here until we connect this class
-     * to existing LinearGLPhysics class.
+     * for testing, value like alpha = -0.5, beta_2 = 2 can be used.
      * ------------------------------------------------------------
      */
+    const Number K1 = 1., alpha = -0.5, beta_2 = 2.;
     const Number c = alpha + beta_2 * (u0_square + v0_square);
     /* ------------------------------------------------------------
      * Dot products: U0 . U, U0 . V, V0 . U, V0 . V
@@ -109,12 +109,11 @@ namespace VerHem
     }
 
     /* ------------------------------------------------------------
-     * Reaction terms.From the equations:
+     * Reaction terms. From the equations:
      * Ru = c U + 2 beta_2 U0 ( U0 . U + U0 . V )
      * Rv = c V + 2 beta_2 V0 ( U0 . U + V0 . V )
      * ------------------------------------------------------------
      */
-
     auto reaction_U = U;
     auto reaction_V = V;
     const Number common_U = u0_dot_U + u0_dot_V;
@@ -127,17 +126,14 @@ namespace VerHem
     }
 
     /* ------------------------------------------------------------
-     * Weak form of -K1 Laplacian:
-     *     K1 (grad U, grad W_U)
-     *     K1 (grad V, grad W_V)
+     * Weak form of -K1 Laplacian: K1 (grad U, grad W_U), K1 (grad V, grad W_V)
      * ------------------------------------------------------------
      */
+    // auto flux_U = grad_U;
+    // auto flux_V = grad_V;
 
-    auto flux_U = grad_U;
-    auto flux_V = grad_V;
-
-    flux_U *= K1;
-    flux_V *= K1;
+    // flux_U *= K1;
+    // flux_V *= K1;
     
     /* ------------------------------------------------------------
      * Submit reaction + diffusion.
@@ -145,10 +141,10 @@ namespace VerHem
      */
 
     u_eval->submit_value(reaction_U, q_point);
-    u_eval->submit_gradient(flux_U, q_point);
+    u_eval->submit_gradient(K1 * grad_U, q_point);
 
     v_eval->submit_value(reaction_V, q_point);
-    v_eval->submit_gradient(flux_V, q_point);
+    v_eval->submit_gradient(K1 * grad_V, q_point);
   } // operator() ends here
 
 } // namespace VerHem
