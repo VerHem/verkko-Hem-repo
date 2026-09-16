@@ -54,6 +54,8 @@ namespace VerHem
 
   private:
     Portable::MatrixFree<dim, Number> MF_MetaData_Engine;
+
+    // here is the 1st time GLBackgroundCoefficients appears
     GLBackgroundCoefficients<dim, fe_degree, Number> background_coefficients;
 
   }; //LinearGLoperator declaretion ends here
@@ -81,6 +83,12 @@ namespace VerHem
     std::vector<const AffineConstraints<Number> *> constraints = {&constraints_u, &constraints_v};
     MF_MetaData_Engine.reinit(mapping, dof_handlers, constraints, quad, additional_data);
 
+
+    /* --------------------------------------------------------
+     * the rest of LinearGLOperator constructor is preparing background data
+     * in Atribute GLBackgroundCoefficients<...> background_coefficients;
+     * --------------------------------------------------------
+     */    
     //Allocate the quadrature-point background storage.
     background_coefficients.reinit(MF_MetaData_Engine);
 

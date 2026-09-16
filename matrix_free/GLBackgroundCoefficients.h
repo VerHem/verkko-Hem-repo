@@ -8,10 +8,10 @@
 
 #include <deal.II/fe/fe_q.h>
 
-#include <deal.II/grid/grid_generator.h>
+// #include <deal.II/grid/grid_generator.h>
 #include <deal.II/grid/tria.h>
 
-#include <deal.II/lac/affine_constraints.h>
+// #include <deal.II/lac/affine_constraints.h>
 #include <deal.II/lac/la_parallel_block_vector.h>
 #include <deal.II/lac/la_parallel_vector.h>
 
@@ -23,12 +23,12 @@ namespace VerHem
 {
   using namespace dealii;
 
-  /* ================================================================
+  /* ----------------------------------------------------------------
    * Device-side cell operator used to interpolate the background
    * FE solution into quadrature-point values.
    * This is NOT part of the GMRES matrix-vector product.
    * It is executed only when the Newton background is updated.
-   * ================================================================
+   * ----------------------------------------------------------------
    */
   template <int dim, int fe_degree, typename Number>
   class LocalGLBackgroundCoefficientOperator
@@ -38,9 +38,7 @@ namespace VerHem
     static constexpr unsigned int n_components = 9;
     static constexpr unsigned int n_q_points = Utilities::pow(fe_degree + 1, dim);
 
-    LocalGLBackgroundCoefficientOperator(
-      Number *u0_coefficients,
-      Number *v0_coefficients)
+    LocalGLBackgroundCoefficientOperator(Number *u0_coefficients, Number *v0_coefficients)
       : u0_coefficients(u0_coefficients)
       , v0_coefficients(v0_coefficients)
     {}
@@ -53,6 +51,7 @@ namespace VerHem
 
     Number *u0_coefficients;
     Number *v0_coefficients;
+    
   }; // LocalGLBackgroundCoefficientOperator declaretion ends here
 
   template <int dim, int fe_degree, typename Number>
@@ -92,14 +91,15 @@ namespace VerHem
             pos * n_components + c] = v0[c];
         }
       });
+    
   } // LocalGLBackgroundCoefficientOperator::operator() ends here
   
-  /* ================================================================
+  /* ----------------------------------------------------------------
    * Background data stored at quadrature points.
    * u0: [quadrature point][component]
    * v0: [quadrature point][component]
    * The quadrature-point index is local to each MPI process.
-   * ================================================================
+   * ----------------------------------------------------------------
    */
   template <int dim, int fe_degree, typename Number>
   class GLBackgroundCoefficients
@@ -111,10 +111,13 @@ namespace VerHem
     using VectorType      = LinearAlgebra::distributed::Vector<Number, MemorySpace::Default>;
     using BlockVectorType = LinearAlgebra::distributed::BlockVector<Number, MemorySpace::Default>;
 
+    // constructor
     GLBackgroundCoefficients() {};
 
+    // reinit()
     void reinit(const Portable::MatrixFree<dim, Number> &mf_data);
-    
+
+    // update() 
     void update(const Portable::MatrixFree<dim, Number> &mf_data,
                 const BlockVectorType &background);
 
@@ -126,8 +129,9 @@ namespace VerHem
 
 
   private:
-    VectorType u0_coefficients;??? Isn't this BlockVectorType ???
+    VectorType u0_coefficients;// ??? Isn't this BlockVectorType ???
     VectorType v0_coefficients;
+    
   }; // GLBackgroundCoefficients declareation ends here
 
   // template <int dim, int fe_degree, typename Number>
@@ -143,6 +147,8 @@ namespace VerHem
 
     const unsigned int n_values = n_owned_cells * n_q_points * n_components;
 
+    // distributed vector doesn't have API to only take one unsigned int
+    // ??
     u0_coefficients.reinit(n_values);
     v0_coefficients.reinit(n_values);
   } // reinit() ends here
@@ -157,7 +163,7 @@ namespace VerHem
      * LocalGLBackgroundCoefficientOperator does NOT write to dst.
      * The actual output is written directly into u0_coefficients and v0_coefficients.
      *
-     * Therefore we use the background itself as the harmless destination object.
+     * here the background itself is used as the harmless destination object.
      */
     LocalGLBackgroundCoefficientOperator<dim, fe_degree, Number>
       background_operator(u0_coefficients.get_values(), v0_coefficients.get_values());
