@@ -14,10 +14,10 @@
 #include <deal.II/lac/affine_constraints.h>
 #include <deal.II/lac/la_parallel_block_vector.h>
 #include <deal.II/lac/la_parallel_vector.h>
-#include <deal.II/lac/precondition.h>
+// #include <deal.II/lac/precondition.h>
 // #include <deal.II/lac/solver_gmres.h>
 
-#include <deal.II/numerics/data_out.h>
+// #include <deal.II/numerics/data_out.h>
 #include <deal.II/numerics/vector_tools.h>
 
 #include <deal.II/matrix_free/portable_fe_evaluation.h>
@@ -114,7 +114,7 @@ namespace VerHem
      */
     // MF_MetaData_Engine.copy_constrained_values(src.block(0), dst.block(0), 0);
     // MF_MetaData_Engine.copy_constrained_values(src.block(1), dst.block(1), 1);
-    MF_MetaData_Engine.copy_constrained_values(src, dst, 1);
+    MF_MetaData_Engine.copy_constrained_values(src, dst);
   } // vmult() ends here
 
   template <int dim, int fe_degree, typename Number>

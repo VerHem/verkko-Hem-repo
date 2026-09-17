@@ -141,6 +141,7 @@ namespace VerHem
   void GLBackgroundCoefficients<dim, fe_degree, Number>::reinit(
       const Portable::MatrixFree<dim, Number> &mf_data)
   {
+    // &mf_data is a pointer! 
     const unsigned int n_owned_cells =
       dynamic_cast<const parallel::TriangulationBase<dim> *>(
           &mf_data.get_dof_handler(0).get_triangulation())->n_locally_owned_active_cells();
@@ -158,16 +159,16 @@ namespace VerHem
       const Portable::MatrixFree<dim, Number> &mf_data,
       const BlockVectorType &background)
   {
-    /* We need a destination vector only because the Portable
-     * MatrixFree::cell_loop interface requires one.
-     * LocalGLBackgroundCoefficientOperator does NOT write to dst.
-     * The actual output is written directly into u0_coefficients and v0_coefficients.
-     *
-     * here the background itself is used as the harmless destination object.
-     */
     LocalGLBackgroundCoefficientOperator<dim, fe_degree, Number>
       background_operator(u0_coefficients.get_values(), v0_coefficients.get_values());
 
+    /* mf_data.cell_loop() receives a dummy destination vector background.
+     * This is because the Portable MatrixFree::cell_loop interface requires one.
+     * But LocalGLBackgroundCoefficientOperator does NOT write to dst.
+     * The actual output is written directly into u0_coefficients and v0_coefficients.
+     *
+     * here the background itself is used as the dummy destination object.
+     */    
     mf_data.cell_loop(background_operator, background, background);
   } // upate() 
 
