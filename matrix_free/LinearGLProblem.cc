@@ -31,7 +31,8 @@
 #include <deal.II/numerics/vector_tools.h>
 #include <deal.II/numerics/vector_tools_integrate_difference.h>
 
-#include ""
+#include "LinearGLOperator.h"
+#include "LocalLinearGLOperator.h"
 
 namespace VerHem
 {
@@ -487,8 +488,8 @@ namespace VerHem
   } // LinearGLProblem<...>::postprocess() ends here
 
 
-  // The run() function prints some statistics and then performs a familiar
-  // refinement loop.
+  // The run() function prints some statistics and
+  // then performs refinement loop.
   template <int dim, int fe_degree, typename Number>
   void LinearGLProblem<dim, fe_degree, Number>::run()
   {
