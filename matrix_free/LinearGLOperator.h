@@ -41,7 +41,8 @@ namespace VerHem
     using BlockVectorType = LinearAlgebra::distributed::BlockVector<Number, MemorySpace::Default>;
 
     // constructor
-    LinearGLOperator(const DoFHandler<dim>           &dof_handler_u, const DoFHandler<dim>           &dof_handler_v,
+    LinearGLOperator(const std::shared_ptr<Portable::MatrixFree<dim, Number>> &MF_Data_Input,
+                     const DoFHandler<dim>           &dof_handler_u, const DoFHandler<dim>           &dof_handler_v,
                      const AffineConstraints<Number> &constraints_u, const AffineConstraints<Number> &constraints_v,
                      const BlockVectorType &background_u_v_sol);
 
@@ -53,7 +54,11 @@ namespace VerHem
     void update_background(const BlockVectorType &background_u_v_sol);
 
   private:
-    Portable::MatrixFree<dim, Number> MF_MetaData_Engine;
+    /* Portable::MatrixFree is defined and reinit through smart pointer at LineaarGL problem
+     * LinearGL operator should receive this smart pointer other than defines its own.
+     * THis is step-104's practive. */
+    // Portable::MatrixFree<dim, Number> MF_MetaData_Engine;
+    std::shared_ptr<Portable::MatrixFree<dim, Number>> MF_MetaData_Engine;
 
     // here is the 1st time GLBackgroundCoefficients appears
     GLBackgroundCoefficients<dim, fe_degree, Number> background_coefficients;
@@ -61,11 +66,13 @@ namespace VerHem
   }; //LinearGLoperator declaretion ends here
 
   template <int dim, int fe_degree, typename Number>
-  LinearGLOperator<dim, fe_degree, Number>::LinearGLOperator(const DoFHandler<dim> &dof_handler_u,
+  LinearGLOperator<dim, fe_degree, Number>::LinearGLOperator(const std::shared_ptr<Portable::MatrixFree<dim, Number>> &MF_Data_Input,
+                                                             const DoFHandler<dim> &dof_handler_u,
                                                              const DoFHandler<dim> &dof_handler_v,
                                                              const AffineConstraints<Number> &constraints_u,
                                                              const AffineConstraints<Number> &constraints_v,
                                                              const BlockVectorType &background_u_v_sol)
+  : MF_MetaData_Engine(MF_Data_Input)
   {
     const MappingQ<dim> mapping(fe_degree);
     
@@ -81,7 +88,7 @@ namespace VerHem
      */
     std::vector<const DoFHandler<dim> *>           dof_handlers = {&dof_handler_u, &dof_handler_v};
     std::vector<const AffineConstraints<Number> *> constraints = {&constraints_u, &constraints_v};
-    MF_MetaData_Engine.reinit(mapping, dof_handlers, constraints, quad, additional_data);
+    MF_MetaData_Engine->reinit(mapping, dof_handlers, constraints, quad, additional_data);
 
 
     /* --------------------------------------------------------
