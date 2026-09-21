@@ -38,6 +38,7 @@ namespace VerHem
     const typename Portable::MatrixFree<dim, Number>::Data *data;
     const Number *u0_coefficients;
     const Number *v0_coefficients;
+    
   }; // LocalLinearGLOperatorQuad declearation ends here
 
 
