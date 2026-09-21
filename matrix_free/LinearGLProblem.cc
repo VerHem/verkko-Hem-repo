@@ -79,6 +79,7 @@ namespace VerHem
     std::shared_ptr<Portable::MatrixFree<dim, Number>> mf_data_ptr;
     BlockVectorType                                    linear_solution;
     BlockVectorType                                    rhs;
+    BlockVectorType                                    bg_solution;    
     ConditionalOStream                                 pcout;
   };
 
@@ -163,6 +164,24 @@ namespace VerHem
       rhs.block(1).import_elements(rhs_host.block(1), VectorOperation::insert);
     } // rhs.host block ends here
 
+    {
+      // create the background_solution on the host and move to device:
+      LinearAlgebra::distributed::BlockVector<Number, MemorySpace::Host> bgSolution_host;
+      mf_data_ptr->initialize_dof_vector(bgSolution_host);
+
+      // ??? APIs
+      VectorTools::interpolate(mapping, DoFHandler_U, bgSolution_U<dim, Number>(),
+                               bgSolution_host.block(0));
+      // ??? APIs
+      VectorTools::interpolate(mapping, DoFHandler_V, bgSolution_V<dim, Number>(),
+                               bgSolution_host.block(1));
+
+      // prepare moving host vector to device vector.
+      mf_data_ptr->initialize_dof_vector(bg_solution);
+      bg_solution.block(0).import_elements(bgSolution_host.block(0), VectorOperation::insert);
+      bg_solution.block(1).import_elements(bgSolution_host.block(1), VectorOperation::insert);
+    } // bgSolution_host to device bg_solution block ends here
+    
   } // LinearGLProblem<...>::setup_dofs() ends here
 
   // In the solve() function we set up the preconditioner and
@@ -181,7 +200,7 @@ namespace VerHem
     LinearGLOperator<dim, fe_degree, Number>
       LinearGL_Operator(DoFHandler_U, DoFHandler_V,
                         constraints_U, constraints_V,
-                        background_U_V_sol);
+                        bg_solution/*background_U_V_sol*/);
 
     mf_data_ptr->initialize_dof_vector(linear_solution);
 
@@ -442,17 +461,17 @@ namespace VerHem
   template <int dim, int fe_degree, typename Number>
   void LinearGLProblem<dim, fe_degree, Number>::postprocess()
   {
-    LinearAlgebra::distributed::BlockVector<Number, MemorySpace::Host> solution_host;
-    mf_data->initialize_dof_vector(solution_host);
+    LinearAlgebra::distributed::BlockVector<Number, MemorySpace::Host> linear_solution_host;
+    mf_data_ptr->initialize_dof_vector(linear_solution_host);
 
-    solution_host.block(0).import_elements(linear_solution.block(0),
+    linear_solution_host.block(0).import_elements(linear_solution.block(0),
                                            VectorOperation::insert);
-    solution_host.block(1).import_elements(linear_solution.block(1),
+    linear_solution_host.block(1).import_elements(linear_solution.block(1),
                                            VectorOperation::insert);
 
-    constraints_U.distribute(solution_host.block(0));
-    constraints_V.distribute(solution_host.block(1));
-    solution_host.update_ghost_values();
+    constraints_U.distribute(linear_solution_host.block(0));
+    constraints_V.distribute(linear_solution_host.block(1));
+    linear_solution_host.update_ghost_values();
     // const double mean_pressure = VectorTools::compute_mean_value(
     //   dof_p, QGauss<dim>(degree_p + 2), solution_host.block(1), 0);
     // solution_host.block(1).add(-mean_pressure);
