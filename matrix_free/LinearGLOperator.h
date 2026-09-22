@@ -44,7 +44,7 @@ namespace VerHem
     LinearGLOperator(const std::shared_ptr<Portable::MatrixFree<dim, Number>> &MF_Data_Input,
                      const DoFHandler<dim>           &dof_handler_u, const DoFHandler<dim>           &dof_handler_v,
                      const AffineConstraints<Number> &constraints_u, const AffineConstraints<Number> &constraints_v,
-                     const BlockVectorType &background_u_v_sol);
+                     const BlockVectorType &background_UV_sol);
 
     // vmult for solver
     void vmult(BlockVectorType &dst,
@@ -71,25 +71,25 @@ namespace VerHem
                                                              const DoFHandler<dim> &dof_handler_v,
                                                              const AffineConstraints<Number> &constraints_u,
                                                              const AffineConstraints<Number> &constraints_v,
-                                                             const BlockVectorType &background_u_v_sol)
+                                                             const BlockVectorType &background_UV_sol)
   : MF_MetaData_Engine(MF_Data_Input)
   {
-    const MappingQ<dim> mapping(fe_degree);
+    // const MappingQ<dim> mapping(fe_degree);
     
-    typename Portable::MatrixFree<dim, Number>::AdditionalData additional_data;
-    additional_data.mapping_update_flags = update_values | update_gradients | update_JxW_values | update_quadrature_points;
+    // typename Portable::MatrixFree<dim, Number>::AdditionalData additional_data;
+    // additional_data.mapping_update_flags = update_values | update_gradients | update_JxW_values | update_quadrature_points;
     
-    const QGauss<1> quad(fe_degree + 1);
+    // const QGauss<1> quad(fe_degree + 1);
     
     /*------------------------------------------------------------
      * using similar multi-DoFHandler pattern as step-104 for block structure
-     * DoFHandler 0 -> U, DoFHandler 1 -> V
+     * DoFHandler 0 -> U, DoFHandler 1 -> V, Here two Dofhandlers are provided
+     * when Portable::Matrixfree is initialized.
      * ------------------------------------------------------------
      */
-    std::vector<const DoFHandler<dim> *>           dof_handlers = {&dof_handler_u, &dof_handler_v};
-    std::vector<const AffineConstraints<Number> *> constraints = {&constraints_u, &constraints_v};
-    MF_MetaData_Engine->reinit(mapping, dof_handlers, constraints, quad, additional_data);
-
+    // std::vector<const DoFHandler<dim> *>           dof_handlers = {&dof_handler_u, &dof_handler_v};
+    // std::vector<const AffineConstraints<Number> *> constraints = {&constraints_u, &constraints_v};
+    // MF_MetaData_Engine->reinit(mapping, dof_handlers, constraints, quad, additional_data);
 
     /* --------------------------------------------------------
      * the rest of LinearGLOperator constructor is preparing background data
@@ -100,16 +100,18 @@ namespace VerHem
     background_coefficients.reinit(MF_MetaData_Engine);
 
     //Interpolate the initial background into the quadrature-point coefficient arrays.
-    background_coefficients.update(MF_MetaData_Engine, background_u_v_sol);
+    background_coefficients.update(MF_MetaData_Engine, background_UV_sol);
   } // LinearGLOperator() ends here
 
   template <int dim, int fe_degree, typename Number>
-  void LinearGLOperator<dim, fe_degree, Number>::vmult(BlockVectorType &dst, const BlockVectorType &src) const
+  void LinearGLOperator<dim, fe_degree, Number>::vmult(BlockVectorType &dst,
+                                                       const BlockVectorType &src) const
   {
     dst = static_cast<Number>(0.);
-    LocalLinearGLOperator<dim, fe_degree, Number> cell_LinearGLoperator(background_coefficients);
+    LocalLinearGLOperator<dim, fe_degree, Number>
+      cell_LinearGLoperator(background_coefficients);
 
-    MF_MetaData_Engine.cell_loop(cell_LinearGLoperator, src, dst);
+    MF_MetaData_Engine->cell_loop(cell_LinearGLoperator, src, dst);
 
     /* For the ordinary linear operator, constrained values of
      * the result are copied from the source.
@@ -121,16 +123,16 @@ namespace VerHem
      */
     // MF_MetaData_Engine.copy_constrained_values(src.block(0), dst.block(0), 0);
     // MF_MetaData_Engine.copy_constrained_values(src.block(1), dst.block(1), 1);
-    MF_MetaData_Engine.copy_constrained_values(src, dst);
+    MF_MetaData_Engine->copy_constrained_values(src, dst);
   } // vmult() ends here
 
   template <int dim, int fe_degree, typename Number>
   void LinearGLOperator<dim, fe_degree, Number>::initialize_dof_vector(BlockVectorType &vec) const
-  { MF_MetaData_Engine.initialize_dof_vector(vec); }
+  { MF_MetaData_Engine->initialize_dof_vector(vec); }
 
   template <int dim, int fe_degree, typename Number>
-  void LinearGLOperator<dim, fe_degree, Number>::update_background(const BlockVectorType &background_u_v_sol)
-  { background_coefficients.update(MF_MetaData_Engine, background_u_v_sol); }
+  void LinearGLOperator<dim, fe_degree, Number>::update_background(const BlockVectorType &background_UV_sol)
+  { background_coefficients.update(MF_MetaData_Engine, background_UV_sol); }
   
   template class LinearGLOperator<3, 1, float>;
   template class LinearGLOperator<3, 1, double>;

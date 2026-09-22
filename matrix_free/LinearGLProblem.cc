@@ -32,7 +32,7 @@
 #include <deal.II/numerics/vector_tools_integrate_difference.h>
 
 #include "LinearGLOperator.h"
-#include "LocalLinearGLOperator.h"
+// #include "LocalLinearGLOperator.h"
 
 namespace VerHem
 {
@@ -87,7 +87,7 @@ namespace VerHem
   template <int dim, int fe_degree, typename Number>
   LinearGLProblem<dim, fe_degree, Number>::LinearGLProblem()
     : tria(MPI_COMM_WORLD)
-    , mapping(1)
+    , mapping(fe_degree)
     , fe_U(FE_Q<dim>(fe_degree), 9)
     , fe_V(FE_Q<dim>(fe_degree), 9)
     , DoFHandler_U(tria)
@@ -121,22 +121,40 @@ namespace VerHem
       DoFHandler_V, 0, Functions::ZeroFunction<dim, Number>(dim), constraints_V);
     constraints_V.close();
 
-    /* container of DoFHandlers of U and V */
+    /* ------------------------------------------------
+     * container of DoFHandlers of U and V
+     * ------------------------------------------------
+     */
     std::vector<const DoFHandler<dim> *> DoFHandlers_U_V
       = {&DoFHandler_U, &DoFHandler_V};
 
-    /* container of AffineConstraints of U and V */    
+    /* ------------------------------------------------
+     * container of AffineConstraints of U and V
+     * ------------------------------------------------
+     */     
     std::vector<const AffineConstraints<Number> *> constraints_U_V
       = {&constraints_U, &constraints_V};
 
-    // allocate ssmart pointer for Portable::MatrixFree<..>
+    /* ------------------------------------------------
+     * allocate ssmart pointer for Portable::MatrixFree<..>
+     * ------------------------------------------------
+     */
     mf_data_ptr = std::make_shared<Portable::MatrixFree<dim, Number>>();
 
     const QGauss<1> quad(fe_degree + 1);
     // const QGauss<1> quad(degree_p + 2);
     typename Portable::MatrixFree<dim, Number>::AdditionalData additional_data;
-    additional_data.mapping_update_flags = update_values | update_gradients;
-    mf_data_ptr->reinit(mapping, DoFHandlers_U_V, constraints_U_V, quad, additional_data);
+    additional_data.mapping_update_flags = update_values | update_gradients | update_JxW_values | update_quadrature_points;    
+    // additional_data.mapping_update_flags = update_values | update_gradients;
+    /*------------------------------------------------------------
+     * using similar multi-DoFHandler pattern as step-104 for block structure
+     * DoFHandler 0 -> U, DoFHandler 1 -> V, Here two Dofhandlers are provided
+     * when Portable::Matrixfree is initialized.
+     * ------------------------------------------------------------
+     */    
+    mf_data_ptr->reinit(mapping,
+                        DoFHandlers_U_V, constraints_U_V,
+                        quad, additional_data);
 
     {
       // create the right hand side on the host and move to device:
@@ -198,9 +216,10 @@ namespace VerHem
   {
     // LinearGLOperator<dim, fe_degree, Number> LinearGL_Operator(mf_data);
     LinearGLOperator<dim, fe_degree, Number>
-      LinearGL_Operator(DoFHandler_U, DoFHandler_V,
+      LinearGL_Operator(mf_data_ptr,
+                        DoFHandler_U, DoFHandler_V,
                         constraints_U, constraints_V,
-                        bg_solution/*background_U_V_sol*/);
+                        bg_solution /*background_U_V_sol*/);
 
     mf_data_ptr->initialize_dof_vector(linear_solution);
 
