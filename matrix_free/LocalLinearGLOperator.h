@@ -22,8 +22,8 @@ namespace VerHem
     static constexpr unsigned int n_components = 9;
     static constexpr unsigned int n_q_points   = Utilities::pow(fe_degree + 1, dim);
 
-    LocalLinearGLOperator(const GLBackgroundCoefficients<dim, fe_degree, Number> &background)
-      : background(&background)
+    LocalLinearGLOperator(const GLBackgroundCoefficients<dim, fe_degree, Number> &background_coefs)
+      : background_coefs_ptr(&background_coefs)
     {}
 
     DEAL_II_HOST_DEVICE
@@ -31,7 +31,7 @@ namespace VerHem
                     const Portable::DeviceBlockVector<Number> &src,
                     Portable::DeviceBlockVector<Number> &dst) const;
   private:
-    const GLBackgroundCoefficients<dim, fe_degree, Number> *background;
+    const GLBackgroundCoefficients<dim, fe_degree, Number> *background_coefs_ptr;
 
   }; // LocalLinearGLOperator declaretion ends here
 
@@ -44,9 +44,11 @@ namespace VerHem
       Portable::DeviceBlockVector<Number> &dst) const
   {
     // U block
-    Portable::FEEvaluation<dim, fe_degree, fe_degree + 1, n_components, Number> u_eval(data, 0);
+    Portable::FEEvaluation<dim, fe_degree, fe_degree + 1, n_components, Number>
+      u_eval(data, 0);
     // V block
-    Portable::FEEvaluation<dim, fe_degree, fe_degree + 1, n_components, Number> v_eval(data, 1);
+    Portable::FEEvaluation<dim, fe_degree, fe_degree + 1, n_components, Number>
+      v_eval(data, 1);
 
     // Read the two blocks of the Krylov vector.
     u_eval.read_dof_values(src.block(0));
@@ -62,7 +64,9 @@ namespace VerHem
      */
 
     LocalLinearGLOperatorQuad<dim, fe_degree, Number>
-      quad_operator(data, background->get_u0_values(), background->get_v0_values());
+      quad_operator(data,
+                    background_coefs_ptr->get_u0_values(),
+                    background_coefs_ptr->get_v0_values());
     
     data->for_each_quad_point(
       [&](const int q_point)

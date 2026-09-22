@@ -28,7 +28,6 @@ namespace VerHem
       , v0_coefficients(v0_coefficients)
     {}
 
-
     DEAL_II_HOST_DEVICE
     void operator()(Portable::FEEvaluation<dim, fe_degree, fe_degree + 1, n_components, Number> *u_eval,
                     Portable::FEEvaluation<dim, fe_degree, fe_degree + 1, n_components, Number> *v_eval,
