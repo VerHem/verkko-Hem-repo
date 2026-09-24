@@ -33,6 +33,8 @@
 
 #include "LinearGLOperator.h"
 // #include "LocalLinearGLOperator.h"
+#include "bgSolution_U.h"
+#include "bgSolution_V.h"
 
 namespace VerHem
 {
@@ -144,7 +146,8 @@ namespace VerHem
     const QGauss<1> quad(fe_degree + 1);
     // const QGauss<1> quad(degree_p + 2);
     typename Portable::MatrixFree<dim, Number>::AdditionalData additional_data;
-    additional_data.mapping_update_flags = update_values | update_gradients | update_JxW_values | update_quadrature_points;    
+    additional_data.mapping_update_flags = update_values
+      | update_gradients | update_JxW_values | update_quadrature_points;    
     // additional_data.mapping_update_flags = update_values | update_gradients;
     /*------------------------------------------------------------
      * using similar multi-DoFHandler pattern as step-104 for block structure
@@ -188,10 +191,12 @@ namespace VerHem
       mf_data_ptr->initialize_dof_vector(bgSolution_host);
 
       // ??? APIs
-      VectorTools::interpolate(mapping, DoFHandler_U, bgSolution_U<dim, Number>(),
+      VectorTools::interpolate(mapping, DoFHandler_U,
+                               bgSolution_U<dim, Number>(),
                                bgSolution_host.block(0));
       // ??? APIs
-      VectorTools::interpolate(mapping, DoFHandler_V, bgSolution_V<dim, Number>(),
+      VectorTools::interpolate(mapping, DoFHandler_V,
+                               bgSolution_V<dim, Number>(),
                                bgSolution_host.block(1));
 
       // prepare moving host vector to device vector.
