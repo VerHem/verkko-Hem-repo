@@ -57,8 +57,8 @@ namespace VerHem
     /* Portable::MatrixFree is defined and reinit through smart pointer at LineaarGL problem
      * LinearGL operator should receive this smart pointer other than defines its own.
      * THis is step-104's practive. */
-    // Portable::MatrixFree<dim, Number> MF_MetaData_Engine;
-    std::shared_ptr<Portable::MatrixFree<dim, Number>> MF_MetaData_Engine;
+    // Portable::MatrixFree<dim, Number> MF_MetaDataEngine_ptr;
+    std::shared_ptr<Portable::MatrixFree<dim, Number>> MF_MetaDataEngine_ptr;
 
     // here is the 1st time GLBackgroundCoefficients appears
     GLBackgroundCoefficients<dim, fe_degree, Number> background_coefficients;
@@ -72,7 +72,7 @@ namespace VerHem
                                                              const AffineConstraints<Number> &constraints_u,
                                                              const AffineConstraints<Number> &constraints_v,
                                                              const BlockVectorType &background_UV_sol)
-  : MF_MetaData_Engine(MF_Data_Input)
+  : MF_MetaDataEngine_ptr(MF_Data_Input)
   {
     // const MappingQ<dim> mapping(fe_degree);
     
@@ -89,7 +89,7 @@ namespace VerHem
      */
     // std::vector<const DoFHandler<dim> *>           dof_handlers = {&dof_handler_u, &dof_handler_v};
     // std::vector<const AffineConstraints<Number> *> constraints = {&constraints_u, &constraints_v};
-    // MF_MetaData_Engine->reinit(mapping, dof_handlers, constraints, quad, additional_data);
+    // MF_MetaDataEngine_ptr->reinit(mapping, dof_handlers, constraints, quad, additional_data);
 
     /* --------------------------------------------------------
      * the rest of LinearGLOperator constructor is preparing background data
@@ -97,10 +97,10 @@ namespace VerHem
      * --------------------------------------------------------
      */    
     //Allocate the quadrature-point background storage.
-    background_coefficients.reinit(MF_MetaData_Engine);
+    background_coefficients.reinit(MF_MetaDataEngine_ptr);
 
     //Interpolate the initial background into the quadrature-point coefficient arrays.
-    background_coefficients.update(MF_MetaData_Engine, background_UV_sol);
+    background_coefficients.update(MF_MetaDataEngine_ptr, background_UV_sol);
   } // LinearGLOperator() ends here
 
   template <int dim, int fe_degree, typename Number>
@@ -111,28 +111,36 @@ namespace VerHem
     LocalLinearGLOperator<dim, fe_degree, Number>
       cell_LinearGLoperator(background_coefficients);
 
-    MF_MetaData_Engine->cell_loop(cell_LinearGLoperator, src, dst);
+    /* ----------------------------------------------
+     * v9.8's source in matrix_free.h & matrix_free_tamplate.h offloads
+     * cell_loop() to distributed_cell_loop() for MPI disstributed system.
+     * distributed_cell_loop() has an overload which takes distributed BlockVectors
+     * as src and dst.
+     * ----------------------------------------------
+     */
+    MF_MetaDataEngine_ptr->cell_loop(cell_LinearGLoperator, src, dst);
 
-    /* For the ordinary linear operator, constrained values of
-     * the result are copied from the source.
-     * There are two differenct APIs supporting distributed BlockVector copy.
+    /* ----------------------------------------------
+     * v9.8's source in matrix_free.h has two differenct APIs supporting distributed Vector copy.
+     * One of them is spcifically for distributed::BlockVector.
      * Step-104 use the overload with parameter of type distributed BlockVector.
      *
      * Meanwhile, in portable_matrix_free.templates.h, other overload has parameter dof_handler_index
      * to take dofhandler of different block. I keep both of them here to see which one better.
+     * ----------------------------------------------
      */
-    // MF_MetaData_Engine.copy_constrained_values(src.block(0), dst.block(0), 0);
-    // MF_MetaData_Engine.copy_constrained_values(src.block(1), dst.block(1), 1);
-    MF_MetaData_Engine->copy_constrained_values(src, dst);
+    // MF_MetaDataEngine_ptr.copy_constrained_values(src.block(0), dst.block(0), 0);
+    // MF_MetaDataEngine_ptr.copy_constrained_values(src.block(1), dst.block(1), 1);
+    MF_MetaDataEngine_ptr->copy_constrained_values(src, dst);
   } // vmult() ends here
 
   template <int dim, int fe_degree, typename Number>
   void LinearGLOperator<dim, fe_degree, Number>::initialize_dof_vector(BlockVectorType &vec) const
-  { MF_MetaData_Engine->initialize_dof_vector(vec); }
+  { MF_MetaDataEngine_ptr->initialize_dof_vector(vec); }
 
   template <int dim, int fe_degree, typename Number>
   void LinearGLOperator<dim, fe_degree, Number>::update_background(const BlockVectorType &background_UV_sol)
-  { background_coefficients.update(MF_MetaData_Engine, background_UV_sol); }
+  { background_coefficients.update(MF_MetaDataEngine_ptr, background_UV_sol); }
   
   template class LinearGLOperator<3, 1, float>;
   template class LinearGLOperator<3, 1, double>;
