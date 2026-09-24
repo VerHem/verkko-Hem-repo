@@ -48,17 +48,21 @@ namespace VerHem
       Portable::FEEvaluation<dim, fe_degree, fe_degree + 1, n_components, Number> *v_eval,
       const int q_point) const
   {
-    const unsigned int cell = data->cell_index;
+    const unsigned int cell_index = data->cell_index;
 
-    // Return the quadrature point index of the given cell and q_point index.
-    // The index returned is only unique for a given MPI process.
-    const unsigned int pos  = data->local_q_point_id(cell, q_point);
+    /* ---------------------------------------------
+     * doc says data::local_q_point_id() returns quadrature point index
+     * of the given cell and q_point index. The index returned is only
+     * unique for a given MPI process.
+     * ---------------------------------------------
+     */
+    const unsigned int q_positon  = data->local_q_point_id(cell_index, n_q_points, q_point);
     /* ------------------------------------------------------------
      * Background values at this quadrature point.
      * ------------------------------------------------------------
      */
-    const Number *u0 = &u0_coefficients[pos * n_components];
-    const Number *v0 = &v0_coefficients[pos * n_components];
+    const Number *u0 = &u0_coefficients[q_position * n_components];
+    const Number *v0 = &v0_coefficients[q_position * n_components];
     /* ------------------------------------------------------------
      * Current linear GL soution U = \delta u, V = \delta v
      * ------------------------------------------------------------
@@ -145,7 +149,7 @@ namespace VerHem
 
     v_eval->submit_value(reaction_V, q_point);
     v_eval->submit_gradient(K1 * grad_V, q_point);
-  } // operator() ends here
+  } // OperatorQuad() ends here
 
 } // namespace VerHem
 
