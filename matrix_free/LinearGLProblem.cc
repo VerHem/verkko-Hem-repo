@@ -159,6 +159,30 @@ namespace VerHem
                         DoFHandlers_U_V, constraints_U_V,
                         quad, additional_data);
 
+    /* ------------------------------------------------------------
+     * create the background_solution on the host and move to device:
+     * ------------------------------------------------------------
+     */ 
+    LinearAlgebra::distributed::BlockVector<Number, MemorySpace::Host> bgSolution_host;
+    mf_data_ptr->initialize_dof_vector(bgSolution_host);
+
+    VectorTools::interpolate(mapping, DoFHandler_U,
+                               bgSolution_U<dim, Number>(),
+                               bgSolution_host.block(0));
+    
+    VectorTools::interpolate(mapping, DoFHandler_V,
+                               bgSolution_V<dim, Number>(),
+                               bgSolution_host.block(1));
+
+    // prepare moving host vector to device vector.
+    mf_data_ptr->initialize_dof_vector(bg_solution);
+    bg_solution.block(0).import_elements(bgSolution_host.block(0), VectorOperation::insert);
+    bg_solution.block(1).import_elements(bgSolution_host.block(1), VectorOperation::insert);
+    /* ------------------------------------------------------------
+     * background_solution on the host and  device is done
+     * ------------------------------------------------------------
+     */ 
+         
     {
       // create the right hand side on the host and move to device:
       LinearAlgebra::distributed::BlockVector<Number, MemorySpace::Host> rhs_host;
@@ -184,26 +208,6 @@ namespace VerHem
       rhs.block(0).import_elements(rhs_host.block(0), VectorOperation::insert);
       rhs.block(1).import_elements(rhs_host.block(1), VectorOperation::insert);
     } // rhs.host block ends here
-
-    {
-      // create the background_solution on the host and move to device:
-      LinearAlgebra::distributed::BlockVector<Number, MemorySpace::Host> bgSolution_host;
-      mf_data_ptr->initialize_dof_vector(bgSolution_host);
-
-      // ??? APIs
-      VectorTools::interpolate(mapping, DoFHandler_U,
-                               bgSolution_U<dim, Number>(),
-                               bgSolution_host.block(0));
-      // ??? APIs
-      VectorTools::interpolate(mapping, DoFHandler_V,
-                               bgSolution_V<dim, Number>(),
-                               bgSolution_host.block(1));
-
-      // prepare moving host vector to device vector.
-      mf_data_ptr->initialize_dof_vector(bg_solution);
-      bg_solution.block(0).import_elements(bgSolution_host.block(0), VectorOperation::insert);
-      bg_solution.block(1).import_elements(bgSolution_host.block(1), VectorOperation::insert);
-    } // bgSolution_host to device bg_solution block ends here
     
   } // LinearGLProblem<...>::setup_dofs() ends here
 
