@@ -35,6 +35,7 @@
 // #include "LocalLinearGLOperator.h"
 #include "bgSolution_U.h"
 #include "bgSolution_V.h"
+#include "LinearGLRHSCellOperator.h"
 
 namespace VerHem
 {
@@ -184,30 +185,30 @@ namespace VerHem
      */ 
          
     {
-      // create the right hand side on the host and move to device:
-      LinearAlgebra::distributed::BlockVector<Number, MemorySpace::Host> rhs_host;
-      mf_data_ptr->initialize_dof_vector(rhs_host);
+      /* ------------------------------------------------------------
+       * using the device vector bg_solution.
+       * ------------------------------------------------------------
+       */
+       mf_data_ptr->initialize_dof_vector(rhs);
+       rhs = Number(0.0); // do I need this?
 
-      VectorTools::create_right_hand_side(mapping,
-                                          DoFHandler_U,
-                                          QGauss<dim>(fe_degree + 1),
-                                          // VelocityRightHandSide<dim, Number>(),
-                                          RU_RightHandSide<dim, Number>(),
-                                          rhs_host.block(0),
-                                          constraints_U);
+       const Number K1    = /* your K1 */;
+       const Number alpha = /* your alpha */;
+       const Number beta2 = /* your beta2 */;
+       
+       LinearGLRHSCellOperator<dim, fe_degree, Number> rhs_operator(K1, alpha, beta2);
 
-      VectorTools::create_right_hand_side(mapping,
-                                          DoFHandler_V,
-                                          QGauss<dim>(fe_degree + 1),
-                                          // VelocityRightHandSide<dim, Number>(),
-                                          RV_RightHandSide<dim, Number>(),
-                                          rhs_host.block(1),
-                                          constraints_V);
+      /*  bg_solution.block(0) = u^0 ,bg_solution.block(1) = v^0 */
+       mf_data_ptr->cell_loop(rhs_operator, bg_solution /*src*/, rhs /*dst*/);
+
+      /*
+       * Newton updates satisfies homogeneous Dirichlet conditions.
+       * Therefore constrained RHS entries must be zero.
+       */
+       mf_data_ptr->set_constrained_values(Number(0.0), rhs.block(0), 0);
+       mf_data_ptr->set_constrained_values(Number(0.0), rhs.block(1), 1);
       
-      mf_data_ptr->initialize_dof_vector(rhs);
-      rhs.block(0).import_elements(rhs_host.block(0), VectorOperation::insert);
-      rhs.block(1).import_elements(rhs_host.block(1), VectorOperation::insert);
-    } // rhs.host block ends here
+    } // rhs setting block ends here
     
   } // LinearGLProblem<...>::setup_dofs() ends here
 
@@ -256,211 +257,8 @@ namespace VerHem
      *  preconditioner construction blocks start here
      * -----------------------------------------------
      */
-    // using LevelMatrixType = PortableMFVelocityOperator<dim, degree_u, degree_p, Number>;
-    using SmootherPreconditionerType = DiagonalMatrix<VectorType>;
-    using SmootherType               = PreconditionChebyshev<LevelMatrixType,
-                                               VectorType,
-                                               SmootherPreconditionerType>;
-    using MGTransferType = MGTransferMatrixFree<dim, Number, MemorySpace::Default>;
 
-    const auto coarse_grid_triangulations =
-      MGTransferGlobalCoarseningTools::create_geometric_coarsening_sequence(tria);
-
-    const unsigned int max_level = coarse_grid_triangulations.size() - 1;
-    // Do not go down to level 0, because this will lead to slower runtime as
-    // the problem becomes very small:
-    const unsigned int min_level = std::min(3U, max_level - 1);
-
-    // mg_dof_handlers
-    MGLevelObject<DoFHandler<dim>> mg_dof_handlers(min_level, max_level);
-    // mg_constraints
-    MGLevelObject<AffineConstraints<Number>> mg_constraints(min_level, max_level);
-    // mg_matrices
-    MGLevelObject<LevelMatrixType>           mg_matrices(min_level, max_level);
-    // mg_transfers
-    MGLevelObject<Portable::MGTwoLevelTransfer<dim, VectorType>> mg_transfers(min_level, max_level);
-
-    // container of smart pointer os MatrixFree<..>
-    std::vector<std::shared_ptr<Portable::MatrixFree<dim, Number>>> mf_data_levels;
-
-    // Prepare the operators and data structures
-    // on all levels of the multigrid hierarchy
-    for (unsigned int level = min_level; level <= max_level; ++level)
-      {
-        auto &dof_handler = mg_dof_handlers[level];
-        auto &constraint  = mg_constraints[level];
-
-        dof_handler.reinit(*coarse_grid_triangulations[level]);
-        dof_handler.distribute_dofs(fe_U);
-
-        constraint.reinit(dof_handler.locally_owned_dofs(),
-                          DoFTools::extract_locally_relevant_dofs(dof_handler));
-
-        DoFTools::make_zero_boundary_constraints(dof_handler, constraint);
-        constraint.close();
-
-        typename Portable::MatrixFree<dim, Number>::AdditionalData additional_data;
-        additional_data.mapping_update_flags = update_JxW_values | update_gradients;
-
-        if (level == max_level)
-          // On the finest level we can reuse the MatrixFree object from the
-          // LinearGL operator. This way we can solve significantly larger
-          // problems before we run out of device memory.
-          mf_data_levels.emplace_back(mf_data);
-        else
-          {
-            const QGauss<1> quad(fe_degree + 2);
-            mf_data_levels.emplace_back(std::make_shared<Portable::MatrixFree<dim, Number>>());
-
-            mf_data_levels.back()->reinit(mapping, dof_handler, constraint, quad, additional_data);
-          }
-
-        mg_matrices[level].reinit(mf_data_levels.back());
-      }
-
-    mg::Matrix<VectorType> mg_matrix(mg_matrices);
-
-    // transfer operator
-    for (unsigned int level = min_level; level < max_level; ++level)
-      mg_transfers[level + 1].reinit_geometric_transfer(
-        mg_dof_handlers[level + 1],
-        mg_dof_handlers[level],
-        mg_constraints[level + 1],
-        mg_constraints[level]);
-
-    MGTransferType mg_transfer(mg_transfers, [&](const auto l, auto &vec) {
-      mg_matrices[l].initialize_dof_vector(vec);
-    });
-
-    // smoother
-    MGLevelObject<typename SmootherType::AdditionalData> smoother_data(min_level, max_level);
-
-    for (unsigned int level = min_level; level <= max_level; ++level)
-      {
-        mg_matrices[level].compute_diagonal();
-        smoother_data[level].preconditioner =
-          std::make_shared<SmootherPreconditionerType>(*mg_matrices[level].get_matrix_diagonal_inverse());
-        smoother_data[level].constraints.copy_from(mg_constraints[level]);
-
-        if (level == min_level)
-          {
-            // Use the Chebyshev iteration as an (approximate) solver on the
-            // coarsest level. In this mode @p smoothing_range is a relative
-            // target tolerance and must be strictly less than one; the number
-            // of iterations is then chosen automatically by setting
-            // @p degree to numbers::invalid_unsigned_int. We also use more
-            // CG iterations for the eigenvalue estimate because when
-            // @p min_level > 0, the coarse problem can still be reasonably
-            // large and badly conditioned.
-            smoother_data[level].smoothing_range = 1e-3;
-            smoother_data[level].degree = numbers::invalid_unsigned_int;
-            smoother_data[level].eig_cg_n_iterations = 40;
-          }
-        else
-          {
-            // These values are chosen by experimentation for the problem at
-            // hand. We chose the smoothing range first. A good value will allow
-            // the smoother to effectively separate large and small scale
-            // oscillations in the residual and as such improve the convergence
-            // of the Chebyshev iteration and the multigrid method. Finally, the
-            // degree is chosen to minimize total runtime (a larger value
-            // increases the cost but improves the outer number of GMRES
-            // iterations).
-            smoother_data[level].smoothing_range     = 5;
-            smoother_data[level].degree              = 4;
-            smoother_data[level].eig_cg_n_iterations = 20;
-          }
-      }
-
-    MGSmootherPrecondition<LevelMatrixType, SmootherType, VectorType> mg_smoother;
-    mg_smoother.initialize(mg_matrices, smoother_data);
-
-    // Estimate and print the eigenvalue spectrum of the velocity block on each
-    // level. This spectrum is later used by the Chebyshev iteration.
-    pcout << "GMG velocity block smoothers:" << std::endl;
-    for (unsigned int level = min_level; level <= max_level; ++level)
-      {
-        VectorType vec;
-        mg_matrices[level].initialize_dof_vector(vec);
-        auto eigenvalue_info = mg_smoother.smoothers[level].estimate_eigenvalues(vec);
-        pcout << "    level: " << level << " n_dofs: " << vec.size()
-              << ", eigenvalue spectrum: [ "
-              << eigenvalue_info.min_eigenvalue_estimate << ", "
-              << eigenvalue_info.max_eigenvalue_estimate << " ]" << std::endl;
-      }
-
-    // coarse-grid solver
-    MGCoarseGridApplySmoother<VectorType> mg_coarse;
-    mg_coarse.initialize(mg_smoother);
-
-    // put everything together
-    Multigrid<VectorType> mg(mg_matrix,
-                             mg_coarse,
-                             mg_transfer,
-                             mg_smoother,
-                             mg_smoother,
-                             min_level,
-                             max_level);
-
-
-    dealii::Timer timer_smoother;
-    dealii::Timer timer_transfer;
-    dealii::Timer timer_coarse;
-    dealii::Timer timer_residual;
-    {
-      timer_smoother.reset();
-      timer_transfer.reset();
-      timer_coarse.reset();
-      timer_residual.reset();
-
-      auto make_timer_lambda = [&](dealii::Timer &timer) {
-        return [&](const bool before, const unsigned int /*level*/) {
-          if (before)
-            timer.start();
-          else
-            timer.stop();
-        };
-      };
-      mg.connect_pre_smoother_step(make_timer_lambda(timer_smoother));
-      mg.connect_post_smoother_step(make_timer_lambda(timer_smoother));
-      mg.connect_residual_step(make_timer_lambda(timer_residual));
-      mg.connect_restriction(make_timer_lambda(timer_transfer));
-      mg.connect_prolongation(make_timer_lambda(timer_transfer));
-      mg.connect_coarse_solve(make_timer_lambda(timer_coarse));
-    }
-
-    using APreconditionerType = PreconditionMG<dim, VectorType, MGTransferType>;
-    APreconditionerType preconditioner_A(DoFHandler_U, mg, mg_transfer);
-
-    // PortableMFMassOperator<dim, degree_u, degree_p, Number> mass_operator(mf_data);
-    // mass_operator.compute_diagonal();
-
-    // using SPreconditionerType = PreconditionChebyshev<
-    //   PortableMFMassOperator<dim, degree_u, degree_p, Number>,
-    //   VectorType>;
-
-    // SPreconditionerType preconditioner_schur;
-    // {
-    //   typename SPreconditionerType::AdditionalData additional_data;
-    //   additional_data.smoothing_range     = 15.;
-    //   additional_data.degree              = 3;
-    //   additional_data.eig_cg_n_iterations = 10;
-    //   additional_data.constraints.copy_from(constraints_p);
-    //   additional_data.preconditioner =
-    //     mass_operator.get_matrix_diagonal_inverse();
-
-    //   preconditioner_schur.initialize(mass_operator, additional_data);
-    // }
-
-    // using BTOperatorType =
-    //   PortableMFBTOperator<dim, degree_u, degree_p, Number>;
-    // BTOperatorType BT_operator(mf_data);
-
-    BlockSchurPreconditioner<APreconditionerType,
-                             SPreconditionerType,
-                             BTOperatorType,
-                             BlockVectorType>
-      preconditioner(preconditioner_A, preconditioner_schur, BT_operator);
+    // waiting for implementaton
     /* -----------------------------------------------
      *  preconditioner construction blocks ends here
      * -----------------------------------------------
