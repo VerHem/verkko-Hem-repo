@@ -271,13 +271,6 @@ namespace VerHem
     pcout << "Solver converged in " << solver_control.last_step()
           << " iterations in " << t.wall_time() << " seconds" << std::endl;
 
-    pcout << "Velocity block GMG timings:"
-          << "\n    smoother: " << timer_smoother.wall_time()
-          << " s\n    transfer: " << timer_transfer.wall_time()
-          << " s\n    coarse  : " << timer_coarse.wall_time()
-          << " s\n    residual: " << timer_residual.wall_time() << " s"
-          << std::endl;
-
   } // LinearGLProblem<...>::solve() ends here
 
 
