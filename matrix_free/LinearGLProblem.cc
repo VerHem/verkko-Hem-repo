@@ -12,6 +12,7 @@
 #include <deal.II/grid/grid_generator.h>
 
 #include <deal.II/lac/affine_constraints.h>
+#include <deal.II/lac/diagonal_matrix.h>
 #include <deal.II/lac/la_parallel_block_vector.h>
 #include <deal.II/lac/precondition.h>
 #include <deal.II/lac/solver_gmres.h>
@@ -19,6 +20,7 @@
 #include <deal.II/matrix_free/operators.h>
 #include <deal.II/matrix_free/portable_fe_evaluation.h>
 #include <deal.II/matrix_free/portable_matrix_free.h>
+#include <deal.II/matrix_free/tools.h>
 
 #include <deal.II/multigrid/mg_coarse.h>
 #include <deal.II/multigrid/mg_matrix.h>
@@ -36,6 +38,7 @@
 #include "bgSolution_U.h"
 #include "bgSolution_V.h"
 #include "LinearGLRHSCellOperator.h"
+#include "LaplaceDiagonalCellOperatorQuad.h"
 
 namespace VerHem
 {
@@ -45,7 +48,8 @@ namespace VerHem
   class LinearGLProblem
   {
   public:
-    // static constexpr unsigned int degree_u = degree_p + 1;
+
+    static constexpr unsigned int n_components = 9;
 
     LinearGLProblem();
 
@@ -55,7 +59,38 @@ namespace VerHem
       LinearAlgebra::distributed::Vector<Number, MemorySpace::Default>;
     using BlockVectorType =
       LinearAlgebra::distributed::BlockVector<Number, MemorySpace::Default>;
+    using DiagonalMatrixType = DiagonalMatrix<VectorType>;
 
+    /* -------------------------------------------
+     *        preconditioner class
+     * -------------------------------------------*/
+    class BlockDiagonalJacobiPreconditioner
+    {
+     public:
+      BlockDiagonalJacobiPreconditioner(const DiagonalMatrix<VectorType> &inverse_diagonal_U,
+                                        const DiagonalMatrix<VectorType> &inverse_diagonal_V)
+        : inverse_diagonal_U(inverse_diagonal_U)
+        , inverse_diagonal_V(inverse_diagonal_V)
+      {}
+      //
+      void vmult(BlockVectorType &dst,
+                 const BlockVectorType &src) const
+      {
+        inverse_diagonal_U.vmult(dst.block(0), src.block(0));
+        inverse_diagonal_V.vmult(dst.block(1), src.block(1));
+      }
+      
+      void Tvmult(BlockVectorType &dst,
+                  const BlockVectorType &src) const
+      { vmult(dst, src); }
+      private:
+        const DiagonalMatrix<VectorType> &inverse_diagonal_U;
+        const DiagonalMatrix<VectorType> &inverse_diagonal_V;
+    }; // preconditioner ends here
+    /* -------------------------------------------
+     *     preconditioner class ends here
+     * -------------------------------------------*/
+    
   private:
     void setup_dofs();
 
@@ -255,10 +290,41 @@ namespace VerHem
 
     /* -----------------------------------------------
      *  preconditioner construction blocks start here
+     *  cheap first preconditioner.
      * -----------------------------------------------
      */
+    DiagonalMatrix<VectorType> inverse_diagonal_U;
+    DiagonalMatrix<VectorType> inverse_diagonal_V;
 
-    // waiting for implementaton
+    VectorType &diagonal_U_vec = inverse_diagonal_U.get_vector();
+    VectorType &diagonal_V_vec = inverse_diagonal_V.get_vector();
+
+    mf_data_ptr->initialize_dof_vector(diagonal_U_vec);
+    mf_data_ptr->initialize_dof_vector(diagonal_V_vec);
+    
+    LaplaceDiagonalOperation<dim, fe_degree, Number> laplace_diagonal_operator;
+
+    /* U block */
+    MatrixFreeTools::compute_diagonal<dim, fe_degree, fe_degree + 1, n_components, Number,
+      MemorySpace::Default>(*mf_data_ptr, diagonal_U_vec, laplace_diagonal_operator,
+        EvaluationFlags::gradients,
+        EvaluationFlags::gradients, 0);
+
+    /* V block */
+    MatrixFreeTools::compute_diagonal<dim, fe_degree, fe_degree + 1, n_components, Number,
+      MemorySpace::Default>(*mf_data_ptr, diagonal_V_vec, laplace_diagonal_operator,
+        EvaluationFlags::gradients,
+        EvaluationFlags::gradients, 1);
+    
+    /* Invert diagonal. */
+    for (auto &x : diagonal_U_vec)
+      x = (std::abs(x) > 1e-12) ? 1./x : 1.;
+
+    for (auto &x : diagonal_V_vec)
+      x = (std::abs(x) > 1e-12) ? 1./x : 1.;
+    
+    BlockDiagonalJacobiPreconditioner preconditioner(inverse_diagonal_U, inverse_diagonal_V);
+
     /* -----------------------------------------------
      *  preconditioner construction blocks ends here
      * -----------------------------------------------
