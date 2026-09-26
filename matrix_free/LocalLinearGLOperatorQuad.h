@@ -1,7 +1,8 @@
 #ifndef LOCALLINEARGLOPERATORQUAD_H
 #define LOCALLINEARGLOPERATORQUAD_H
 
-#include <deal.II/base/tensor.h>
+// #include <deal.II/base/tensor.h>
+#include <deal.II/base/quadrature_lib.h>
 
 #include <deal.II/matrix_free/portable_fe_evaluation.h>
 #include <deal.II/matrix_free/portable_matrix_free.h>

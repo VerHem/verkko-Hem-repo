@@ -80,7 +80,6 @@ namespace VerHem
     
   } // LinearGLRHSCellOperator::operator() ends here
 
-
   private:
       Number K1,  alpha, beta2;
  }; // LinearGLRHSCellOperator ends here
