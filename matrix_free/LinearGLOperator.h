@@ -56,7 +56,7 @@ namespace VerHem
   private:
     /* Portable::MatrixFree is defined and reinit through smart pointer at LineaarGL problem
      * LinearGL operator should receive this smart pointer other than defines its own.
-     * THis is step-104's practive. */
+     * This is step-104's practice. */
     // Portable::MatrixFree<dim, Number> MF_MetaDataEngine_ptr;
     std::shared_ptr<Portable::MatrixFree<dim, Number>> MF_MetaDataEngine_ptr;
 
