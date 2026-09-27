@@ -22,3 +22,5 @@ namespace VerHem
   };
 
 } // VerHem nameespace ends here
+
+#endif

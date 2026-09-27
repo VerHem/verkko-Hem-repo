@@ -22,16 +22,27 @@ namespace VerHem
     static constexpr unsigned int n_components = 9;
     static constexpr unsigned int n_q_points   = Utilities::pow(fe_degree + 1, dim);
 
-    LocalLinearGLOperator(const GLBackgroundCoefficients<dim, fe_degree, Number> &background_coefs)
-      : background_coefs_ptr(&background_coefs)
-    {}
+    // LocalLinearGLOperator(const GLBackgroundCoefficients<dim, fe_degree, Number> &background_coefs)
+    //   : background_coefs_ptr(&background_coefs)
+    // {}
 
+    // distributed device side Vector can returns its device pointer through get_values()
+    LocalLinearGLOperator(
+      const GLBackgroundCoefficients<dim, fe_degree, Number> &background_coefs)
+      : u0_BGSol_dev_ptr(background_coefs.get_u0_values())
+      , v0_BGSol_dev_ptr(background_coefs.get_v0_values())
+    {}
+    
     DEAL_II_HOST_DEVICE
     void operator()(const typename Portable::MatrixFree<dim, Number>::Data *data,
                     const Portable::DeviceBlockVector<Number> &src,
                     Portable::DeviceBlockVector<Number> &dst) const;
   private:
-    const GLBackgroundCoefficients<dim, fe_degree, Number> *background_coefs_ptr;
+    // GLBackgroundCoefficients is host-side object, don't get its pointer in GPU code
+    // const GLBackgroundCoefficients<dim, fe_degree, Number> *background_coefs_ptr;
+
+    // u0_BGSol_dev_ptr, v0_BGSol_dev_ptr store dev side pointers
+    const Number *u0_BGSol_dev_ptr, *v0_BGSol_dev_ptr;
 
   }; // LocalLinearGLOperator declaretion ends here
 
@@ -64,9 +75,7 @@ namespace VerHem
      */
 
     LocalLinearGLOperatorQuad<dim, fe_degree, Number>
-      quad_operator(data,
-                    background_coefs_ptr->get_u0_values(),
-                    background_coefs_ptr->get_v0_values());
+      quad_operator(data, u0_BGSol_dev_ptr, v0_BGSol_dev_ptr);
     
     data->for_each_quad_point(
       [&](const int q_point)

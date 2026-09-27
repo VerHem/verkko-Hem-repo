@@ -57,7 +57,7 @@ namespace VerHem
      * unique for a given MPI process.
      * ---------------------------------------------
      */
-    const unsigned int q_positon  = data->local_q_point_id(cell_index, n_q_points, q_point);
+    const unsigned int q_position  = data->local_q_point_id(cell_index, q_point);
     /* ------------------------------------------------------------
      * Background values at this quadrature point.
      * ------------------------------------------------------------
