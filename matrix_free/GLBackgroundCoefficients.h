@@ -78,8 +78,7 @@ namespace VerHem
     data->for_each_quad_point(
       [&](const int q_point)
       {
-        // const unsigned int pos = data->local_q_point_id(cell, q_point);
-        const unsigned int pos = data->local_q_point_id(cell, n_q_points, q_point);
+        const unsigned int pos = data->local_q_point_id(cell, q_point);
         
         const auto u0 = u0_eval.get_value(q_point);
         const auto v0 = v0_eval.get_value(q_point);
@@ -117,19 +116,18 @@ namespace VerHem
     GLBackgroundCoefficients() {};
 
     // reinit()
-    void reinit(const Portable::MatrixFree<dim, Number> &mf_data);
+    void reinit(const std::shared_ptr<Portable::MatrixFree<dim, Number>> &mf_data_ptr);
 
     // update() 
-    void update(const Portable::MatrixFree<dim, Number> &mf_data,
+    void update(const std::shared_ptr<Portable::MatrixFree<dim, Number>> &mf_data_ptr,
                 const BlockVectorType &background);
 
-    // Number *get_u0_values();
+    // Number *get_u0_values(); Host-Only
     const Number *get_u0_values() const;
 
-    // Number *get_v0_values();
+    // Number *get_v0_values(); Host-Only
     const Number *get_v0_values() const;
-
-
+    
   private:
     VectorType u0_BGSol;
     VectorType v0_BGSol;
@@ -141,8 +139,7 @@ namespace VerHem
       const std::shared_ptr<Portable::MatrixFree<dim, Number>> &mf_data_ptr)
   {
     // LinearGLOperator's MF_Data_Eigine is smart pointer.
-    // GLBackgroundCoefficients::reinit() should has
-    // smart pointer as parameter as well.
+    // GLBackgroundCoefficients::reinit() should has smart pointer as parameter as well.
     // source code of MatriFree's get_dof_handler() does receives dof_handler_index
     // and return DoFHandler<dim>.
     const unsigned int n_owned_cells =
@@ -159,6 +156,7 @@ namespace VerHem
     // to n_values without any actual parallel distribution. 
     u0_BGSol.reinit(n_values);
     v0_BGSol.reinit(n_values);
+
   } // reinit() ends here
 
   template <int dim, int fe_degree, typename Number>
@@ -169,6 +167,8 @@ namespace VerHem
     LocalGLBackgroundCoefficientOperator<dim, fe_degree, Number>
       background_operator(u0_BGSol.get_values(), v0_BGSol.get_values());
 
+    BlockVectorType dummy_dst;
+
     /* mf_data_ptr->cell_loop() receives a dummy destination vector
      * because MatrixFree::cell_loop interface requires one.
      * LocalGLBackgroundCoefficientOperator does NOT write to this fake dst.
@@ -176,7 +176,7 @@ namespace VerHem
      *
      * here the background_UV_sol itself is used as the dummy destination object.
      */    
-    mf_data_ptr->cell_loop(background_operator, background_UV_sol, background_UV_sol);
+    mf_data_ptr->cell_loop(background_operator, background_UV_sol, dummy_dst);
   } // upate() 
 
 
@@ -189,10 +189,6 @@ namespace VerHem
   template <int dim, int fe_degree, typename Number>
   const Number *GLBackgroundCoefficients<dim, fe_degree, Number>::get_u0_values() const
   { return u0_BGSol.get_values(); }
-
-  // template <int dim, int fe_degree, typename Number>
-  // Number *GLBackgroundCoefficients<dim, fe_degree, Number>::get_v0_values()
-  // { return v0_coefficients.get_values(); }
 
   template <int dim, int fe_degree, typename Number>
   const Number *GLBackgroundCoefficients<dim, fe_degree, Number>::get_v0_values() const
