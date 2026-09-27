@@ -71,11 +71,11 @@ namespace VerHem
    */
   
   template <int dim, typename Number>
-  class bgSolution_V : public Function<dim>
+  class bgSolution_V : public Function<dim, Number>
   {
   public:
     bgSolution_V(const Number Gaussian_Mean, const Number Gaussian_STD, const Number gap_para)
-      : Function<dim>(9) // tell base Function<dim> class I want a 9-components vector-valued function
+      : Function<dim, Number>(9) // tell base Function<dim> class I want a 9-components vector-valued function
       , g_mean(Gaussian_Mean)
       , g_std(Gaussian_STD)
       , gap(gap_para)	

@@ -71,11 +71,11 @@ namespace VerHem
    */
   
   template <int dim, typename Number>
-  class bgSolution_U : public Function<dim>
+  class bgSolution_U : public Function<dim, Number>
   {
   public:
     bgSolution_U(const Number Gaussian_Mean, const Number Gaussian_STD, const Number gap_para)
-      : Function<dim>(9) // tell base Function<dim> class I want a 9-components vector-valued function
+      : Function<dim, Number>(9) // tell base Function<dim> class I want a 9-components vector-valued function
       , g_mean(Gaussian_Mean)
       , g_std(Gaussian_STD)
       , gap(gap_para)	
@@ -97,17 +97,17 @@ namespace VerHem
       std::mt19937       gen{rd()};
       std::normal_distribution<Number> gaussian_dis{g_mean, g_std};
       {
-          values[0] = (gap/std::sqrt(3.)) + gaussian_dis(gen);  /*u11*/  
+          values[0] = (gap) + gaussian_dis(gen);  /*u11*/  
           values[1] = gaussian_dis(gen);  /*u12*/  
           values[2] = gaussian_dis(gen);  /*u13*/  
  
           values[3] = gaussian_dis(gen);  /*u21*/ 
-          values[4] = (gap/std::sqrt(3.)) + gaussian_dis(gen);  /*u22*/ 
+          values[4] = (gap) + gaussian_dis(gen);  /*u22*/ 
           values[5] = gaussian_dis(gen);  /*u23*/ 
 
           values[6] = gaussian_dis(gen);   /*u31*/ 
           values[7] = gaussian_dis(gen);   /*u32*/ 
-          values[8] = (gap/std::sqrt(3.)) + gaussian_dis(gen);   /*u33*/ 
+          values[8] = (gap) + gaussian_dis(gen);   /*u33*/ 
       }      
             
     } // vector_value() function ends here

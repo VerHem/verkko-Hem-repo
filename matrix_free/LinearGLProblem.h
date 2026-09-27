@@ -203,12 +203,12 @@ namespace VerHem
     mf_data_ptr->initialize_dof_vector(bgSolution_host);
 
     VectorTools::interpolate(mapping, DoFHandler_U,
-                               bgSolution_U<dim, Number>(),
-                               bgSolution_host.block(0));
+			     bgSolution_U<dim, Number>(0.0, 0.2, 2.0),
+                             bgSolution_host.block(0));
     
     VectorTools::interpolate(mapping, DoFHandler_V,
-                               bgSolution_V<dim, Number>(),
-                               bgSolution_host.block(1));
+                             bgSolution_V<dim, Number>(0.0, 0.2, 2.0),
+                             bgSolution_host.block(1));
 
     // prepare moving host vector to device vector.
     mf_data_ptr->initialize_dof_vector(bg_solution);
@@ -225,11 +225,11 @@ namespace VerHem
        * ------------------------------------------------------------
        */
        mf_data_ptr->initialize_dof_vector(rhs);
-       rhs = Number(0.0); // do I need this?
+       rhs = 0.0; // do I need this?
 
-       const Number K1    = /* your K1 */;
-       const Number alpha = /* your alpha */;
-       const Number beta2 = /* your beta2 */;
+       const Number K1    = 0.42072;
+       const Number alpha = -0.4;
+       const Number beta2 = 0.1;
        
        LinearGLRHSCellOperator<dim, fe_degree, Number> rhs_operator(K1, alpha, beta2);
 
@@ -247,15 +247,6 @@ namespace VerHem
     
   } // LinearGLProblem<...>::setup_dofs() ends here
 
-  // In the solve() function we set up the preconditioner and
-  // run the GMRES solver.
-  // For this, we construct the multigrid
-  // hierarchy for the GMG v-cycle with a Chebyshev iteration around the
-  // point-Jacobi scheme, i.e., the inverse of the diagonal of $A$, to
-  // approximate the action of $A^{-1}$.
-
-  // We approximate the Schur Complement with a Chebyshev iteration
-  // applied to the pressure mass matrix (without multigrid).
   template <int dim, int fe_degree, typename Number>
   void LinearGLProblem<dim, fe_degree, Number>::solve()
   {
@@ -302,17 +293,17 @@ namespace VerHem
     mf_data_ptr->initialize_dof_vector(diagonal_U_vec);
     mf_data_ptr->initialize_dof_vector(diagonal_V_vec);
     
-    LaplaceDiagonalOperation<dim, fe_degree, Number> laplace_diagonal_operator;
+    LaplaceDiagonalCellOperatorQuad<dim, fe_degree, Number> laplace_diagonal_operator;
 
     /* U block */
-    MatrixFreeTools::compute_diagonal<dim, fe_degree, fe_degree + 1, n_components, Number,
-      MemorySpace::Default>(*mf_data_ptr, diagonal_U_vec, laplace_diagonal_operator,
+    MatrixFreeTools::compute_diagonal<dim, fe_degree, fe_degree + 1, n_components, Number>
+      (*mf_data_ptr, diagonal_U_vec, laplace_diagonal_operator,
         EvaluationFlags::gradients,
         EvaluationFlags::gradients, 0);
 
     /* V block */
-    MatrixFreeTools::compute_diagonal<dim, fe_degree, fe_degree + 1, n_components, Number,
-      MemorySpace::Default>(*mf_data_ptr, diagonal_V_vec, laplace_diagonal_operator,
+    MatrixFreeTools::compute_diagonal<dim, fe_degree, fe_degree + 1, n_components, Number>
+      (*mf_data_ptr, diagonal_V_vec, laplace_diagonal_operator,
         EvaluationFlags::gradients,
         EvaluationFlags::gradients, 1);
     
@@ -438,15 +429,5 @@ namespace VerHem
   }
 } // namespace VerHem ends here
 
-// The only interesting bits here are the template arguments that
-// specify dimension and polynomial degree to be used.
-int main(int argc, char **argv)
-{
-  using namespace VerHem;
-  Utilities::MPI::MPI_InitFinalize mpi_initialization(argc, argv);
-
-  const unsigned int                   dim      = 3;
-  const unsigned int                   FE_degree = 1;
-  StokesProblem<dim, FE_degree, float> LinearGL_problem;
-  LinearGL_problem.run();
-}
+template class VerHem::LinearGLProblem<3, 1, float>;
+template class VerHem::LinearGLProblem<3, 1, double>;
