@@ -48,8 +48,8 @@ add_library(femgl STATIC
 #  ${CMAKE_SOURCE_DIR}/femgl/src/makegrids/makegrid_cube-z-normal_AdGR.cc
 #  ${CMAKE_SOURCE_DIR}/femgl/src/makegrids/makegrid_retangle-xyz-periodic.cc
 #  ${CMAKE_SOURCE_DIR}/femgl/src/makegrids/makegrid_retangle-xyz-homogenous-Neumann.cc
-#  ${CMAKE_SOURCE_DIR}/femgl/src/makegrids/makegrid_retangle-z-AdGR_xy-periodic.cc
-   ${CMAKE_SOURCE_DIR}/femgl/src/makegrids/makegrid_retangle-x-Dirichlet-yz-periodic.cc
+   ${CMAKE_SOURCE_DIR}/femgl/src/makegrids/makegrid_retangle-z-AdGR_xy-periodic.cc
+#  ${CMAKE_SOURCE_DIR}/femgl/src/makegrids/makegrid_retangle-x-Dirichlet-yz-periodic.cc
 #  ${CMAKE_SOURCE_DIR}/femgl/src/makegrids/makegrid_retangle-xyz-AdGR.cc
 #  ${CMAKE_SOURCE_DIR}/femgl/src/makegrids/makegrid_retangle-z-AdGR-xy-HomoNeumann.cc
 #  ${CMAKE_SOURCE_DIR}/femgl/src/makegrids/makegrid_retangle-z-Dirichlet-xy-HomoNeumann.cc
@@ -61,6 +61,7 @@ add_library(femgl STATIC
 #  ${CMAKE_SOURCE_DIR}/femgl/src/setups/setup_fully_random.cc
 #  ${CMAKE_SOURCE_DIR}/femgl/src/setups/setup_fully_random-xy-periodic.cc
 #  ${CMAKE_SOURCE_DIR}/femgl/src/setups/setup_noised_B_phase_z-AdGR_xy-periodic.cc
+   ${CMAKE_SOURCE_DIR}/femgl/src/setups/setup_Wiman2016_Stripe_B_phase_z-AdGR_xy-periodic.cc
 #  ${CMAKE_SOURCE_DIR}/femgl/src/setups/setup_fully_random-xyz-periodic.cc
 #  ${CMAKE_SOURCE_DIR}/femgl/src/setups/setup_fully_random_z-AdGR-x-periodic-y-Homo-Neumann.cc
 #  ${CMAKE_SOURCE_DIR}/femgl/src/setups/setup_uniform_BnB-polkka-dot-like-configuration.cc

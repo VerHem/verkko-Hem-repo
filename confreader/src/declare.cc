@@ -129,6 +129,10 @@ namespace FemGL_mpi
       prm.declare_entry("gaussian random mean value", "2.0", Patterns::Double(0),
 			"mean value of gaussian random generator in setup() call");
 
+      prm.declare_entry("gaussian random STD", "0.0", Patterns::Double(0),
+			"STD of gaussian random generator in setup() call");
+
+      
       prm.declare_entry("diff tolrence", "0.0", Patterns::Double(0),
 			"measurement of boundary layer thickness for A-phase string-monopole, in ratio with half-side-length");
       
@@ -181,6 +185,10 @@ namespace FemGL_mpi
       prm.declare_entry("B-phase inner plate radius ratio", "0.4666", Patterns::Double(0),
 			"This is for BinB polkka-dot configuration with 7.46 xi0GL slab, real value is ratio * half_side_length, default value is 0.46");
 
+
+      prm.declare_entry("Stripe B-Phase Half Period", "1.0", Patterns::Double(0),
+			"This is for setting Stripe B-phase configuration suggested in Wiman 1605.01047. Half-Period is half distance between planar domain walls. Its value measured with xi^0_GL");
+      
       
       prm.declare_entry("B-phase ball radius ratio", "0.5", Patterns::Double(0),
 			"This is for BinA configuration, real value is ratio * half_side_length, default value is 0.5");
