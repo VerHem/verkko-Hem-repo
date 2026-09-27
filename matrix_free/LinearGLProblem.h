@@ -22,13 +22,13 @@
 #include <deal.II/matrix_free/portable_matrix_free.h>
 #include <deal.II/matrix_free/tools.h>
 
-#include <deal.II/multigrid/mg_coarse.h>
-#include <deal.II/multigrid/mg_matrix.h>
-#include <deal.II/multigrid/mg_smoother.h>
-#include <deal.II/multigrid/mg_transfer_global_coarsening.h>
-#include <deal.II/multigrid/mg_transfer_matrix_free.h>
-#include <deal.II/multigrid/multigrid.h>
-#include <deal.II/multigrid/portable_mg_transfer_global_coarsening.h>
+//#include <deal.II/multigrid/mg_coarse.h>
+//#include <deal.II/multigrid/mg_matrix.h>
+//#include <deal.II/multigrid/mg_smoother.h>
+//#include <deal.II/multigrid/mg_transfer_global_coarsening.h>
+//#include <deal.II/multigrid/mg_transfer_matrix_free.h>
+//#include <deal.II/multigrid/multigrid.h>
+//#include <deal.II/multigrid/portable_mg_transfer_global_coarsening.h>
 
 #include <deal.II/numerics/vector_tools.h>
 #include <deal.II/numerics/vector_tools_integrate_difference.h>
@@ -186,7 +186,7 @@ namespace VerHem
       | update_gradients | update_JxW_values | update_quadrature_points;    
     // additional_data.mapping_update_flags = update_values | update_gradients;
     /*------------------------------------------------------------
-     * using similar multi-DoFHandler pattern as step-104 for block structure
+     * using multi-DoFHandler pattern as step-104 for block structure
      * DoFHandler 0 -> U, DoFHandler 1 -> V, Here two Dofhandlers are provided
      * when Portable::Matrixfree is initialized.
      * ------------------------------------------------------------
@@ -240,8 +240,8 @@ namespace VerHem
        * Newton updates satisfies homogeneous Dirichlet conditions.
        * Therefore constrained RHS entries must be zero.
        */
-       mf_data_ptr->set_constrained_values(Number(0.0), rhs.block(0), 0);
-       mf_data_ptr->set_constrained_values(Number(0.0), rhs.block(1), 1);
+       // mf_data_ptr->set_constrained_values(Number(0.0), rhs.block(0), 0);
+       // mf_data_ptr->set_constrained_values(Number(0.0), rhs.block(1), 1);
       
     } // rhs setting block ends here
     
@@ -359,13 +359,13 @@ namespace VerHem
 
     // VectorTools::integrate_difference(dof_u,
     //                                   solution_host.block(0),
-    //                                   VelocitySolution<dim, Number>(),
+    //                                   xxxx<dim, Number>(),
     //                                   cellwise_errors_ul2,
     //                                   quadrature_formula,
     //                                   VectorTools::L2_norm);
     // VectorTools::integrate_difference(dof_p,
     //                                   solution_host.block(1),
-    //                                   PressureSolution<dim, Number>(),
+    //                                   yyyy<dim, Number>(),
     //                                   cellwise_errors_pl2,
     //                                   quadrature_formula,
     //                                   VectorTools::L2_norm);

@@ -87,14 +87,15 @@ namespace VerHem
     }
 
     /* ------------------------------------------------------------
-     * Common coefficient c(x) = alpha + beta_2 ( |U0|^2 + |V0|^2 )
+     * Common coefficient c(x) = alpha + beta2 ( |U0|^2 + |V0|^2 )
      *
-     * alpha and beta_2 should be supplied to the physics layer.     *
-     * for testing, value like alpha = -0.5, beta_2 = 2 can be used.
+     * alpha and beta2 should be supplied to the physics layer.     
+     * for testing, value like alpha = -0.5, beta2 = 2 can be used.
+     * small alpha & beta2 may friendly for cheap preconditioner.
      * ------------------------------------------------------------
      */
-    const Number K1 = 1., alpha = -0.5, beta_2 = 2.;
-    const Number c = alpha + beta_2 * (u0_square + v0_square);
+    const Number K1 = 0.42072, alpha = -0.4, beta2 = 0.1;
+    const Number c = alpha + beta2 * (u0_square + v0_square);
     /* ------------------------------------------------------------
      * Dot products: U0 . U, U0 . V, V0 . U, V0 . V
      * ------------------------------------------------------------
@@ -115,8 +116,8 @@ namespace VerHem
 
     /* ------------------------------------------------------------
      * Reaction terms. From the equations:
-     * Ru = c U + 2 beta_2 U0 ( U0 . U + U0 . V )
-     * Rv = c V + 2 beta_2 V0 ( U0 . U + V0 . V )
+     * Ru = c U + 2 beta2 U0 ( U0 . U + U0 . V )
+     * Rv = c V + 2 beta2 V0 ( U0 . U + V0 . V )
      * ------------------------------------------------------------
      */
     auto reaction_U = U;
@@ -126,8 +127,8 @@ namespace VerHem
 
     for (unsigned int comp = 0; comp < n_components; ++comp)
     {
-      reaction_U[comp] = c * U[comp] + 2. * beta_2 * u0[comp] * common_U;
-      reaction_V[comp] = c * V[comp] + 2. * beta_2 * v0[comp] * common_V;
+      reaction_U[comp] = c * U[comp] + 2. * beta2 * u0[comp] * common_U;
+      reaction_V[comp] = c * V[comp] + 2. * beta2 * v0[comp] * common_V;
     }
 
     /* ------------------------------------------------------------
