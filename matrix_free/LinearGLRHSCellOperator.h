@@ -26,10 +26,10 @@ namespace VerHem
        , beta2(beta2_in)
      {}
 
-      DEAL_II_HOST_DEVICE
-      void operator()(const typename Portable::MatrixFree<dim, Number>::Data *data,
-                      const Portable::DeviceBlockVector<Number> &src,
-                      Portable::DeviceBlockVector<Number> &dst) const
+     DEAL_II_HOST_DEVICE
+     void operator()(const typename Portable::MatrixFree<dim, Number>::Data *data,
+		     const Portable::DeviceBlockVector<Number> &src,
+		     Portable::DeviceBlockVector<Number> &dst) const
   {
     Portable::FEEvaluation<dim, fe_degree, fe_degree + 1, n_components, Number> fe_u(data, 0);
     Portable::FEEvaluation<dim, fe_degree, fe_degree + 1, n_components, Number> fe_v(data, 1);
@@ -61,15 +61,17 @@ namespace VerHem
 
         /*
          * R1: -K1 Delta u + c u = K1 grad(u) . grad(phi) + c u phi
+         * - R1 is right hand side
          */
-        fe_u.submit_gradient(K1 * grad_u, q_point);
-        fe_u.submit_value(c * u, q_point);
+        fe_u.submit_gradient(- K1 * grad_u, q_point);
+        fe_u.submit_value(- c * u, q_point);
 
         /*
          * R2: -K1 Delta v + c v = K1 grad(v) . grad(phi) + c v phi
+         * - R2 is right hand side
          */
-        fe_v.submit_gradient(K1 * grad_v, q_point);
-        fe_v.submit_value(c * v, q_point);
+        fe_v.submit_gradient(- K1 * grad_v, q_point);
+        fe_v.submit_value(- c * v, q_point);
       });
 
     fe_u.integrate(EvaluationFlags::values | EvaluationFlags::gradients);
