@@ -74,6 +74,7 @@ namespace VerHem
                                                              const BlockVectorType &background_UV_sol)
   : MF_MetaDataEngine_ptr(MF_Data_Input)
   {
+    roctxRangePush("ROCTX-RANGE:LinearGLOperator() Constructor ");
     // const MappingQ<dim> mapping(fe_degree);
     
     // typename Portable::MatrixFree<dim, Number>::AdditionalData additional_data;
@@ -100,13 +101,18 @@ namespace VerHem
     background_coefficients.reinit(MF_MetaDataEngine_ptr);
 
     //Interpolate the initial background into the quadrature-point coefficient arrays.
+    roctxRangePush("ROCTX-RANGE: background_cefficients.update() "); 
     background_coefficients.update(MF_MetaDataEngine_ptr, background_UV_sol);
+    roctxRangePop();
+
+    roctxRangePop(); 
   } // LinearGLOperator() ends here
 
   template <int dim, int fe_degree, typename Number>
   void LinearGLOperator<dim, fe_degree, Number>::vmult(BlockVectorType &dst,
                                                        const BlockVectorType &src) const
   {
+    roctxRangePush("ROCTX-RANGE:LinearGLOperator::vmult()");
     dst = static_cast<Number>(0.);
     LocalLinearGLOperator<dim, fe_degree, Number>
       cell_LinearGLoperator(background_coefficients);
@@ -132,15 +138,25 @@ namespace VerHem
     // MF_MetaDataEngine_ptr.copy_constrained_values(src.block(0), dst.block(0), 0);
     // MF_MetaDataEngine_ptr.copy_constrained_values(src.block(1), dst.block(1), 1);
     MF_MetaDataEngine_ptr->copy_constrained_values(src, dst);
+
+    roctxRangePop();
   } // vmult() ends here
 
   template <int dim, int fe_degree, typename Number>
   void LinearGLOperator<dim, fe_degree, Number>::initialize_dof_vector(BlockVectorType &vec) const
-  { MF_MetaDataEngine_ptr->initialize_dof_vector(vec); }
+  {
+    roctxRangePush("ROCTX-RANGE:LinearGLOperator::initialize_dof_vector()");
+    MF_MetaDataEngine_ptr->initialize_dof_vector(vec);
+    roctxRangePop();
+  }
 
   template <int dim, int fe_degree, typename Number>
   void LinearGLOperator<dim, fe_degree, Number>::update_background(const BlockVectorType &background_UV_sol)
-  { background_coefficients.update(MF_MetaDataEngine_ptr, background_UV_sol); }
+  {
+    roctxRangePush("ROCTX-RANGE:LinearGLOperator::update_background");
+    background_coefficients.update(MF_MetaDataEngine_ptr, background_UV_sol);
+    roctxRangePop();
+  }
   
   template class LinearGLOperator<3, 1, float>;
   template class LinearGLOperator<3, 1, double>;

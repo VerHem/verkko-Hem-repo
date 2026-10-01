@@ -33,6 +33,8 @@
 #include <deal.II/numerics/vector_tools.h>
 #include <deal.II/numerics/vector_tools_integrate_difference.h>
 
+#include "roctracer/roctx.h"
+
 #include "LinearGLOperator.h"
 // #include "LocalLinearGLOperator.h"
 #include "bgSolution_U.h"
@@ -76,13 +78,19 @@ namespace VerHem
       void vmult(BlockVectorType &dst,
                  const BlockVectorType &src) const
       {
+	roctxRangePush("ROCTX-RANGE:BlockDiagonalJacobiPreconditioner::vmult()");
         inverse_diagonal_U.vmult(dst.block(0), src.block(0));
         inverse_diagonal_V.vmult(dst.block(1), src.block(1));
+	roctxRangePop();
       }
       
       void Tvmult(BlockVectorType &dst,
                   const BlockVectorType &src) const
-      { vmult(dst, src); }
+      {
+	roctxRangePush("ROCTX-RANGE:BlockDiagonalJacobiPreconditioner::Tvmult()");
+	vmult(dst, src);
+	roctxRangePop();
+      }
       private:
         const DiagonalMatrix<VectorType> &inverse_diagonal_U;
         const DiagonalMatrix<VectorType> &inverse_diagonal_V;
@@ -95,7 +103,6 @@ namespace VerHem
     void setup_dofs();
 
     void solve();
-
     void postprocess();
 
     parallel::distributed::Triangulation<dim> tria;
@@ -131,11 +138,15 @@ namespace VerHem
     , DoFHandler_U(tria)
     , DoFHandler_V(tria)
     , pcout(std::cout, Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0)
-  {}
+  {
+   roctxRangePush("ROCTX-RANGE:LinearGLProblem Constructor");
+   roctxRangePop();
+  }
 
   template <int dim, int fe_degree, typename Number>
   void LinearGLProblem<dim, fe_degree, Number>::setup_dofs()
   {
+    roctxRangePush("ROCTX-RANGE:LinearGLProblem::setup_dofs()");
     DoFHandler_U.distribute_dofs(fe_U);
     DoFHandler_V.distribute_dofs(fe_V);
 
@@ -198,7 +209,10 @@ namespace VerHem
     /* ------------------------------------------------------------
      * create the background_solution on the host and move to device:
      * ------------------------------------------------------------
-     */ 
+     */
+    //roctxMark("Starting bgSol Construction");
+    roctxRangePush("ROCTX-RANGE:Starting bgSol Construct");
+    
     LinearAlgebra::distributed::BlockVector<Number, MemorySpace::Host> bgSolution_host;
     mf_data_ptr->initialize_dof_vector(bgSolution_host);
 
@@ -211,9 +225,20 @@ namespace VerHem
                              bgSolution_host.block(1));
 
     // prepare moving host vector to device vector.
+    roctxRangePush("ROCTX-RANGE:initialize_dof_vector(bg_solution)");
     mf_data_ptr->initialize_dof_vector(bg_solution);
+    roctxRangePop();
+
+    roctxRangePush("ROCTX-RANGE:import_elements bg_solution block0");    
     bg_solution.block(0).import_elements(bgSolution_host.block(0), VectorOperation::insert);
+    roctxRangePop();
+
+    roctxRangePush("ROCTX-RANGE:import_elements bg_solution block1");        
     bg_solution.block(1).import_elements(bgSolution_host.block(1), VectorOperation::insert);
+    roctxRangePop();    
+
+    //roctxMark("ending bgSol Construction");
+    roctxRangePop();
     /* ------------------------------------------------------------
      * background_solution on the host and  device is done
      * ------------------------------------------------------------
@@ -234,7 +259,9 @@ namespace VerHem
        LinearGLRHSCellOperator<dim, fe_degree, Number> rhs_operator(K1, alpha, beta2);
 
       /*  bg_solution.block(0) = u^0 ,bg_solution.block(1) = v^0 */
+       roctxRangePush("ROCTX-RANGE:*mf_data_ptr::cell_loop() ");
        mf_data_ptr->cell_loop(rhs_operator, bg_solution /*src*/, rhs /*dst*/);
+       roctxRangePop();
 
       /*
        * Newton updates satisfies homogeneous Dirichlet conditions.
@@ -244,12 +271,13 @@ namespace VerHem
        // mf_data_ptr->set_constrained_values(Number(0.0), rhs.block(1), 1);
       
     } // rhs setting block ends here
-    
+    roctxRangePop();
   } // LinearGLProblem<...>::setup_dofs() ends here
 
   template <int dim, int fe_degree, typename Number>
   void LinearGLProblem<dim, fe_degree, Number>::solve()
   {
+    roctxRangePush("ROCTX-RANGE:LinearGLProblem::solve()");
     // LinearGLOperator<dim, fe_degree, Number> LinearGL_Operator(mf_data);
     LinearGLOperator<dim, fe_degree, Number>
       LinearGL_Operator(mf_data_ptr,
@@ -284,6 +312,7 @@ namespace VerHem
      *  cheap first preconditioner.
      * -----------------------------------------------
      */
+    roctxRangePush("ROCTX-RANGE:LinearGLProblem preconditioner");
     DiagonalMatrix<VectorType> inverse_diagonal_U;
     DiagonalMatrix<VectorType> inverse_diagonal_V;
 
@@ -306,28 +335,36 @@ namespace VerHem
       (*mf_data_ptr, diagonal_V_vec, laplace_diagonal_operator,
         EvaluationFlags::gradients,
         EvaluationFlags::gradients, 1);
-    
+
+    roctxRangePush("ROCTX-RANGE:inv diagonal_U_vec");
     /* Invert diagonal. */
     for (auto &x : diagonal_U_vec)
       x = (std::abs(x) > 1e-12) ? 1./x : 1.;
-
+    roctxRangePop();    
+    
+    roctxRangePush("ROCTX-RANGE:inv diagonal_V_vec");
     for (auto &x : diagonal_V_vec)
       x = (std::abs(x) > 1e-12) ? 1./x : 1.;
+    roctxRangePop();
     
     BlockDiagonalJacobiPreconditioner preconditioner(inverse_diagonal_U, inverse_diagonal_V);
 
+    roctxRangePop();
     /* -----------------------------------------------
      *  preconditioner construction blocks ends here
      * -----------------------------------------------
      */
     
     dealii::Timer t(tria.get_mpi_communicator());
+    roctxRangePush("ROCTX-RANGE:LinearGLProblem::solver.solve()");
     solver.solve(LinearGL_Operator, linear_solution, rhs, preconditioner);
+    roctxRangePop();
     t.stop();
 
     pcout << "Solver converged in " << solver_control.last_step()
           << " iterations in " << t.wall_time() << " seconds" << std::endl;
 
+    roctxRangePop();
   } // LinearGLProblem<...>::solve() ends here
 
 
@@ -337,6 +374,7 @@ namespace VerHem
   template <int dim, int fe_degree, typename Number>
   void LinearGLProblem<dim, fe_degree, Number>::postprocess()
   {
+    roctxRangePush("ROCTX-RANGE:LinearGLProblem::postprocess()");
     LinearAlgebra::distributed::BlockVector<Number, MemorySpace::Host> linear_solution_host;
     mf_data_ptr->initialize_dof_vector(linear_solution_host);
 
@@ -379,7 +417,8 @@ namespace VerHem
 
     // pcout << "velocity error: " << u_l2 << " pressure error: " << p_l2
     //       << std::endl;
-    
+
+    roctxRangePop();
   } // LinearGLProblem<...>::postprocess() ends here
 
 
@@ -388,6 +427,7 @@ namespace VerHem
   template <int dim, int fe_degree, typename Number>
   void LinearGLProblem<dim, fe_degree, Number>::run()
   {
+    roctxRangePush("ROCTX-RANGE:LinearGLProblem::run()");
     pcout << std::setprecision(10);
     pcout << "Running on " << Utilities::MPI::n_mpi_processes(MPI_COMM_WORLD)
           << " MPI ranks (with " << MultithreadInfo::n_threads()
@@ -403,14 +443,19 @@ namespace VerHem
           << "dim: " << dim << '\n'
           << "Element: Q" << fe_degree << "-Q" << fe_degree << std::endl;
 
-    unsigned int n_refinements = 10;
+    unsigned int n_refinements = 1;
 
     for (unsigned int i = 0; i < n_refinements; ++i)
       {
         if (i == 0)
           {
-            GridGenerator::hyper_cube(tria);
-            tria.refine_global(2);
+	    roctxRangePush("ROCTX-RANGE:Starting hyper_cube GridGenerator");
+            GridGenerator::hyper_cube(tria, -20, 20);
+	    roctxRangePop();
+
+	    roctxRangePush("ROCTX-RANGE:Starting tria.refine_global(2)");
+            tria.refine_global(10);
+	    roctxRangePop();
           }
         else
           {
@@ -426,6 +471,8 @@ namespace VerHem
         solve();
         postprocess();
       }
+    
+    roctxRangePop();
   }
 } // namespace VerHem ends here
 

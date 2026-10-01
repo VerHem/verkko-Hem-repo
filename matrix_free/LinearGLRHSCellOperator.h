@@ -40,6 +40,7 @@ namespace VerHem
     fe_u.evaluate(EvaluationFlags::values | EvaluationFlags::gradients);
     fe_v.evaluate(EvaluationFlags::values | EvaluationFlags::gradients);
 
+    //roctxRangePush("ROCTX-RANGE:RHS data->for_each_quad_point() ");
     data->for_each_quad_point(
       [&](const int q_point)
       {
@@ -73,6 +74,7 @@ namespace VerHem
         fe_v.submit_gradient(- K1 * grad_v, q_point);
         fe_v.submit_value(- c * v, q_point);
       });
+    //roctxRangePop(); 
 
     fe_u.integrate(EvaluationFlags::values | EvaluationFlags::gradients);
     fe_v.integrate(EvaluationFlags::values | EvaluationFlags::gradients);

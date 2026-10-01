@@ -47,6 +47,6 @@ project(${TARGET})
 
 add_executable(verhem main.cc)
 
-#target_link_libraries(verhem verhemlib)
+target_link_libraries(verhem roctx64)
 
 deal_ii_setup_target(verhem)

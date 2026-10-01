@@ -138,6 +138,7 @@ namespace VerHem
   void GLBackgroundCoefficients<dim, fe_degree, Number>::reinit(
       const std::shared_ptr<Portable::MatrixFree<dim, Number>> &mf_data_ptr)
   {
+    roctxRangePush("ROCTX-RANGE:GLBGCoeff::reinit"); 
     // LinearGLOperator's MF_Data_Eigine is smart pointer.
     // GLBackgroundCoefficients::reinit() should has smart pointer as parameter as well.
     // source code of MatriFree's get_dof_handler() does receives dof_handler_index
@@ -157,6 +158,7 @@ namespace VerHem
     u0_BGSol.reinit(n_values);
     v0_BGSol.reinit(n_values);
 
+    roctxRangePop();
   } // reinit() ends here
 
   template <int dim, int fe_degree, typename Number>
@@ -164,6 +166,7 @@ namespace VerHem
       const std::shared_ptr<Portable::MatrixFree<dim, Number>> &mf_data_ptr,
       const BlockVectorType &background_UV_sol)
   {
+    roctxRangePush("ROCTX-RANGE:GLBGCoeff::update()"); 
     LocalGLBackgroundCoefficientOperator<dim, fe_degree, Number>
       background_operator(u0_BGSol.get_values(), v0_BGSol.get_values());
 
@@ -177,6 +180,7 @@ namespace VerHem
      * here the background_UV_sol itself is used as the dummy destination object.
      */    
     mf_data_ptr->cell_loop(background_operator, background_UV_sol, dummy_dst);
+    roctxRangePop();
   } // upate() 
 
 
