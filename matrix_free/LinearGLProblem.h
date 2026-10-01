@@ -40,7 +40,8 @@
 #include "bgSolution_U.h"
 #include "bgSolution_V.h"
 #include "LinearGLRHSCellOperator.h"
-#include "LaplaceDiagonalCellOperatorQuad.h"
+#include "preconditioner/LaplaceDiagonalCellOperatorQuad.h"
+#include "preconditioner/BlockDiagonalJacobiPreconditioner.h"
 
 namespace VerHem
 {
@@ -66,35 +67,35 @@ namespace VerHem
     /* -------------------------------------------
      *        preconditioner class
      * -------------------------------------------*/
-    class BlockDiagonalJacobiPreconditioner
-    {
-     public:
-      BlockDiagonalJacobiPreconditioner(const DiagonalMatrix<VectorType> &inverse_diagonal_U,
-                                        const DiagonalMatrix<VectorType> &inverse_diagonal_V)
-        : inverse_diagonal_U(inverse_diagonal_U)
-        , inverse_diagonal_V(inverse_diagonal_V)
-      {}
-      //
-      void vmult(BlockVectorType &dst,
-                 const BlockVectorType &src) const
-      {
-	roctxRangePush("ROCTX-RANGE:BlockDiagonalJacobiPreconditioner::vmult()");
-        inverse_diagonal_U.vmult(dst.block(0), src.block(0));
-        inverse_diagonal_V.vmult(dst.block(1), src.block(1));
-	roctxRangePop();
-      }
+    // class BlockDiagonalJacobiPreconditioner
+    // {
+    //  public:
+    //   BlockDiagonalJacobiPreconditioner(const DiagonalMatrix<VectorType> &inverse_diagonal_U,
+    //                                     const DiagonalMatrix<VectorType> &inverse_diagonal_V)
+    //     : inverse_diagonal_U(inverse_diagonal_U)
+    //     , inverse_diagonal_V(inverse_diagonal_V)
+    //   {}
+    //   //
+    //   void vmult(BlockVectorType &dst,
+    //              const BlockVectorType &src) const
+    //   {
+    // 	roctxRangePush("ROCTX-RANGE:BlockDiagonalJacobiPreconditioner::vmult()");
+    //     inverse_diagonal_U.vmult(dst.block(0), src.block(0));
+    //     inverse_diagonal_V.vmult(dst.block(1), src.block(1));
+    // 	roctxRangePop();
+    //   }
       
-      void Tvmult(BlockVectorType &dst,
-                  const BlockVectorType &src) const
-      {
-	roctxRangePush("ROCTX-RANGE:BlockDiagonalJacobiPreconditioner::Tvmult()");
-	vmult(dst, src);
-	roctxRangePop();
-      }
-      private:
-        const DiagonalMatrix<VectorType> &inverse_diagonal_U;
-        const DiagonalMatrix<VectorType> &inverse_diagonal_V;
-    }; // preconditioner ends here
+    //   void Tvmult(BlockVectorType &dst,
+    //               const BlockVectorType &src) const
+    //   {
+    // 	roctxRangePush("ROCTX-RANGE:BlockDiagonalJacobiPreconditioner::Tvmult()");
+    // 	vmult(dst, src);
+    // 	roctxRangePop();
+    //   }
+    //   private:
+    //     const DiagonalMatrix<VectorType> &inverse_diagonal_U;
+    //     const DiagonalMatrix<VectorType> &inverse_diagonal_V;
+    // }; // preconditioner ends here
     /* -------------------------------------------
      *     preconditioner class ends here
      * -------------------------------------------*/
@@ -126,355 +127,10 @@ namespace VerHem
     BlockVectorType                                    rhs;
     BlockVectorType                                    bg_solution;    
     ConditionalOStream                                 pcout;
-  };
+  }; // LinearGLProblem declearation ends here
 
 
-  template <int dim, int fe_degree, typename Number>
-  LinearGLProblem<dim, fe_degree, Number>::LinearGLProblem()
-    : tria(MPI_COMM_WORLD)
-    , mapping(fe_degree)
-    , fe_U(FE_Q<dim>(fe_degree), 9)
-    , fe_V(FE_Q<dim>(fe_degree), 9)
-    , DoFHandler_U(tria)
-    , DoFHandler_V(tria)
-    , pcout(std::cout, Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0)
-  {
-   roctxRangePush("ROCTX-RANGE:LinearGLProblem Constructor");
-   roctxRangePop();
-  }
-
-  template <int dim, int fe_degree, typename Number>
-  void LinearGLProblem<dim, fe_degree, Number>::setup_dofs()
-  {
-    roctxRangePush("ROCTX-RANGE:LinearGLProblem::setup_dofs()");
-    DoFHandler_U.distribute_dofs(fe_U);
-    DoFHandler_V.distribute_dofs(fe_V);
-
-    /* U dofs */
-    const IndexSet &owned_set_U   = DoFHandler_U.locally_owned_dofs();
-    const IndexSet relevant_set_U = DoFTools::extract_locally_relevant_dofs(DoFHandler_U);
-    constraints_U.reinit(owned_set_U, relevant_set_U);
-    
-    DoFTools::make_hanging_node_constraints(DoFHandler_U, constraints_U);
-    VectorTools::interpolate_boundary_values(
-      DoFHandler_U, 0, Functions::ZeroFunction<dim, Number>(dim), constraints_U);
-    constraints_U.close();
-
-    /* V dofs */
-    const IndexSet &owned_set_V   = DoFHandler_V.locally_owned_dofs();
-    const IndexSet relevant_set_V = DoFTools::extract_locally_relevant_dofs(DoFHandler_V);
-    constraints_V.reinit(owned_set_V, relevant_set_V);
-    
-    DoFTools::make_hanging_node_constraints(DoFHandler_V, constraints_V);
-    VectorTools::interpolate_boundary_values(
-      DoFHandler_V, 0, Functions::ZeroFunction<dim, Number>(dim), constraints_V);
-    constraints_V.close();
-
-    /* ------------------------------------------------
-     * container of DoFHandlers of U and V
-     * ------------------------------------------------
-     */
-    std::vector<const DoFHandler<dim> *> DoFHandlers_U_V
-      = {&DoFHandler_U, &DoFHandler_V};
-
-    /* ------------------------------------------------
-     * container of AffineConstraints of U and V
-     * ------------------------------------------------
-     */     
-    std::vector<const AffineConstraints<Number> *> constraints_U_V
-      = {&constraints_U, &constraints_V};
-
-    /* ------------------------------------------------
-     * allocate ssmart pointer for Portable::MatrixFree<..>
-     * ------------------------------------------------
-     */
-    mf_data_ptr = std::make_shared<Portable::MatrixFree<dim, Number>>();
-
-    const QGauss<1> quad(fe_degree + 1);
-    // const QGauss<1> quad(degree_p + 2);
-    typename Portable::MatrixFree<dim, Number>::AdditionalData additional_data;
-    additional_data.mapping_update_flags = update_values
-      | update_gradients | update_JxW_values | update_quadrature_points;    
-    // additional_data.mapping_update_flags = update_values | update_gradients;
-    /*------------------------------------------------------------
-     * using multi-DoFHandler pattern as step-104 for block structure
-     * DoFHandler 0 -> U, DoFHandler 1 -> V, Here two Dofhandlers are provided
-     * when Portable::Matrixfree is initialized.
-     * ------------------------------------------------------------
-     */    
-    mf_data_ptr->reinit(mapping,
-                        DoFHandlers_U_V, constraints_U_V,
-                        quad, additional_data);
-
-    /* ------------------------------------------------------------
-     * create the background_solution on the host and move to device:
-     * ------------------------------------------------------------
-     */
-    //roctxMark("Starting bgSol Construction");
-    roctxRangePush("ROCTX-RANGE:Starting bgSol Construct");
-    
-    LinearAlgebra::distributed::BlockVector<Number, MemorySpace::Host> bgSolution_host;
-    mf_data_ptr->initialize_dof_vector(bgSolution_host);
-
-    VectorTools::interpolate(mapping, DoFHandler_U,
-			     bgSolution_U<dim, Number>(0.0, 0.2, 2.0),
-                             bgSolution_host.block(0));
-    
-    VectorTools::interpolate(mapping, DoFHandler_V,
-                             bgSolution_V<dim, Number>(0.0, 0.2, 2.0),
-                             bgSolution_host.block(1));
-
-    // prepare moving host vector to device vector.
-    roctxRangePush("ROCTX-RANGE:initialize_dof_vector(bg_solution)");
-    mf_data_ptr->initialize_dof_vector(bg_solution);
-    roctxRangePop();
-
-    roctxRangePush("ROCTX-RANGE:import_elements bg_solution block0");    
-    bg_solution.block(0).import_elements(bgSolution_host.block(0), VectorOperation::insert);
-    roctxRangePop();
-
-    roctxRangePush("ROCTX-RANGE:import_elements bg_solution block1");        
-    bg_solution.block(1).import_elements(bgSolution_host.block(1), VectorOperation::insert);
-    roctxRangePop();    
-
-    //roctxMark("ending bgSol Construction");
-    roctxRangePop();
-    /* ------------------------------------------------------------
-     * background_solution on the host and  device is done
-     * ------------------------------------------------------------
-     */ 
-         
-    {
-      /* ------------------------------------------------------------
-       * using the device vector bg_solution.
-       * ------------------------------------------------------------
-       */
-       mf_data_ptr->initialize_dof_vector(rhs);
-       rhs = 0.0; // do I need this?
-
-       const Number K1    = 0.42072;
-       const Number alpha = -0.4;
-       const Number beta2 = 0.1;
-       
-       LinearGLRHSCellOperator<dim, fe_degree, Number> rhs_operator(K1, alpha, beta2);
-
-      /*  bg_solution.block(0) = u^0 ,bg_solution.block(1) = v^0 */
-       roctxRangePush("ROCTX-RANGE:*mf_data_ptr::cell_loop() ");
-       mf_data_ptr->cell_loop(rhs_operator, bg_solution /*src*/, rhs /*dst*/);
-       roctxRangePop();
-
-      /*
-       * Newton updates satisfies homogeneous Dirichlet conditions.
-       * Therefore constrained RHS entries must be zero.
-       */
-       // mf_data_ptr->set_constrained_values(Number(0.0), rhs.block(0), 0);
-       // mf_data_ptr->set_constrained_values(Number(0.0), rhs.block(1), 1);
-      
-    } // rhs setting block ends here
-    roctxRangePop();
-  } // LinearGLProblem<...>::setup_dofs() ends here
-
-  template <int dim, int fe_degree, typename Number>
-  void LinearGLProblem<dim, fe_degree, Number>::solve()
-  {
-    roctxRangePush("ROCTX-RANGE:LinearGLProblem::solve()");
-    // LinearGLOperator<dim, fe_degree, Number> LinearGL_Operator(mf_data);
-    LinearGLOperator<dim, fe_degree, Number>
-      LinearGL_Operator(mf_data_ptr,
-                        DoFHandler_U, DoFHandler_V,
-                        constraints_U, constraints_V,
-                        bg_solution /*background_U_V_sol*/);
-
-    mf_data_ptr->initialize_dof_vector(linear_solution);
-
-    {
-      dealii::Timer t(tria.get_mpi_communicator());
-      LinearGL_Operator.vmult(linear_solution, rhs);
-      const double time          = t.wall_time();
-      const double dofs_per_second = static_cast<double>(linear_solution.size()) / time;
-      pcout << "LinearGL Operator: " << time << " s, DoFs/s: " << dofs_per_second
-            << std::endl;
-      linear_solution = 0.0;
-    }
-
-    /* -------------------------------------
-     * define solver and solver control
-     * -------------------------------------
-     */
-    SolverControl solver_control(1000, 1e-8 * rhs.l2_norm());
-
-    SolverGMRES<BlockVectorType> solver(
-      solver_control,
-      typename SolverGMRES<BlockVectorType>::AdditionalData(50, true));
-
-    /* -----------------------------------------------
-     *  preconditioner construction blocks start here
-     *  cheap first preconditioner.
-     * -----------------------------------------------
-     */
-    roctxRangePush("ROCTX-RANGE:LinearGLProblem preconditioner");
-    DiagonalMatrix<VectorType> inverse_diagonal_U;
-    DiagonalMatrix<VectorType> inverse_diagonal_V;
-
-    VectorType &diagonal_U_vec = inverse_diagonal_U.get_vector();
-    VectorType &diagonal_V_vec = inverse_diagonal_V.get_vector();
-
-    mf_data_ptr->initialize_dof_vector(diagonal_U_vec);
-    mf_data_ptr->initialize_dof_vector(diagonal_V_vec);
-    
-    LaplaceDiagonalCellOperatorQuad<dim, fe_degree, Number> laplace_diagonal_operator;
-
-    /* U block */
-    MatrixFreeTools::compute_diagonal<dim, fe_degree, fe_degree + 1, n_components, Number>
-      (*mf_data_ptr, diagonal_U_vec, laplace_diagonal_operator,
-        EvaluationFlags::gradients,
-        EvaluationFlags::gradients, 0);
-
-    /* V block */
-    MatrixFreeTools::compute_diagonal<dim, fe_degree, fe_degree + 1, n_components, Number>
-      (*mf_data_ptr, diagonal_V_vec, laplace_diagonal_operator,
-        EvaluationFlags::gradients,
-        EvaluationFlags::gradients, 1);
-
-    roctxRangePush("ROCTX-RANGE:inv diagonal_U_vec");
-    /* Invert diagonal. */
-    for (auto &x : diagonal_U_vec)
-      x = (std::abs(x) > 1e-12) ? 1./x : 1.;
-    roctxRangePop();    
-    
-    roctxRangePush("ROCTX-RANGE:inv diagonal_V_vec");
-    for (auto &x : diagonal_V_vec)
-      x = (std::abs(x) > 1e-12) ? 1./x : 1.;
-    roctxRangePop();
-    
-    BlockDiagonalJacobiPreconditioner preconditioner(inverse_diagonal_U, inverse_diagonal_V);
-
-    roctxRangePop();
-    /* -----------------------------------------------
-     *  preconditioner construction blocks ends here
-     * -----------------------------------------------
-     */
-    
-    dealii::Timer t(tria.get_mpi_communicator());
-    roctxRangePush("ROCTX-RANGE:LinearGLProblem::solver.solve()");
-    solver.solve(LinearGL_Operator, linear_solution, rhs, preconditioner);
-    roctxRangePop();
-    t.stop();
-
-    pcout << "Solver converged in " << solver_control.last_step()
-          << " iterations in " << t.wall_time() << " seconds" << std::endl;
-
-    roctxRangePop();
-  } // LinearGLProblem<...>::solve() ends here
-
-
-  // The postprocess() function moves the solution to host memory
-  // and integrates the difference to the manufactured solution to
-  // compute errors.
-  template <int dim, int fe_degree, typename Number>
-  void LinearGLProblem<dim, fe_degree, Number>::postprocess()
-  {
-    roctxRangePush("ROCTX-RANGE:LinearGLProblem::postprocess()");
-    LinearAlgebra::distributed::BlockVector<Number, MemorySpace::Host> linear_solution_host;
-    mf_data_ptr->initialize_dof_vector(linear_solution_host);
-
-    linear_solution_host.block(0).import_elements(linear_solution.block(0),
-                                           VectorOperation::insert);
-    linear_solution_host.block(1).import_elements(linear_solution.block(1),
-                                           VectorOperation::insert);
-
-    constraints_U.distribute(linear_solution_host.block(0));
-    constraints_V.distribute(linear_solution_host.block(1));
-    linear_solution_host.update_ghost_values();
-    // const double mean_pressure = VectorTools::compute_mean_value(
-    //   dof_p, QGauss<dim>(degree_p + 2), solution_host.block(1), 0);
-    // solution_host.block(1).add(-mean_pressure);
-
-    // const QGauss<dim> quadrature_formula(degree_u + 1);
-
-    // Vector<double> cellwise_errors_ul2(tria.n_active_cells());
-    // Vector<double> cellwise_errors_pl2(tria.n_active_cells());
-
-    // VectorTools::integrate_difference(dof_u,
-    //                                   solution_host.block(0),
-    //                                   xxxx<dim, Number>(),
-    //                                   cellwise_errors_ul2,
-    //                                   quadrature_formula,
-    //                                   VectorTools::L2_norm);
-    // VectorTools::integrate_difference(dof_p,
-    //                                   solution_host.block(1),
-    //                                   yyyy<dim, Number>(),
-    //                                   cellwise_errors_pl2,
-    //                                   quadrature_formula,
-    //                                   VectorTools::L2_norm);
-
-    // const double u_l2 = VectorTools::compute_global_error(tria,
-    //                                                       cellwise_errors_ul2,
-    //                                                       VectorTools::L2_norm);
-    // const double p_l2 = VectorTools::compute_global_error(tria,
-    //                                                       cellwise_errors_pl2,
-    //                                                       VectorTools::L2_norm);
-
-    // pcout << "velocity error: " << u_l2 << " pressure error: " << p_l2
-    //       << std::endl;
-
-    roctxRangePop();
-  } // LinearGLProblem<...>::postprocess() ends here
-
-
-  // The run() function prints some statistics and
-  // then performs refinement loop.
-  template <int dim, int fe_degree, typename Number>
-  void LinearGLProblem<dim, fe_degree, Number>::run()
-  {
-    roctxRangePush("ROCTX-RANGE:LinearGLProblem::run()");
-    pcout << std::setprecision(10);
-    pcout << "Running on " << Utilities::MPI::n_mpi_processes(MPI_COMM_WORLD)
-          << " MPI ranks (with " << MultithreadInfo::n_threads()
-          << " threads each) in ";
-    if constexpr (running_in_debug_mode())
-      pcout << "DEBUG mode";
-    else
-      pcout << "RELEASE mode";
-
-    pcout << "\nKokkos execution space: "
-          << Kokkos::DefaultExecutionSpace::name();
-    pcout << '\n'
-          << "dim: " << dim << '\n'
-          << "Element: Q" << fe_degree << "-Q" << fe_degree << std::endl;
-
-    unsigned int n_refinements = 1;
-
-    for (unsigned int i = 0; i < n_refinements; ++i)
-      {
-        if (i == 0)
-          {
-	    roctxRangePush("ROCTX-RANGE:Starting hyper_cube GridGenerator");
-            GridGenerator::hyper_cube(tria, -20, 20);
-	    roctxRangePop();
-
-	    roctxRangePush("ROCTX-RANGE:Starting tria.refine_global(2)");
-            tria.refine_global(10);
-	    roctxRangePop();
-          }
-        else
-          {
-            tria.refine_global(1);
-          }
-        setup_dofs();
-
-        pcout << "\nrefinement: " << i
-              << ", n_dofs: " << DoFHandler_U.n_dofs() + DoFHandler_V.n_dofs()
-              << " = " << DoFHandler_U.n_dofs() << " + " << DoFHandler_V.n_dofs()
-              << std::endl;
-
-        solve();
-        postprocess();
-      }
-    
-    roctxRangePop();
-  }
 } // namespace VerHem ends here
 
-template class VerHem::LinearGLProblem<3, 1, float>;
-template class VerHem::LinearGLProblem<3, 1, double>;
+// template class VerHem::LinearGLProblem<3, 1, float>;
+// template class VerHem::LinearGLProblem<3, 1, double>;
