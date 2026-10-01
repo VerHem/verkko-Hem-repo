@@ -39,14 +39,23 @@ endif()
 deal_ii_initialize_cached_variables()
 project(${TARGET})
 
-#add_library(verhemlib
-#    LinearGLProblem.cc
+include_directories(
+  preconditioner
+  ${CMAKE_CURRENT_SOURCE_DIR}
+  )
+
+add_library(verhemlib
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/LinearGLProblem.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/setup_dofs.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/solve.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/postprocess.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/run.cc        
 #    LinearGLOperator.cc
-#)
-#deal_ii_setup_target(verhemlib)
+)
+deal_ii_setup_target(verhemlib)
 
 add_executable(verhem main.cc)
 
-target_link_libraries(verhem roctx64)
+target_link_libraries(verhem roctx64 verhemlib)
 
 deal_ii_setup_target(verhem)
