@@ -104,6 +104,8 @@ namespace VerHem
     void setup_dofs();
 
     void solve();
+    void newton_iter(const Number lambda);
+    
     void postprocess();
 
     parallel::distributed::Triangulation<dim> tria;
