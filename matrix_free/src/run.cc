@@ -78,7 +78,8 @@ namespace VerHem
 	    roctxRangePop();
 
 	    roctxRangePush("ROCTX-RANGE:Starting tria.refine_global(2)");
-            tria.refine_global(10);
+            // tria.refine_global(10);
+	    tria.refine_global(7);
 	    roctxRangePop();
           }
         else
@@ -93,6 +94,9 @@ namespace VerHem
               << std::endl;
 
         solve();
+
+	newton_iter(0.5);
+	
         postprocess();
       }
     
