@@ -38,9 +38,9 @@
 #include "LinearGLProblem.h"
 // #include "LinearGLOperator.h"
 // #include "LocalLinearGLOperator.h"
-#include "bgSolution_U.h"
-#include "bgSolution_V.h"
-#include "LinearGLRHSCellOperator.h"
+#include "initial_UV_ConfFunction/bgSolution_U.h"
+#include "initial_UV_ConfFunction/bgSolution_V.h"
+#include "LinearGL_RightHandSide/LinearGLRHSCellOperator.h"
 // #include "LaplaceDiagonalCellOperatorQuad.h"
 // #include "preconditioner/BlockDiagonalJacobiPreconditioner.h"
 
@@ -55,6 +55,8 @@ namespace VerHem
 
     roctxRangePush("ROCTX-RANGE:LinearGLProblem::newton_iter() rhs_0_residual");
     const Number rhs_0_residual = rhs.l2_norm();
+    pcout << "rhs_0_residual = " << rhs_0_residual
+          << std::endl;
     roctxRangePop();
     
     for (unsigned int i = 0; i < 100; ++i)
@@ -100,6 +102,7 @@ namespace VerHem
         if (rhs.l2_norm() < rhs_0_residual) break;
 	
       } // newton interation loop
+    pcout << "current rhs.l2_norm() is " << rhs.l2_norm() << std::endl;
          
     roctxRangePop();
  } // LinearGLProblem<...>::newton_iter() ends here

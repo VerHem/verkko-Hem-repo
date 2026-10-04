@@ -83,9 +83,7 @@ namespace VerHem
 	    roctxRangePop();
           }
         else
-          {
-            tria.refine_global(1);
-          }
+          { tria.refine_global(1); }
         setup_dofs();
 
         pcout << "\nrefinement: " << i

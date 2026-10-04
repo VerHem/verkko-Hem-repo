@@ -38,9 +38,9 @@
 #include "LinearGLProblem.h"
 // #include "LinearGLOperator.h"
 // #include "LocalLinearGLOperator.h"
-#include "bgSolution_U.h"
-#include "bgSolution_V.h"
-#include "LinearGLRHSCellOperator.h"
+#include "initial_UV_ConfFunction/bgSolution_U.h"
+#include "initial_UV_ConfFunction/bgSolution_V.h"
+#include "LinearGL_RightHandSide/LinearGLRHSCellOperator.h"
 // #include "LaplaceDiagonalCellOperatorQuad.h"
 // #include "preconditioner/BlockDiagonalJacobiPreconditioner.h"
 
