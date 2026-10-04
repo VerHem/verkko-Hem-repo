@@ -3,7 +3,7 @@
 ##
 
 # Set the name of the project and target:
-set(TARGET "verhem")
+set(TARGET "VerHem")
 
 cmake_minimum_required(VERSION 3.13.4)
 
@@ -40,23 +40,21 @@ deal_ii_initialize_cached_variables()
 project(${TARGET})
 
 include_directories(
-  preconditioner
-  ${CMAKE_CURRENT_SOURCE_DIR}
-  )
+  ${CMAKE_CURRENT_SOURCE_DIR}/inc
+)
 
-add_library(verhemlib
+add_library(lineargl
     ${CMAKE_CURRENT_SOURCE_DIR}/src/LinearGLProblem.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/src/setup_dofs.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/src/solve.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/src/newton_iter.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/src/postprocess.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/src/run.cc        
-#    LinearGLOperator.cc
 )
-deal_ii_setup_target(verhemlib)
+deal_ii_setup_target(lineargl)
 
-add_executable(verhem main.cc)
+add_executable(VerHem main.cc)
 
-target_link_libraries(verhem roctx64 verhemlib)
+target_link_libraries(VerHem roctx64 lineargl)
 
-deal_ii_setup_target(verhem)
+deal_ii_setup_target(VerHem)
