@@ -24,8 +24,8 @@
 #include <deal.II/matrix_free/portable_matrix_free.h>
 #include <deal.II/matrix_free/operators.h>
 
-#include "GLBackgroundCoefficients.h"
-#include "LocalLinearGLOperator.h"
+#include "LinearGL_pdeBlockCoeffs/GLBackgroundCoefficients.h"
+#include "LinearGL_CellOperator/LocalLinearGLOperator.h"
 
 namespace VerHem
 {

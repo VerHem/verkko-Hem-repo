@@ -6,8 +6,8 @@
 #include <deal.II/matrix_free/portable_fe_evaluation.h>
 #include <deal.II/matrix_free/portable_matrix_free.h>
 
-#include "GLBackgroundCoefficients.h"
-#include "LocalLinearGLOperatorQuad.h"
+#include "LinearGL_pdeBlockCoeffs/GLBackgroundCoefficients.h"
+#include "LinearGL_CellOperator/LocalLinearGLOperatorQuad.h"
 
 
 namespace VerHem

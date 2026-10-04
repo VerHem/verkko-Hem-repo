@@ -37,11 +37,11 @@
 
 #include "LinearGLOperator.h"
 // #include "LocalLinearGLOperator.h"
-#include "bgSolution_U.h"
-#include "bgSolution_V.h"
-#include "LinearGLRHSCellOperator.h"
-#include "preconditioner/LaplaceDiagonalCellOperatorQuad.h"
-#include "preconditioner/BlockDiagonalJacobiPreconditioner.h"
+#include "initial_UV_ConfFunction/bgSolution_U.h"
+#include "initial_UV_ConfFunction/bgSolution_V.h"
+#include "LinearGL_RightHandSide/LinearGLRHSCellOperator.h"
+#include "LinearGL_Preconditioner/LaplaceDiagonalCellOperatorQuad.h"
+#include "LinearGL_Preconditioner/BlockDiagonalJacobiPreconditioner.h"
 
 namespace VerHem
 {
@@ -133,6 +133,3 @@ namespace VerHem
 
 
 } // namespace VerHem ends here
-
-// template class VerHem::LinearGLProblem<3, 1, float>;
-// template class VerHem::LinearGLProblem<3, 1, double>;
