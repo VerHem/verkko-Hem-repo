@@ -75,7 +75,9 @@ namespace VerHem
      * define solver and solver control
      * -------------------------------------
      */
-    SolverControl solver_control(1000, 1e-8 * rhs.l2_norm());
+    SolverControl solver_control(1000, 1e-12 * rhs.l2_norm());
+
+    pcout << "1e-12 * rhs.l2_norm() = " << 1e-12 * rhs.l2_norm() << std::endl;
 
     SolverGMRES<BlockVectorType> solver(
       solver_control,
@@ -136,6 +138,11 @@ namespace VerHem
     roctxRangePop();
     t.stop();
 
+    roctxRangePush("ROCTX-RANGE:LinearGLProblem:: MatriFree->set_constr_vs linSol");    
+    mf_data_ptr->set_constrained_values(Number(0.0), linear_solution.block(0), 0);
+    mf_data_ptr->set_constrained_values(Number(0.0), linear_solution.block(1), 1);
+    roctxRangePop();    
+    
     pcout << "Solver converged in " << solver_control.last_step()
           << " iterations in " << t.wall_time() << " seconds" << std::endl;
 
