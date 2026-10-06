@@ -60,19 +60,19 @@ namespace VerHem
     roctxRangePop();
 
     // initialize bg_newton_iter vector
-    mf_data_ptr->initialize_dof_vector(bg_newton_iter);
+    // mf_data_ptr->initialize_dof_vector(bg_newton_iter);
 
     pcout << "lambda = " << lambda << std::endl;
     
     for (unsigned int i = 0; i < 100; ++i)
       {
 	const Number alpha = std::pow(lambda, static_cast<Number>(i));
-
         pcout << "iteration i = " << i << ", alpha = " << alpha << std::endl;	  
 	
-
 	roctxRangePush("ROCTX-RANGE:LinearGLProblem::linSer() copy bgSol into bg_newton_iter");
 	// do I need a renit call for bg_newton_iter before copy?
+	// No, you don't! MatrixFree::initialize_dof_vector() has built up the layout.
+	// So I don't to change any layout at all.
 	bg_newton_iter = bg_solution;
 	roctxRangePop();	
 
@@ -126,6 +126,7 @@ namespace VerHem
 		
         if (linearSearch_trail_residual < current_iter_InitResidual)
 	  {
+	    // copy back to bg_solution, BC constriants also copied
 	    bg_solution = bg_newton_iter;
 	    break;
 	  }	  

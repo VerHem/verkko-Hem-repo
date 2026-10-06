@@ -100,7 +100,7 @@ namespace VerHem
     typename Portable::MatrixFree<dim, Number>::AdditionalData additional_data;
     additional_data.mapping_update_flags = update_values
       | update_gradients | update_JxW_values | update_quadrature_points;    
-    // additional_data.mapping_update_flags = update_values | update_gradients;
+
     /*------------------------------------------------------------
      * using multi-DoFHandler pattern as step-104 for block structure
      * DoFHandler 0 -> U, DoFHandler 1 -> V, Here two Dofhandlers are provided
@@ -115,7 +115,7 @@ namespace VerHem
      * create the background_solution on the host and move to device:
      * ------------------------------------------------------------
      */
-    //roctxMark("Starting bgSol Construction");
+
     roctxRangePush("ROCTX-RANGE:Starting bgSol Construct");
     
     LinearAlgebra::distributed::BlockVector<Number, MemorySpace::Host> bgSolution_host;
@@ -183,6 +183,18 @@ namespace VerHem
       
     } // rhs setting block ends here
     roctxRangePop();
+
+    /* ------------------------------------------------------------
+     * initialize_dof_vector() call on bg_newton_iter
+     * ------------------------------------------------------------
+     */
+    mf_data_ptr->initialize_dof_vector(bg_newton_iter);
+
+    /* ------------------------------------------------------------
+     * initialize_dof_vector() call on linear_solution
+     * ------------------------------------------------------------
+     */
+    mf_data_ptr->initialize_dof_vector(linear_solution);
   } // LinearGLProblem<...>::setup_dofs() ends here
 
 } // namespace VerHem ends here

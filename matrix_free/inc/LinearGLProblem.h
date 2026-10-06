@@ -77,9 +77,6 @@ namespace VerHem
 
     MappingQ<dim> mapping;
 
-    // FESystem<dim> fe_u;
-    // FE_Q<dim>     fe_p;
-
     FESystem<dim> fe_U;
     FESystem<dim> fe_V;
     

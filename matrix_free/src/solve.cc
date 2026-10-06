@@ -52,22 +52,37 @@ namespace VerHem
   void LinearGLProblem<dim, fe_degree, Number>::solve()
   {
     roctxRangePush("ROCTX-RANGE:LinearGLProblem::solve()");
-    // LinearGLOperator<dim, fe_degree, Number> LinearGL_Operator(mf_data);
     LinearGLOperator<dim, fe_degree, Number>
       LinearGL_Operator(mf_data_ptr,
                         DoFHandler_U, DoFHandler_V,
                         constraints_U, constraints_V,
                         bg_solution /*background_U_V_sol*/);
 
-    mf_data_ptr->initialize_dof_vector(linear_solution);
+    /* ------------------------------------------------------------
+     * call initialize_dof_vector() in every run of solve();
+     * this will set up DoFs, partition, MPI, ghost, 
+     * and set elements to all zero. 
+     * 
+     * This operation is moved to setup_dofs, because this is needed
+     * inprinciple only one once. linear_solution is zeroed at here.
+     * ------------------------------------------------------------
+     */ 
+    // mf_data_ptr->initialize_dof_vector(linear_solution);
+    linear_solution = 0.0;    
 
     {
+      /* ------------------------------------------------------------
+       * a tiny benchmark for LinearGL_Operator's vmult() GPU performence
+       * ------------------------------------------------------------
+       */      
       dealii::Timer t(tria.get_mpi_communicator());
       LinearGL_Operator.vmult(linear_solution, rhs);
       const double time          = t.wall_time();
       const double dofs_per_second = static_cast<double>(linear_solution.size()) / time;
       pcout << "LinearGL Operator: " << time << " s, DoFs/s: " << dofs_per_second
             << std::endl;
+
+      // Clear linear_soltion again.
       linear_solution = 0.0;
     }
 
