@@ -63,48 +63,13 @@ namespace VerHem
     using BlockVectorType =
       LinearAlgebra::distributed::BlockVector<Number, MemorySpace::Default>;
     using DiagonalMatrixType = DiagonalMatrix<VectorType>;
-
-    /* -------------------------------------------
-     *        preconditioner class
-     * -------------------------------------------*/
-    // class BlockDiagonalJacobiPreconditioner
-    // {
-    //  public:
-    //   BlockDiagonalJacobiPreconditioner(const DiagonalMatrix<VectorType> &inverse_diagonal_U,
-    //                                     const DiagonalMatrix<VectorType> &inverse_diagonal_V)
-    //     : inverse_diagonal_U(inverse_diagonal_U)
-    //     , inverse_diagonal_V(inverse_diagonal_V)
-    //   {}
-    //   //
-    //   void vmult(BlockVectorType &dst,
-    //              const BlockVectorType &src) const
-    //   {
-    // 	roctxRangePush("ROCTX-RANGE:BlockDiagonalJacobiPreconditioner::vmult()");
-    //     inverse_diagonal_U.vmult(dst.block(0), src.block(0));
-    //     inverse_diagonal_V.vmult(dst.block(1), src.block(1));
-    // 	roctxRangePop();
-    //   }
-      
-    //   void Tvmult(BlockVectorType &dst,
-    //               const BlockVectorType &src) const
-    //   {
-    // 	roctxRangePush("ROCTX-RANGE:BlockDiagonalJacobiPreconditioner::Tvmult()");
-    // 	vmult(dst, src);
-    // 	roctxRangePop();
-    //   }
-    //   private:
-    //     const DiagonalMatrix<VectorType> &inverse_diagonal_U;
-    //     const DiagonalMatrix<VectorType> &inverse_diagonal_V;
-    // }; // preconditioner ends here
-    /* -------------------------------------------
-     *     preconditioner class ends here
-     * -------------------------------------------*/
     
   private:
     void setup_dofs();
 
     void solve();
     void newton_iter(const Number lambda);
+    void line_search(const Number lambda);    
     
     void postprocess();
 
@@ -127,8 +92,11 @@ namespace VerHem
     std::shared_ptr<Portable::MatrixFree<dim, Number>> mf_data_ptr;
     BlockVectorType                                    linear_solution;
     BlockVectorType                                    rhs;
-    BlockVectorType                                    bg_solution;    
+    BlockVectorType                                    bg_solution;
+    BlockVectorType                                    bg_newton_iter;
     ConditionalOStream                                 pcout;
+
+    Number current_iter_InitResidual{0.0};
   }; // LinearGLProblem declearation ends here
 
 
