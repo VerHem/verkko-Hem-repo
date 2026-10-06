@@ -133,15 +133,21 @@ namespace VerHem
     roctxRangePush("ROCTX-RANGE:initialize_dof_vector(bg_solution)");
     mf_data_ptr->initialize_dof_vector(bg_solution);
     roctxRangePop();
-
+    
     roctxRangePush("ROCTX-RANGE:import_elements bg_solution block0");    
     bg_solution.block(0).import_elements(bgSolution_host.block(0), VectorOperation::insert);
     roctxRangePop();
 
     roctxRangePush("ROCTX-RANGE:import_elements bg_solution block1");        
     bg_solution.block(1).import_elements(bgSolution_host.block(1), VectorOperation::insert);
-    roctxRangePop();    
+    roctxRangePop();
 
+    // apply Dirichlet BC constriant
+    roctxRangePush("ROCTX-RANGE:setup_dofs MatrixFree->set_constr_values bg_solution");    
+    mf_data_ptr->set_constrained_values(Number(0.0), bg_solution.block(0), 0);
+    mf_data_ptr->set_constrained_values(Number(0.0), bg_solution.block(1), 1);    
+    roctxRangePop();    
+    
     //roctxMark("ending bgSol Construction");
     roctxRangePop();
     /* ------------------------------------------------------------
@@ -151,11 +157,11 @@ namespace VerHem
          
     {
       /* ------------------------------------------------------------
-       * using the device vector bg_solution.
+       * using the device vector bg_solution to compute rhs.
        * ------------------------------------------------------------
        */
        mf_data_ptr->initialize_dof_vector(rhs);
-       rhs = 0.0; // do I need this?
+       rhs = 0.0; // do I need this? yes!
 
        const Number K1    = 0.42072;
        const Number alpha = -0.4;
@@ -172,8 +178,8 @@ namespace VerHem
        * Newton updates satisfies homogeneous Dirichlet conditions.
        * Therefore constrained RHS entries must be zero.
        */
-       // mf_data_ptr->set_constrained_values(Number(0.0), rhs.block(0), 0);
-       // mf_data_ptr->set_constrained_values(Number(0.0), rhs.block(1), 1);
+       mf_data_ptr->set_constrained_values(Number(0.0), rhs.block(0), 0);
+       mf_data_ptr->set_constrained_values(Number(0.0), rhs.block(1), 1);
       
     } // rhs setting block ends here
     roctxRangePop();

@@ -54,19 +54,37 @@ namespace VerHem
     roctxRangePush("ROCTX-RANGE:LinearGLProblem::newton_iter()");
 
     roctxRangePush("ROCTX-RANGE:LinearGLProblem::newton_iter() rhs_0_residual");
-    const Number rhs_0_residual = rhs.l2_norm();
+    const Number current_iter_InitResidual = rhs.l2_norm();
     pcout << "rhs_0_residual = " << rhs_0_residual
           << std::endl;
     roctxRangePop();
+
+    // initialize bg_newton_iter vector
+    mf_data_ptr->initialize_dof_vector(bg_newton_iter);
+
+    pcout << "lambda = " << lambda << std::endl;
     
     for (unsigned int i = 0; i < 100; ++i)
       {
 	const Number alpha = std::pow(lambda, static_cast<Number>(i));
 
-	roctxRangePush("ROCTX-RANGE:LinearGLProblem::newton_iter() bgSol+=al * liSol");
-	bg_solution.add(alpha, linear_solution);
+        pcout << "iteration i = " << i << ", alpha = " << alpha << std::endl;	  
+	
+
+	roctxRangePush("ROCTX-RANGE:LinearGLProblem::newton_iter() copy bgSol into bg_newton_iter");
+	// do I need a renit call for bg_newton_iter before copy?
+	bg_newton_iter = bg_solution;
+	roctxRangePop();	
+
+	roctxRangePush("ROCTX-RANGE:LinearGLProblem::newton_iter() bg_N_iter +=al * liSol");
+	bg_newton_iter.add(alpha, linear_solution);
 	roctxRangePop();
 
+	roctxRangePush("ROCTX-RANGE:LinearGLProblem::newton_iter() mf_data_ptr constrain bg_N_iter");	
+        mf_data_ptr->set_constrained_values(Number(0.0), bg_newton_iter.block(0), 0);
+        mf_data_ptr->set_constrained_values(Number(0.0), bg_newton_iter.block(1), 1);
+	roctxRangePop();	
+	
         {
 	  roctxRangePush("ROCTX-RANGE:LinearGLProblem::newton_iter() rhs_residual");
           /* ------------------------------------------------------------
@@ -74,7 +92,7 @@ namespace VerHem
            * ------------------------------------------------------------
            */	  
           // mf_data_ptr->initialize_dof_vector(rhs);
-          // rhs = 0.0; // do I need this?
+          rhs = 0.0; // do I need this? yes!
 
           const Number K1    = 0.42072;
           const Number alpha = -0.4;
@@ -85,7 +103,7 @@ namespace VerHem
 
           /*  bg_solution.block(0) = u^0 ,bg_solution.block(1) = v^0 */
           roctxRangePush("ROCTX-RANGE:newtin_iter *mf_data_ptr::cell_loop() ");
-          mf_data_ptr->cell_loop(rhs_operator, bg_solution /*src*/, rhs /*dst*/);
+          mf_data_ptr->cell_loop(rhs_operator, bg_newton_iter /*src*/, rhs /*dst*/);
           roctxRangePop();
 
           /*
@@ -98,11 +116,21 @@ namespace VerHem
 	  roctxRangePop();
       
         } // residual calculation block ends here
-	
-        if (rhs.l2_norm() < rhs_0_residual) break;
+
+	const Number linearSearch_trail_residual = rhs.l2_norm();
+
+        pcout << "iteration i = " << i << ", alpha = " << alpha
+              << ", linearSearch_trail_residual is "
+	      << linearSearch_trail_residual
+	      << std::endl;	  
+		
+        if (linearSearch_trail_residual < current_iter_InitResidual)
+	  {
+	    bg_solution = bg_newton_iter;
+	    break;
+	  }	  
 	
       } // newton interation loop
-    pcout << "current rhs.l2_norm() is " << rhs.l2_norm() << std::endl;
          
     roctxRangePop();
  } // LinearGLProblem<...>::newton_iter() ends here

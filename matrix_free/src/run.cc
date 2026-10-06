@@ -80,10 +80,12 @@ namespace VerHem
 	    roctxRangePush("ROCTX-RANGE:Starting tria.refine_global(2)");
             // tria.refine_global(10);
 	    tria.refine_global(7);
+	    // tria.refine_global(6);
 	    roctxRangePop();
           }
         else
           { tria.refine_global(1); }
+
         setup_dofs();
 
         pcout << "\nrefinement: " << i
