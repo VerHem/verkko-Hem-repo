@@ -53,83 +53,27 @@ namespace VerHem
   {
     roctxRangePush("ROCTX-RANGE:LinearGLProblem::newton_iter()");
 
-    roctxRangePush("ROCTX-RANGE:LinearGLProblem::newton_iter() rhs_0_residual");
-    const Number current_iter_InitResidual = rhs.l2_norm();
-    pcout << "rhs_0_residual = " << rhs_0_residual
-          << std::endl;
-    roctxRangePop();
-
-    // initialize bg_newton_iter vector
-    mf_data_ptr->initialize_dof_vector(bg_newton_iter);
-
-    pcout << "lambda = " << lambda << std::endl;
+    // roctxRangePush("ROCTX-RANGE:LinearGLProblem::newton_iter() rhs_0_residual");
+    // roctxRangePop();
     
-    for (unsigned int i = 0; i < 100; ++i)
+    for (unsigned int iter = 0; iter < 100; ++iter)
       {
-	const Number alpha = std::pow(lambda, static_cast<Number>(i));
+	solve();
+	line_search(lambda);
 
-        pcout << "iteration i = " << i << ", alpha = " << alpha << std::endl;	  
+	pcout << iter << "th newton iteration with current_iter_InitResidual = "
+	      << current_iter_InitResidual
+	      << "\n ---------------------------------"
+	      << std::endl;
+	// pcout << "---------------------------------" << std::endl;
+
 	
-
-	roctxRangePush("ROCTX-RANGE:LinearGLProblem::newton_iter() copy bgSol into bg_newton_iter");
-	// do I need a renit call for bg_newton_iter before copy?
-	bg_newton_iter = bg_solution;
-	roctxRangePop();	
-
-	roctxRangePush("ROCTX-RANGE:LinearGLProblem::newton_iter() bg_N_iter +=al * liSol");
-	bg_newton_iter.add(alpha, linear_solution);
-	roctxRangePop();
-
-	roctxRangePush("ROCTX-RANGE:LinearGLProblem::newton_iter() mf_data_ptr constrain bg_N_iter");	
-        mf_data_ptr->set_constrained_values(Number(0.0), bg_newton_iter.block(0), 0);
-        mf_data_ptr->set_constrained_values(Number(0.0), bg_newton_iter.block(1), 1);
-	roctxRangePop();	
-	
-        {
-	  roctxRangePush("ROCTX-RANGE:LinearGLProblem::newton_iter() rhs_residual");
-          /* ------------------------------------------------------------
-           * using updted device vector bg_solution.
-           * ------------------------------------------------------------
-           */	  
-          // mf_data_ptr->initialize_dof_vector(rhs);
-          rhs = 0.0; // do I need this? yes!
-
-          const Number K1    = 0.42072;
-          const Number alpha = -0.4;
-          const Number beta2 = 0.1;
-       
-          LinearGLRHSCellOperator<dim, fe_degree, Number>
-	    rhs_operator(K1, alpha, beta2);
-
-          /*  bg_solution.block(0) = u^0 ,bg_solution.block(1) = v^0 */
-          roctxRangePush("ROCTX-RANGE:newtin_iter *mf_data_ptr::cell_loop() ");
-          mf_data_ptr->cell_loop(rhs_operator, bg_newton_iter /*src*/, rhs /*dst*/);
-          roctxRangePop();
-
-          /*
-           * Newton updates satisfies homogeneous Dirichlet conditions.
-           * Therefore constrained RHS entries must be zero.
-           */
-          mf_data_ptr->set_constrained_values(Number(0.0), rhs.block(0), 0);
-          mf_data_ptr->set_constrained_values(Number(0.0), rhs.block(1), 1);
-
-	  roctxRangePop();
-      
-        } // residual calculation block ends here
-
-	const Number linearSearch_trail_residual = rhs.l2_norm();
-
-        pcout << "iteration i = " << i << ", alpha = " << alpha
-              << ", linearSearch_trail_residual is "
-	      << linearSearch_trail_residual
-	      << std::endl;	  
-		
-        if (linearSearch_trail_residual < current_iter_InitResidual)
+	if (current_iter_InitResidual <= convTol_newton_iter)
 	  {
-	    bg_solution = bg_newton_iter;
-	    break;
-	  }	  
-	
+	    pcout << " current_iter_InitResidual <= convTol_newton_iter, newton iter ends "
+		  << std::endl;
+            break;
+	  }
       } // newton interation loop
          
     roctxRangePop();

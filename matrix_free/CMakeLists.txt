@@ -47,7 +47,8 @@ add_library(lineargl
     ${CMAKE_CURRENT_SOURCE_DIR}/src/LinearGLProblem.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/src/setup_dofs.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/src/solve.cc
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/newton_iter.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/line_search.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/newton_iter.cc    
     ${CMAKE_CURRENT_SOURCE_DIR}/src/postprocess.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/src/run.cc        
 )
