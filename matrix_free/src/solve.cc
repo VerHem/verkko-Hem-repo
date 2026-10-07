@@ -90,9 +90,11 @@ namespace VerHem
      * define solver and solver control
      * -------------------------------------
      */
-    SolverControl solver_control(1000, 1e-12 * rhs.l2_norm());
+    // SolverControl solver_control(1000, 1e-12 * rhs.l2_norm());
+    SolverControl solver_control(1000, 1e-6);
 
-    pcout << "1e-12 * rhs.l2_norm() = " << 1e-12 * rhs.l2_norm() << std::endl;
+    // pcout << "1e-12 * rhs.l2_norm() = " << 1e-12 * rhs.l2_norm() << std::endl;
+    pcout << "solver_control tol = " << 1e-6 << std::endl;
 
     SolverGMRES<BlockVectorType> solver(
       solver_control,
@@ -159,7 +161,9 @@ namespace VerHem
     roctxRangePop();    
     
     pcout << "Solver converged in " << solver_control.last_step()
-          << " iterations in " << t.wall_time() << " seconds" << std::endl;
+          << " iterations in " << t.wall_time() << " seconds"
+          << "\n"
+	  << std::endl;
 
     roctxRangePop();
   } // LinearGLProblem<...>::solve() ends here

@@ -65,7 +65,7 @@ namespace VerHem
           << Kokkos::DefaultExecutionSpace::name();
     pcout << '\n'
           << "dim: " << dim << '\n'
-          << "Element: Q" << fe_degree << "-Q" << fe_degree << std::endl;
+          << "Element: Q " << fe_degree << "- Q" << fe_degree << std::endl;
 
     unsigned int n_refinements = 1;
 
@@ -79,8 +79,9 @@ namespace VerHem
 
 	    roctxRangePush("ROCTX-RANGE:Starting tria.refine_global(2)");
             // tria.refine_global(10);
-	    tria.refine_global(7);
-	    // tria.refine_global(6);
+	    tria.refine_global(7); // DoF38640402
+            // tria.refine_global(5); // DoF646866	    
+	    // tria.refine_global(6); 
 	    roctxRangePop();
           }
         else
@@ -93,12 +94,13 @@ namespace VerHem
               << " = " << DoFHandler_U.n_dofs() << " + " << DoFHandler_V.n_dofs()
               << std::endl;
 
-        solve();
+        // solve();
 
-	newton_iter(0.5);
-	
+	newton_iter(0.8);
+		
         postprocess();
-      }
+
+      } // refinment for loop ends here
     
     roctxRangePop();
   } // LinearGLProblem::run() ends here

@@ -94,6 +94,7 @@ namespace VerHem
     ConditionalOStream                                 pcout;
 
     Number current_iter_InitResidual{0.0};
+    const Number convTol_newton_iter{1e-4};
   }; // LinearGLProblem declearation ends here
 
 

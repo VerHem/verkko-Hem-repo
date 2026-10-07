@@ -63,6 +63,7 @@ namespace VerHem
     // mf_data_ptr->initialize_dof_vector(bg_newton_iter);
 
     pcout << "lambda = " << lambda << std::endl;
+    dealii::Timer t(tria.get_mpi_communicator());
     
     for (unsigned int i = 0; i < 100; ++i)
       {
@@ -122,16 +123,23 @@ namespace VerHem
         pcout << "iteration i = " << i << ", alpha = " << alpha
               << ", linearSearch_trail_residual is "
 	      << linearSearch_trail_residual
+	      << "\n"
 	      << std::endl;	  
 		
         if (linearSearch_trail_residual < current_iter_InitResidual)
 	  {
 	    // copy back to bg_solution, BC constriants also copied
 	    bg_solution = bg_newton_iter;
+	    current_iter_InitResidual = linearSearch_trail_residual;
 	    break;
 	  }	  
 	
       } // newton interation loop
+
+    t.stop();
+    pcout << "line search loop take " << t.wall_time() << " second " << "\n"
+	  << std::endl;	  
+    
          
     roctxRangePop();
  } // LinearGLProblem<...>::line_search() ends here
